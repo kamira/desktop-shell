@@ -28,6 +28,10 @@ jobs:
       - name: G1 scope_check
         run: python scripts/scope_check.py --unit ${{ steps.unit.outputs.id }} --base origin/${{ github.base_ref }}
 
+      # G1b 相位閘門：當前相位不得出現未允許的平台後端
+      - name: G1b backend_guard
+        run: python scripts/backend_guard.py
+
       # G2 PR 必須連結 CHG
       - name: G2 CHG linked
         shell: bash

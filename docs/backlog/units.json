@@ -5,17 +5,23 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 173,
+  "units": 176,
   "by_priority": {
    "P0": 57,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
-   "medium": 14,
-   "low": 159
+   "medium": 16,
+   "low": 160
   },
-  "waves": 7
+  "waves": 9,
+  "by_platform": {
+   "semantic-divergence": 29,
+   "neutral": 113,
+   "api-divergence": 34
+  },
+  "backend_followup": 63
  },
  "units": [
   {
@@ -27,8 +33,10 @@
    "primitives": [
     "K2"
    ],
-   "depends_on": [],
-   "wave": 0,
+   "depends_on": [
+    "E1-25"
+   ],
+   "wave": 2,
    "load_bearing": 9,
    "risk": "medium",
    "autonomy": null,
@@ -38,7 +46,10 @@
     "docs/changes/CHG-*-e1_01.md"
    ],
    "branch": "feat/e1_01",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-02",
@@ -49,8 +60,10 @@
    "primitives": [
     "K3"
    ],
-   "depends_on": [],
-   "wave": 0,
+   "depends_on": [
+    "E1-25"
+   ],
+   "wave": 2,
    "load_bearing": 5,
    "risk": "medium",
    "autonomy": null,
@@ -60,7 +73,10 @@
     "docs/changes/CHG-*-e1_02.md"
    ],
    "branch": "feat/e1_02",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-03",
@@ -71,8 +87,10 @@
    "primitives": [
     "K1"
    ],
-   "depends_on": [],
-   "wave": 0,
+   "depends_on": [
+    "E1-25"
+   ],
+   "wave": 2,
    "load_bearing": 20,
    "risk": "medium",
    "autonomy": null,
@@ -82,7 +100,10 @@
     "docs/changes/CHG-*-e1_03.md"
    ],
    "branch": "feat/e1_03",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-04",
@@ -96,7 +117,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 8,
    "risk": "medium",
    "autonomy": null,
@@ -106,7 +127,10 @@
     "docs/changes/CHG-*-e1_04.md"
    ],
    "branch": "feat/e1_04",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-05",
@@ -120,7 +144,7 @@
    "depends_on": [
     "E1-04"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -130,7 +154,10 @@
     "docs/changes/CHG-*-e1_05.md"
    ],
    "branch": "feat/e1_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-06",
@@ -145,7 +172,7 @@
    "depends_on": [
     "E1-04"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -155,7 +182,10 @@
     "docs/changes/CHG-*-e1_06.md"
    ],
    "branch": "feat/e1_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-07",
@@ -169,7 +199,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 5,
    "risk": "low",
    "autonomy": null,
@@ -179,7 +209,10 @@
     "docs/changes/CHG-*-e1_07.md"
    ],
    "branch": "feat/e1_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-08",
@@ -196,7 +229,7 @@
     "E1-07",
     "E7-12"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 3,
    "risk": "medium",
    "autonomy": "halt",
@@ -206,7 +239,10 @@
     "docs/changes/CHG-*-e1_08.md"
    ],
    "branch": "feat/e1_08",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-09",
@@ -221,7 +257,7 @@
     "E1-07",
     "E1-08"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "medium",
    "autonomy": "halt",
@@ -231,7 +267,10 @@
     "docs/changes/CHG-*-e1_09.md"
    ],
    "branch": "feat/e1_09",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-10",
@@ -246,7 +285,7 @@
     "E1-07",
     "E1-18"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -256,7 +295,10 @@
     "docs/changes/CHG-*-e1_10.md"
    ],
    "branch": "feat/e1_10",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-11",
@@ -270,7 +312,7 @@
    "depends_on": [
     "E1-07"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -280,7 +322,10 @@
     "docs/changes/CHG-*-e1_11.md"
    ],
    "branch": "feat/e1_11",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-12",
@@ -294,7 +339,7 @@
    "depends_on": [
     "E1-11"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -304,7 +349,10 @@
     "docs/changes/CHG-*-e1_12.md"
    ],
    "branch": "feat/e1_12",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-13",
@@ -318,7 +366,7 @@
    "depends_on": [
     "E1-01"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -328,7 +376,10 @@
     "docs/changes/CHG-*-e1_13.md"
    ],
    "branch": "feat/e1_13",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-14",
@@ -343,7 +394,7 @@
     "E1-02",
     "E5-10"
    ],
-   "wave": 2,
+   "wave": 3,
    "load_bearing": 3,
    "risk": "low",
    "autonomy": null,
@@ -353,7 +404,10 @@
     "docs/changes/CHG-*-e1_14.md"
    ],
    "branch": "feat/e1_14",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-15",
@@ -369,7 +423,7 @@
     "E1-03",
     "E5-02"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -379,7 +433,10 @@
     "docs/changes/CHG-*-e1_15.md"
    ],
    "branch": "feat/e1_15",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-16",
@@ -393,7 +450,7 @@
    "depends_on": [
     "E1-04"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -403,7 +460,10 @@
     "docs/changes/CHG-*-e1_16.md"
    ],
    "branch": "feat/e1_16",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-17",
@@ -425,7 +485,10 @@
     "docs/changes/CHG-*-e1_17.md"
    ],
    "branch": "feat/e1_17",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-18",
@@ -449,7 +512,10 @@
     "docs/changes/CHG-*-e1_18.md"
    ],
    "branch": "feat/e1_18",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-19",
@@ -474,7 +540,10 @@
     "docs/changes/CHG-*-e1_19.md"
    ],
    "branch": "feat/e1_19",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-20",
@@ -489,7 +558,7 @@
     "E1-01",
     "E5-08"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -499,7 +568,10 @@
     "docs/changes/CHG-*-e1_20.md"
    ],
    "branch": "feat/e1_20",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-21",
@@ -510,7 +582,7 @@
    "primitives": [],
    "depends_on": [],
    "wave": 0,
-   "load_bearing": 2,
+   "load_bearing": 4,
    "risk": "low",
    "autonomy": null,
    "write_scope": [
@@ -519,7 +591,10 @@
     "docs/changes/CHG-*-e1_21.md"
    ],
    "branch": "feat/e1_21",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-22",
@@ -532,7 +607,7 @@
     "E1-21"
    ],
    "wave": 1,
-   "load_bearing": 0,
+   "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
    "write_scope": [
@@ -541,7 +616,10 @@
     "docs/changes/CHG-*-e1_22.md"
    ],
    "branch": "feat/e1_22",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E1-23",
@@ -556,7 +634,7 @@
     "E1-01",
     "E1-21"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -566,7 +644,10 @@
     "docs/changes/CHG-*-e1_23.md"
    ],
    "branch": "feat/e1_23",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-01",
@@ -588,7 +669,10 @@
     "docs/changes/CHG-*-e2_01.md"
    ],
    "branch": "feat/e2_01",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E2-02",
@@ -612,7 +696,10 @@
     "docs/changes/CHG-*-e2_02.md"
    ],
    "branch": "feat/e2_02",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E2-03",
@@ -637,7 +724,10 @@
     "docs/changes/CHG-*-e2_03.md"
    ],
    "branch": "feat/e2_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-04",
@@ -662,7 +752,10 @@
     "docs/changes/CHG-*-e2_04.md"
    ],
    "branch": "feat/e2_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-05",
@@ -687,7 +780,10 @@
     "docs/changes/CHG-*-e2_05.md"
    ],
    "branch": "feat/e2_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-06",
@@ -712,7 +808,10 @@
     "docs/changes/CHG-*-e2_06.md"
    ],
    "branch": "feat/e2_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-07",
@@ -737,7 +836,10 @@
     "docs/changes/CHG-*-e2_07.md"
    ],
    "branch": "feat/e2_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-08",
@@ -762,7 +864,10 @@
     "docs/changes/CHG-*-e2_08.md"
    ],
    "branch": "feat/e2_08",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-09",
@@ -787,7 +892,10 @@
     "docs/changes/CHG-*-e2_09.md"
    ],
    "branch": "feat/e2_09",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-10",
@@ -811,7 +919,10 @@
     "docs/changes/CHG-*-e2_10.md"
    ],
    "branch": "feat/e2_10",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E2-11",
@@ -836,7 +947,10 @@
     "docs/changes/CHG-*-e2_11.md"
    ],
    "branch": "feat/e2_11",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-12",
@@ -860,7 +974,10 @@
     "docs/changes/CHG-*-e2_12.md"
    ],
    "branch": "feat/e2_12",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-13",
@@ -885,7 +1002,10 @@
     "docs/changes/CHG-*-e2_13.md"
    ],
    "branch": "feat/e2_13",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-14",
@@ -910,7 +1030,10 @@
     "docs/changes/CHG-*-e2_14.md"
    ],
    "branch": "feat/e2_14",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E2-15",
@@ -935,7 +1058,10 @@
     "docs/changes/CHG-*-e2_15.md"
    ],
    "branch": "feat/e2_15",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-16",
@@ -957,7 +1083,10 @@
     "docs/changes/CHG-*-e2_16.md"
    ],
    "branch": "feat/e2_16",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-17",
@@ -983,7 +1112,10 @@
     "docs/changes/CHG-*-e2_17.md"
    ],
    "branch": "feat/e2_17",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-18",
@@ -1008,7 +1140,10 @@
     "docs/changes/CHG-*-e2_18.md"
    ],
    "branch": "feat/e2_18",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-19",
@@ -1033,7 +1168,10 @@
     "docs/changes/CHG-*-e2_19.md"
    ],
    "branch": "feat/e2_19",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-20",
@@ -1058,7 +1196,10 @@
     "docs/changes/CHG-*-e2_20.md"
    ],
    "branch": "feat/e2_20",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-21",
@@ -1073,7 +1214,7 @@
     "E2-01",
     "E4-15"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -1083,7 +1224,10 @@
     "docs/changes/CHG-*-e2_21.md"
    ],
    "branch": "feat/e2_21",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-22",
@@ -1107,7 +1251,10 @@
     "docs/changes/CHG-*-e2_22.md"
    ],
    "branch": "feat/e2_22",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-23",
@@ -1131,7 +1278,10 @@
     "docs/changes/CHG-*-e2_23.md"
    ],
    "branch": "feat/e2_23",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-24",
@@ -1156,7 +1306,10 @@
     "docs/changes/CHG-*-e2_24.md"
    ],
    "branch": "feat/e2_24",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-25",
@@ -1178,7 +1331,10 @@
     "docs/changes/CHG-*-e2_25.md"
    ],
    "branch": "feat/e2_25",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-26",
@@ -1203,7 +1359,10 @@
     "docs/changes/CHG-*-e2_26.md"
    ],
    "branch": "feat/e2_26",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E2-27",
@@ -1225,7 +1384,10 @@
     "docs/changes/CHG-*-e2_27.md"
    ],
    "branch": "feat/e2_27",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-01",
@@ -1249,7 +1411,10 @@
     "docs/changes/CHG-*-e3_01.md"
    ],
    "branch": "feat/e3_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-02",
@@ -1273,7 +1438,10 @@
     "docs/changes/CHG-*-e3_02.md"
    ],
    "branch": "feat/e3_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-03",
@@ -1298,7 +1466,10 @@
     "docs/changes/CHG-*-e3_03.md"
    ],
    "branch": "feat/e3_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-04",
@@ -1322,7 +1493,10 @@
     "docs/changes/CHG-*-e3_04.md"
    ],
    "branch": "feat/e3_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-05",
@@ -1346,7 +1520,10 @@
     "docs/changes/CHG-*-e3_05.md"
    ],
    "branch": "feat/e3_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-06",
@@ -1370,7 +1547,10 @@
     "docs/changes/CHG-*-e3_06.md"
    ],
    "branch": "feat/e3_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-07",
@@ -1394,7 +1574,10 @@
     "docs/changes/CHG-*-e3_07.md"
    ],
    "branch": "feat/e3_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-08",
@@ -1418,7 +1601,10 @@
     "docs/changes/CHG-*-e3_08.md"
    ],
    "branch": "feat/e3_08",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-09",
@@ -1442,7 +1628,10 @@
     "docs/changes/CHG-*-e3_09.md"
    ],
    "branch": "feat/e3_09",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-10",
@@ -1466,7 +1655,10 @@
     "docs/changes/CHG-*-e3_10.md"
    ],
    "branch": "feat/e3_10",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E3-11",
@@ -1490,7 +1682,10 @@
     "docs/changes/CHG-*-e3_11.md"
    ],
    "branch": "feat/e3_11",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；語意跨平台一致,可直接實作 macOS 版,相位 2 補 Windows 版",
+   "platform": "api-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E4-01",
@@ -1504,7 +1699,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 15,
    "risk": "medium",
    "autonomy": null,
@@ -1514,7 +1709,10 @@
     "docs/changes/CHG-*-e4_01.md"
    ],
    "branch": "feat/e4_01",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-02",
@@ -1528,7 +1726,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 11,
    "risk": "medium",
    "autonomy": null,
@@ -1538,7 +1736,10 @@
     "docs/changes/CHG-*-e4_02.md"
    ],
    "branch": "feat/e4_02",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-03",
@@ -1563,7 +1764,10 @@
     "docs/changes/CHG-*-e4_03.md"
    ],
    "branch": "feat/e4_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-04",
@@ -1580,7 +1784,7 @@
     "E1-04",
     "E5-02"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -1590,7 +1794,10 @@
     "docs/changes/CHG-*-e4_04.md"
    ],
    "branch": "feat/e4_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-05",
@@ -1612,7 +1819,10 @@
     "docs/changes/CHG-*-e4_05.md"
    ],
    "branch": "feat/e4_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-06",
@@ -1626,7 +1836,7 @@
    "depends_on": [
     "E4-02"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 4,
    "risk": "low",
    "autonomy": null,
@@ -1636,7 +1846,10 @@
     "docs/changes/CHG-*-e4_06.md"
    ],
    "branch": "feat/e4_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-07",
@@ -1651,7 +1864,7 @@
     "E4-02",
     "E4-09"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -1661,7 +1874,10 @@
     "docs/changes/CHG-*-e4_07.md"
    ],
    "branch": "feat/e4_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-08",
@@ -1676,7 +1892,7 @@
     "E4-02",
     "E4-06"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -1686,7 +1902,10 @@
     "docs/changes/CHG-*-e4_08.md"
    ],
    "branch": "feat/e4_08",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-09",
@@ -1710,7 +1929,10 @@
     "docs/changes/CHG-*-e4_09.md"
    ],
    "branch": "feat/e4_09",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-10",
@@ -1725,7 +1947,7 @@
     "E4-07",
     "E5-09"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -1735,7 +1957,10 @@
     "docs/changes/CHG-*-e4_10.md"
    ],
    "branch": "feat/e4_10",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-11",
@@ -1750,7 +1975,7 @@
     "E4-01",
     "E4-09"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -1760,7 +1985,10 @@
     "docs/changes/CHG-*-e4_11.md"
    ],
    "branch": "feat/e4_11",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-12",
@@ -1776,7 +2004,7 @@
     "E4-01",
     "E1-04"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -1786,7 +2014,10 @@
     "docs/changes/CHG-*-e4_12.md"
    ],
    "branch": "feat/e4_12",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-13",
@@ -1801,7 +2032,7 @@
     "E4-01",
     "E4-02"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -1811,7 +2042,10 @@
     "docs/changes/CHG-*-e4_13.md"
    ],
    "branch": "feat/e4_13",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-14",
@@ -1825,7 +2059,7 @@
    "depends_on": [
     "E4-01"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -1835,7 +2069,10 @@
     "docs/changes/CHG-*-e4_14.md"
    ],
    "branch": "feat/e4_14",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-15",
@@ -1850,7 +2087,7 @@
     "E4-01",
     "E5-13"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 3,
    "risk": "low",
    "autonomy": null,
@@ -1860,7 +2097,10 @@
     "docs/changes/CHG-*-e4_15.md"
    ],
    "branch": "feat/e4_15",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-16",
@@ -1875,7 +2115,7 @@
     "E4-01",
     "E4-15"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -1885,7 +2125,10 @@
     "docs/changes/CHG-*-e4_16.md"
    ],
    "branch": "feat/e4_16",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-17",
@@ -1910,7 +2153,10 @@
     "docs/changes/CHG-*-e4_17.md"
    ],
    "branch": "feat/e4_17",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-18",
@@ -1935,7 +2181,10 @@
     "docs/changes/CHG-*-e4_18.md"
    ],
    "branch": "feat/e4_18",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-19",
@@ -1950,7 +2199,7 @@
     "E4-02",
     "E4-22"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -1960,7 +2209,10 @@
     "docs/changes/CHG-*-e4_19.md"
    ],
    "branch": "feat/e4_19",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-20",
@@ -1974,7 +2226,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -1984,7 +2236,10 @@
     "docs/changes/CHG-*-e4_20.md"
    ],
    "branch": "feat/e4_20",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-21",
@@ -1998,7 +2253,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2008,7 +2263,10 @@
     "docs/changes/CHG-*-e4_21.md"
    ],
    "branch": "feat/e4_21",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-22",
@@ -2022,7 +2280,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -2032,7 +2290,10 @@
     "docs/changes/CHG-*-e4_22.md"
    ],
    "branch": "feat/e4_22",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-23",
@@ -2046,7 +2307,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2056,7 +2317,10 @@
     "docs/changes/CHG-*-e4_23.md"
    ],
    "branch": "feat/e4_23",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-24",
@@ -2070,7 +2334,7 @@
    "depends_on": [
     "E1-03"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2080,7 +2344,10 @@
     "docs/changes/CHG-*-e4_24.md"
    ],
    "branch": "feat/e4_24",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-25",
@@ -2096,7 +2363,7 @@
     "E1-03",
     "E4-02"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2106,7 +2373,10 @@
     "docs/changes/CHG-*-e4_25.md"
    ],
    "branch": "feat/e4_25",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-26",
@@ -2128,7 +2398,10 @@
     "docs/changes/CHG-*-e4_26.md"
    ],
    "branch": "feat/e4_26",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-27",
@@ -2142,7 +2415,7 @@
    "depends_on": [
     "E4-08"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2152,7 +2425,10 @@
     "docs/changes/CHG-*-e4_27.md"
    ],
    "branch": "feat/e4_27",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-28",
@@ -2166,7 +2442,7 @@
    "depends_on": [
     "E4-22"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2176,7 +2452,10 @@
     "docs/changes/CHG-*-e4_28.md"
    ],
    "branch": "feat/e4_28",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-29",
@@ -2200,7 +2479,10 @@
     "docs/changes/CHG-*-e4_29.md"
    ],
    "branch": "feat/e4_29",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E4-30",
@@ -2215,7 +2497,7 @@
     "E1-03",
     "E1-01"
    ],
-   "wave": 1,
+   "wave": 3,
    "load_bearing": 3,
    "risk": "low",
    "autonomy": null,
@@ -2225,7 +2507,10 @@
     "docs/changes/CHG-*-e4_30.md"
    ],
    "branch": "feat/e4_30",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-01",
@@ -2240,7 +2525,7 @@
    "depends_on": [
     "E1-04"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -2250,7 +2535,10 @@
     "docs/changes/CHG-*-e5_01.md"
    ],
    "branch": "feat/e5_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-02",
@@ -2265,7 +2553,7 @@
    "depends_on": [
     "E1-04"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -2275,7 +2563,10 @@
     "docs/changes/CHG-*-e5_02.md"
    ],
    "branch": "feat/e5_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-03",
@@ -2297,7 +2588,10 @@
     "docs/changes/CHG-*-e5_03.md"
    ],
    "branch": "feat/e5_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-04",
@@ -2319,7 +2613,10 @@
     "docs/changes/CHG-*-e5_04.md"
    ],
    "branch": "feat/e5_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-05",
@@ -2341,7 +2638,10 @@
     "docs/changes/CHG-*-e5_05.md"
    ],
    "branch": "feat/e5_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E5-06",
@@ -2355,7 +2655,7 @@
    "depends_on": [
     "E1-04"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2365,7 +2665,10 @@
     "docs/changes/CHG-*-e5_06.md"
    ],
    "branch": "feat/e5_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-07",
@@ -2380,7 +2683,7 @@
    "depends_on": [
     "E5-14"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2390,7 +2693,10 @@
     "docs/changes/CHG-*-e5_07.md"
    ],
    "branch": "feat/e5_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-08",
@@ -2412,7 +2718,10 @@
     "docs/changes/CHG-*-e5_08.md"
    ],
    "branch": "feat/e5_08",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E5-09",
@@ -2436,7 +2745,10 @@
     "docs/changes/CHG-*-e5_09.md"
    ],
    "branch": "feat/e5_09",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-10",
@@ -2460,7 +2772,10 @@
     "docs/changes/CHG-*-e5_10.md"
    ],
    "branch": "feat/e5_10",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-11",
@@ -2475,7 +2790,7 @@
     "E4-12",
     "E5-01"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2485,7 +2800,10 @@
     "docs/changes/CHG-*-e5_11.md"
    ],
    "branch": "feat/e5_11",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-12",
@@ -2507,7 +2825,10 @@
     "docs/changes/CHG-*-e5_12.md"
    ],
    "branch": "feat/e5_12",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E5-13",
@@ -2529,7 +2850,10 @@
     "docs/changes/CHG-*-e5_13.md"
    ],
    "branch": "feat/e5_13",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E5-14",
@@ -2545,7 +2869,7 @@
     "E5-01",
     "E1-05"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -2555,7 +2879,10 @@
     "docs/changes/CHG-*-e5_14.md"
    ],
    "branch": "feat/e5_14",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E6-01",
@@ -2577,7 +2904,10 @@
     "docs/changes/CHG-*-e6_01.md"
    ],
    "branch": "feat/e6_01",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E6-02",
@@ -2601,7 +2931,10 @@
     "docs/changes/CHG-*-e6_02.md"
    ],
    "branch": "feat/e6_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E6-03",
@@ -2626,7 +2959,10 @@
     "docs/changes/CHG-*-e6_03.md"
    ],
    "branch": "feat/e6_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E6-04",
@@ -2650,7 +2986,10 @@
     "docs/changes/CHG-*-e6_04.md"
    ],
    "branch": "feat/e6_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E6-05",
@@ -2665,7 +3004,7 @@
     "E6-01",
     "E1-13"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -2675,7 +3014,10 @@
     "docs/changes/CHG-*-e6_05.md"
    ],
    "branch": "feat/e6_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-01",
@@ -2697,7 +3039,10 @@
     "docs/changes/CHG-*-e7_01.md"
    ],
    "branch": "feat/e7_01",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-02",
@@ -2721,7 +3066,10 @@
     "docs/changes/CHG-*-e7_02.md"
    ],
    "branch": "feat/e7_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-03",
@@ -2745,7 +3093,10 @@
     "docs/changes/CHG-*-e7_03.md"
    ],
    "branch": "feat/e7_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-04",
@@ -2769,7 +3120,10 @@
     "docs/changes/CHG-*-e7_04.md"
    ],
    "branch": "feat/e7_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-05",
@@ -2793,7 +3147,10 @@
     "docs/changes/CHG-*-e7_05.md"
    ],
    "branch": "feat/e7_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-06",
@@ -2817,7 +3174,10 @@
     "docs/changes/CHG-*-e7_06.md"
    ],
    "branch": "feat/e7_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-07",
@@ -2842,7 +3202,10 @@
     "docs/changes/CHG-*-e7_07.md"
    ],
    "branch": "feat/e7_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-08",
@@ -2867,7 +3230,10 @@
     "docs/changes/CHG-*-e7_08.md"
    ],
    "branch": "feat/e7_08",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-09",
@@ -2892,7 +3258,10 @@
     "docs/changes/CHG-*-e7_09.md"
    ],
    "branch": "feat/e7_09",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-10",
@@ -2916,7 +3285,10 @@
     "docs/changes/CHG-*-e7_10.md"
    ],
    "branch": "feat/e7_10",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-11",
@@ -2941,7 +3313,10 @@
     "docs/changes/CHG-*-e7_11.md"
    ],
    "branch": "feat/e7_11",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-12",
@@ -2965,7 +3340,10 @@
     "docs/changes/CHG-*-e7_12.md"
    ],
    "branch": "feat/e7_12",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-13",
@@ -2989,7 +3367,10 @@
     "docs/changes/CHG-*-e7_13.md"
    ],
    "branch": "feat/e7_13",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-14",
@@ -3013,7 +3394,10 @@
     "docs/changes/CHG-*-e7_14.md"
    ],
    "branch": "feat/e7_14",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E7-15",
@@ -3038,7 +3422,10 @@
     "docs/changes/CHG-*-e7_15.md"
    ],
    "branch": "feat/e7_15",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E8-01",
@@ -3062,7 +3449,10 @@
     "docs/changes/CHG-*-e8_01.md"
    ],
    "branch": "feat/e8_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E8-02",
@@ -3087,7 +3477,10 @@
     "docs/changes/CHG-*-e8_02.md"
    ],
    "branch": "feat/e8_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E8-03",
@@ -3103,7 +3496,7 @@
     "E4-06",
     "E6-01"
    ],
-   "wave": 4,
+   "wave": 5,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -3113,7 +3506,10 @@
     "docs/changes/CHG-*-e8_03.md"
    ],
    "branch": "feat/e8_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E8-04",
@@ -3137,7 +3533,10 @@
     "docs/changes/CHG-*-e8_04.md"
    ],
    "branch": "feat/e8_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E8-05",
@@ -3161,7 +3560,10 @@
     "docs/changes/CHG-*-e8_05.md"
    ],
    "branch": "feat/e8_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-01",
@@ -3185,7 +3587,10 @@
     "docs/changes/CHG-*-e9_01.md"
    ],
    "branch": "feat/e9_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-02",
@@ -3207,7 +3612,10 @@
     "docs/changes/CHG-*-e9_02.md"
    ],
    "branch": "feat/e9_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-03",
@@ -3231,7 +3639,10 @@
     "docs/changes/CHG-*-e9_03.md"
    ],
    "branch": "feat/e9_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-04",
@@ -3256,7 +3667,10 @@
     "docs/changes/CHG-*-e9_04.md"
    ],
    "branch": "feat/e9_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-05",
@@ -3280,7 +3694,10 @@
     "docs/changes/CHG-*-e9_05.md"
    ],
    "branch": "feat/e9_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-06",
@@ -3304,7 +3721,10 @@
     "docs/changes/CHG-*-e9_06.md"
    ],
    "branch": "feat/e9_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-07",
@@ -3329,7 +3749,10 @@
     "docs/changes/CHG-*-e9_07.md"
    ],
    "branch": "feat/e9_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-08",
@@ -3353,7 +3776,10 @@
     "docs/changes/CHG-*-e9_08.md"
    ],
    "branch": "feat/e9_08",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E9-09",
@@ -3377,7 +3803,10 @@
     "docs/changes/CHG-*-e9_09.md"
    ],
    "branch": "feat/e9_09",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E10-01",
@@ -3401,7 +3830,10 @@
     "docs/changes/CHG-*-e10_01.md"
    ],
    "branch": "feat/e10_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E10-02",
@@ -3425,7 +3857,10 @@
     "docs/changes/CHG-*-e10_02.md"
    ],
    "branch": "feat/e10_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E10-03",
@@ -3449,7 +3884,10 @@
     "docs/changes/CHG-*-e10_03.md"
    ],
    "branch": "feat/e10_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E10-04",
@@ -3474,7 +3912,10 @@
     "docs/changes/CHG-*-e10_04.md"
    ],
    "branch": "feat/e10_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E10-05",
@@ -3489,7 +3930,7 @@
     "E10-01",
     "E1-03"
    ],
-   "wave": 2,
+   "wave": 3,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -3499,7 +3940,10 @@
     "docs/changes/CHG-*-e10_05.md"
    ],
    "branch": "feat/e10_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E11-01",
@@ -3521,7 +3965,10 @@
     "docs/changes/CHG-*-e11_01.md"
    ],
    "branch": "feat/e11_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E11-02",
@@ -3538,7 +3985,7 @@
     "E4-01",
     "E7-13"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3548,7 +3995,10 @@
     "docs/changes/CHG-*-e11_02.md"
    ],
    "branch": "feat/e11_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E11-03",
@@ -3568,7 +4018,10 @@
     "docs/changes/CHG-*-e11_03.md"
    ],
    "branch": "feat/e11_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；**相位 1 僅驗介面 + null 後端 + 契約測試,不得實作真實平台後端**",
+   "platform": "semantic-divergence",
+   "phase": 1,
+   "backend_followup": true
   },
   {
    "id": "E12-01",
@@ -3590,7 +4043,10 @@
     "docs/changes/CHG-*-e12_01.md"
    ],
    "branch": "feat/e12_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "E12-02",
@@ -3604,7 +4060,7 @@
    "depends_on": [
     "E4-01"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3614,7 +4070,10 @@
     "docs/changes/CHG-*-e12_02.md"
    ],
    "branch": "feat/e12_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C1-01",
@@ -3631,7 +4090,7 @@
     "E1-08",
     "E7-01"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 9,
    "risk": "medium",
    "autonomy": null,
@@ -3641,7 +4100,10 @@
     "docs/changes/CHG-*-c1_01.md"
    ],
    "branch": "feat/c1_01",
-   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試"
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC + 能力閘控項須附降級路徑測試",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C1-02",
@@ -3658,7 +4120,7 @@
     "E4-06",
     "E7-01"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 2,
    "risk": "low",
    "autonomy": null,
@@ -3668,7 +4130,10 @@
     "docs/changes/CHG-*-c1_02.md"
    ],
    "branch": "feat/c1_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C1-03",
@@ -3683,7 +4148,7 @@
     "E4-11",
     "C1-02"
    ],
-   "wave": 5,
+   "wave": 7,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -3693,7 +4158,10 @@
     "docs/changes/CHG-*-c1_03.md"
    ],
    "branch": "feat/c1_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C1-04",
@@ -3707,7 +4175,7 @@
     "E1-02",
     "E1-14"
    ],
-   "wave": 3,
+   "wave": 4,
    "load_bearing": 1,
    "risk": "low",
    "autonomy": null,
@@ -3717,7 +4185,10 @@
     "docs/changes/CHG-*-c1_04.md"
    ],
    "branch": "feat/c1_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C1-05",
@@ -3732,7 +4203,7 @@
     "E5-05",
     "E7-13"
    ],
-   "wave": 3,
+   "wave": 4,
    "load_bearing": 3,
    "risk": "low",
    "autonomy": null,
@@ -3742,7 +4213,10 @@
     "docs/changes/CHG-*-c1_05.md"
    ],
    "branch": "feat/c1_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C1-06",
@@ -3756,7 +4230,7 @@
     "E1-02",
     "E1-16"
    ],
-   "wave": 3,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3766,7 +4240,10 @@
     "docs/changes/CHG-*-c1_06.md"
    ],
    "branch": "feat/c1_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C1-07",
@@ -3779,7 +4256,7 @@
     "E4-30",
     "E1-01"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3789,7 +4266,10 @@
     "docs/changes/CHG-*-c1_07.md"
    ],
    "branch": "feat/c1_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-01",
@@ -3804,7 +4284,7 @@
     "E4-01",
     "E7-01"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3814,7 +4294,10 @@
     "docs/changes/CHG-*-c2_01.md"
    ],
    "branch": "feat/c2_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-02",
@@ -3832,7 +4315,7 @@
     "E7-03",
     "E7-05"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3842,7 +4325,10 @@
     "docs/changes/CHG-*-c2_02.md"
    ],
    "branch": "feat/c2_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-04",
@@ -3858,7 +4344,7 @@
     "E4-02",
     "E7-10"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3868,7 +4354,10 @@
     "docs/changes/CHG-*-c2_04.md"
    ],
    "branch": "feat/c2_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-05",
@@ -3881,7 +4370,7 @@
     "C1-01",
     "E4-02"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3891,7 +4380,10 @@
     "docs/changes/CHG-*-c2_05.md"
    ],
    "branch": "feat/c2_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-06",
@@ -3904,7 +4396,7 @@
     "C1-01",
     "E4-07"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3914,7 +4406,10 @@
     "docs/changes/CHG-*-c2_06.md"
    ],
    "branch": "feat/c2_06",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-07",
@@ -3930,7 +4425,7 @@
     "E4-02",
     "E4-04"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3940,7 +4435,10 @@
     "docs/changes/CHG-*-c2_07.md"
    ],
    "branch": "feat/c2_07",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-08",
@@ -3955,7 +4453,7 @@
     "E4-15",
     "E7-12"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3965,7 +4463,10 @@
     "docs/changes/CHG-*-c2_08.md"
    ],
    "branch": "feat/c2_08",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-09",
@@ -3980,7 +4481,7 @@
     "E7-12",
     "E7-13"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -3990,7 +4491,10 @@
     "docs/changes/CHG-*-c2_09.md"
    ],
    "branch": "feat/c2_09",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C2-10",
@@ -4003,7 +4507,7 @@
     "C1-01",
     "E10-05"
    ],
-   "wave": 4,
+   "wave": 6,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4013,7 +4517,10 @@
     "docs/changes/CHG-*-c2_10.md"
    ],
    "branch": "feat/c2_10",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C3-01",
@@ -4027,7 +4534,7 @@
     "E7-13",
     "E3-02"
    ],
-   "wave": 4,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4037,7 +4544,10 @@
     "docs/changes/CHG-*-c3_01.md"
    ],
    "branch": "feat/c3_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C3-02",
@@ -4051,7 +4561,7 @@
     "E8-02",
     "E8-03"
    ],
-   "wave": 6,
+   "wave": 8,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4061,7 +4571,10 @@
     "docs/changes/CHG-*-c3_02.md"
    ],
    "branch": "feat/c3_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C3-03",
@@ -4076,7 +4589,7 @@
     "E4-06",
     "E9-01"
    ],
-   "wave": 5,
+   "wave": 7,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4086,7 +4599,10 @@
     "docs/changes/CHG-*-c3_03.md"
    ],
    "branch": "feat/c3_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C4-01",
@@ -4099,7 +4615,7 @@
     "C1-04",
     "E4-01"
    ],
-   "wave": 4,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4109,7 +4625,10 @@
     "docs/changes/CHG-*-c4_01.md"
    ],
    "branch": "feat/c4_01",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C4-02",
@@ -4123,7 +4642,7 @@
     "E4-30",
     "E4-20"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4133,7 +4652,10 @@
     "docs/changes/CHG-*-c4_02.md"
    ],
    "branch": "feat/c4_02",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C4-03",
@@ -4146,7 +4668,7 @@
     "E2-27",
     "E4-30"
    ],
-   "wave": 2,
+   "wave": 4,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4156,7 +4678,10 @@
     "docs/changes/CHG-*-c4_03.md"
    ],
    "branch": "feat/c4_03",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C4-04",
@@ -4169,7 +4694,7 @@
     "C1-05",
     "E4-02"
    ],
-   "wave": 4,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4179,7 +4704,10 @@
     "docs/changes/CHG-*-c4_04.md"
    ],
    "branch": "feat/c4_04",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   },
   {
    "id": "C4-05",
@@ -4194,7 +4722,7 @@
     "E4-01",
     "E4-11"
    ],
-   "wave": 4,
+   "wave": 5,
    "load_bearing": 0,
    "risk": "low",
    "autonomy": null,
@@ -4204,7 +4732,106 @@
     "docs/changes/CHG-*-c4_05.md"
    ],
    "branch": "feat/c4_05",
-   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據"
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "E1-24",
+   "title": "null 後端參考實作（任何平台可跑）",
+   "priority": "P0",
+   "group": "核心",
+   "module": "E1",
+   "primitives": [
+    "K1",
+    "K2",
+    "K3"
+   ],
+   "depends_on": [
+    "E1-21"
+   ],
+   "wave": 1,
+   "load_bearing": 0,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "src/kernel/backend/null/**",
+    "tests/e1/test_backend_null*",
+    "docs/changes/CHG-*-e1_24.md"
+   ],
+   "branch": "feat/e1_24",
+   "acceptance": "契約測試組（E1-25）全綠；不得引用任何平台專屬 API",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "E1-25",
+   "title": "kernel 後端契約測試組（所有後端共用）",
+   "priority": "P0",
+   "group": "核心",
+   "module": "E1",
+   "primitives": [],
+   "depends_on": [
+    "E1-21"
+   ],
+   "wave": 1,
+   "load_bearing": 3,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "tests/contract/**",
+    "docs/changes/CHG-*-e1_25.md"
+   ],
+   "branch": "feat/e1_25",
+   "acceptance": "測試僅依賴介面與能力矩陣，不得包含任何平台分支",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "E1-26",
+   "title": "後端白名單 lint（相位閘門）",
+   "priority": "P0",
+   "group": "核心",
+   "module": "E1",
+   "primitives": [],
+   "depends_on": [
+    "E1-22"
+   ],
+   "wave": 2,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "scripts/backend_guard.py",
+    "docs/backlog/phase.json",
+    "tests/e1/test_backend_guard*",
+    "docs/changes/CHG-*-e1_26.md"
+   ],
+   "branch": "feat/e1_26",
+   "acceptance": "相位 1 時偵測到 backend/win32 或 backend/cocoa 目錄即 exit 1",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
   }
- ]
+ ],
+ "phases": {
+  "1": {
+   "name": "Mac / 平台中立期",
+   "allowed_backends": [
+    "null"
+   ],
+   "goal": "介面、契約測試、110 個中立項、34 個 API 分歧項的 macOS 實作"
+  },
+  "2": {
+   "name": "Windows 期",
+   "allowed_backends": [
+    "null",
+    "win32"
+   ],
+   "goal": "29 個語意分歧項的 win32 後端 + E2/E3 的 Windows 實作，契約測試不變"
+  }
+ }
 }
