@@ -12,17 +12,11 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
 
-      # 從分支名 feat/<slug> 反查工作單元
+      # 從分支名 feat/<slug> 反查工作單元（改用 plan.py，避免 bash 唯讀變數 UID 在 -eo pipefail 下 exit 1）
       - id: unit
         shell: bash
         run: |
-          SLUG="${GITHUB_HEAD_REF#feat/}"
-          UID=$(python -c "import json,sys;u=json.load(open('docs/backlog/units.json'))['units'];\
-          print(next((x['id'] for x in u if x['id'].lower().replace('-','_')=='$SLUG'),''))")
-          [ -z "$UID" ] && { echo "::error::分支名 $GITHUB_HEAD_REF 對不到任何工作單元"; exit 1; }
-          echo "id=$UID" >> $GITHUB_OUTPUT
-          echo "risk=$(python -c "import json;u=json.load(open('docs/backlog/units.json'))['units'];\
-          print(next(x['risk'] for x in u if x['id']=='$UID'))")" >> $GITHUB_OUTPUT
+          python scripts/plan.py unit-for-branch "$GITHUB_HEAD_REF" >> "$GITHUB_OUTPUT"
 
       # G1 鎖定範圍（把「不得擴權」變成機器強制）
       - name: G1 scope_check

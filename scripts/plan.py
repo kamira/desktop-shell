@@ -7,6 +7,7 @@
   plan.py next [--limit N]       # 下一批可並行派工的單元
   plan.py brief <UNIT_ID>        # 產生該單元的 subagent 派工簡報（scoped handshake）
   plan.py gate <UNIT_ID> --gate <GATE>   # 查停點契約，exit 0=AUTO 10=HALT
+  plan.py unit-for-branch <REF>  # 由分支名 feat/<slug> 反查單元，輸出 id/risk/phase（供 CI $GITHUB_OUTPUT）
 """
 import argparse, json, os, subprocess, sys, collections
 
@@ -106,6 +107,17 @@ def brief(uid, n=1):
                   if u["risk"] == "low" else "medium 風險必須由 V1 獨立驗收")
 
 
+def unit_for_branch(ref):
+    """由分支名反查單元。接受 feat/<slug> 或 refs/heads/feat/<slug>；
+    slug 與 id 的對應：id.lower().replace('-','_')。找不到→exit 1（CI 步驟即紅燈）。"""
+    slug = ref.rsplit("/", 1)[-1] if ref else ""
+    u = next((x for x in M["units"] if x["id"].lower().replace("-", "_") == slug), None)
+    if u is None:
+        sys.stderr.write(f"::error::分支名 {ref} 對不到任何工作單元\n")
+        sys.exit(1)
+    return u
+
+
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -113,7 +125,16 @@ def main():
     n = sub.add_parser("next"); n.add_argument("--limit", type=int, default=8)
     b = sub.add_parser("brief"); b.add_argument("unit"); b.add_argument("--n", type=int, default=1)
     g = sub.add_parser("gate"); g.add_argument("unit"); g.add_argument("--gate", required=True)
+    ub = sub.add_parser("unit-for-branch"); ub.add_argument("ref")
     a = p.parse_args()
+
+    if a.cmd == "unit-for-branch":
+        u = unit_for_branch(a.ref)
+        print(f"id={u['id']}")
+        print(f"risk={u['risk']}")
+        print(f"phase={u['phase']}")
+        return
+
     st = state()
 
     if a.cmd == "status":
