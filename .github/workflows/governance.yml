@@ -1,0 +1,84 @@
+name: ai-sdlc governance
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest  # 六道閘門有五道是純文字檢查，不需要 Windows
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+
+      # 從分支名 feat/<slug> 反查工作單元
+      - id: unit
+        shell: bash
+        run: |
+          SLUG="${GITHUB_HEAD_REF#feat/}"
+          UID=$(python -c "import json,sys;u=json.load(open('docs/backlog/units.json'))['units'];\
+          print(next((x['id'] for x in u if x['id'].lower().replace('-','_')=='$SLUG'),''))")
+          [ -z "$UID" ] && { echo "::error::分支名 $GITHUB_HEAD_REF 對不到任何工作單元"; exit 1; }
+          echo "id=$UID" >> $GITHUB_OUTPUT
+          echo "risk=$(python -c "import json;u=json.load(open('docs/backlog/units.json'))['units'];\
+          print(next(x['risk'] for x in u if x['id']=='$UID'))")" >> $GITHUB_OUTPUT
+
+      # G1 鎖定範圍（把「不得擴權」變成機器強制）
+      - name: G1 scope_check
+        run: python scripts/scope_check.py --unit ${{ steps.unit.outputs.id }} --base origin/${{ github.base_ref }}
+
+      # G2 PR 必須連結 CHG
+      - name: G2 CHG linked
+        shell: bash
+        run: |
+          echo "${{ github.event.pull_request.body }}" | grep -qE 'CHG-[0-9]{8}-' \
+            || { echo "::error::PR 內文缺少 CHG- 參照"; exit 1; }
+
+      # G3 測試綠燈（無測試 = 紅燈，不是綠燈）
+      - name: G3 tests（平台中立部分）
+        run: |
+          pip install -q pytest
+          python -c "import pathlib,sys; t=list(pathlib.Path('tests').rglob('test_*.py')); \
+          sys.exit(0 if t else print('::error::本 repo 沒有任何測試，綠燈無意義') or 1)"
+          pytest -q
+
+      # G4 結構同步：動了 src/ 就得動 docs/structure/
+      - name: G4 structure sync
+        shell: bash
+        run: |
+          D=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "$D" | grep -q '^src/' && ! echo "$D" | grep -q '^docs/structure/' \
+            && { echo "::error::改了 src/ 但沒更新 docs/structure/"; exit 1; } || true
+
+      # G5 medium 以上：ACC 存在且驗收者 ≠ 實作者
+      - name: G5 ACC + identity
+        if: steps.unit.outputs.risk != 'low'
+        shell: bash
+        run: |
+          S=$(echo "${GITHUB_HEAD_REF#feat/}")
+          A=$(ls docs/acceptance/ACC-*-$S.md 2>/dev/null | head -1)
+          [ -z "$A" ] && { echo "::error::medium 風險需要 ACC，未找到"; exit 1; }
+          grep -q 'Result: *pass' "$A" || { echo "::error::ACC 未判定 pass"; exit 1; }
+          IMP=$(grep -m1 'Implemented by:' docs/changes/CHG-*-$S.md | sed 's/.*: *//')
+          VER=$(grep -m1 'Verifier:' "$A" | sed 's/.*: *//')
+          [ "$IMP" = "$VER" ] && { echo "::error::驗收者與實作者同一人：$IMP"; exit 1; } || true
+
+      # G6 停點契約
+      - name: G6 halt gate
+        id: halt
+        continue-on-error: true
+        run: python scripts/plan.py gate ${{ steps.unit.outputs.id }} --gate before_merge_or_release
+
+      - name: 自動合併（僅 AUTO）
+        if: steps.halt.outcome == 'success'
+        run: gh pr merge ${{ github.event.pull_request.number }} --squash --delete-branch
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+      - name: 標記待人工核准（HALT）
+        if: steps.halt.outcome == 'failure'
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --add-label "halt:awaiting-human"
+          gh pr comment ${{ github.event.pull_request.number }} --body \
+            "停點契約判定 **HALT**（risk=${{ steps.unit.outputs.risk }}）。所有 CI 閘門已綠，等待人工核准後手動合併。"
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
