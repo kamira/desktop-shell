@@ -725,7 +725,7 @@
    ],
    "depends_on": [],
    "wave": 0,
-   "load_bearing": 24,
+   "load_bearing": 27,
    "risk": "medium",
    "autonomy": null,
    "write_scope": [
@@ -754,7 +754,7 @@
     "E2-01"
    ],
    "wave": 1,
-   "load_bearing": 18,
+   "load_bearing": 20,
    "risk": "medium",
    "autonomy": null,
    "write_scope": [
@@ -1181,7 +1181,9 @@
    "primitives": [
     "K5"
    ],
-   "depends_on": [],
+   "depends_on": [
+    "E2-01"
+   ],
    "wave": 0,
    "load_bearing": 0,
    "risk": "low",
@@ -1456,7 +1458,10 @@
    "primitives": [
     "K5"
    ],
-   "depends_on": [],
+   "depends_on": [
+    "E2-01",
+    "E2-02"
+   ],
    "wave": 0,
    "load_bearing": 0,
    "risk": "low",
@@ -1515,7 +1520,10 @@
    "primitives": [
     "K5"
    ],
-   "depends_on": [],
+   "depends_on": [
+    "E2-01",
+    "E2-02"
+   ],
    "wave": 0,
    "load_bearing": 1,
    "risk": "low",
