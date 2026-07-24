@@ -38,12 +38,14 @@ jobs:
             || { echo "::error::PR 內文缺少 CHG- 參照"; exit 1; }
 
       # G3 測試綠燈（無測試 = 紅燈，不是綠燈）
-      - name: G3 tests（平台中立部分）
+      - name: G3 tests（C++ / CMake + CTest）
         run: |
-          pip install -q pytest
-          python -c "import pathlib,sys; t=list(pathlib.Path('tests').rglob('test_*.py')); \
-          sys.exit(0 if t else print('::error::本 repo 沒有任何測試，綠燈無意義') or 1)"
-          pytest -q
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build -j
+          # 真空綠燈防線：沒有任何註冊測試 = 紅燈（空 repo 或忘了寫測試都擋）
+          N=$(ctest --test-dir build -N 2>/dev/null | sed -n 's/.*Total Tests: //p')
+          [ "${N:-0}" -gt 0 ] || { echo "::error::repo 沒有任何 CTest 測試，綠燈無意義"; exit 1; }
+          ctest --test-dir build --output-on-failure
 
       # G4 結構同步：動了 src/ 、engine/ 或 modules/ 就得動 docs/structure/
       # 三個程式碼頂層目錄都要涵蓋 —— docs/structure/directory.md 的分層對應表記錄三者的組成，
