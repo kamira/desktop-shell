@@ -144,8 +144,10 @@ CPU Usage Widget 存在的意義不是「有一個 CPU 掛件」，而是**證�
 這讓「第三方能不能加」變成目錄結構就看得出來的事——若某個感測器出現在 `src/`，
 那就是擴充點沒做好的訊號。
 
-> **狀態：尚未遷移。** 現況組件位於 `content/**` 與 `apps/**`（見
-> `docs/structure/directory.md`）。遷移需改動 24 個單元的 `write_scope`，待決後開 CHG。
+> **狀態：`module` 層已遷移**（CHG-20260723-08）—— 58 項由 `src/sensors/`、`src/render/`、
+> `src/actuators/` 移至 `modules/<subsystem>/`；`src/actuators/` 因此清空。
+> `src/sensors/` 僅餘 `E2-01`/`E2-02`（指標契約與採集基礎設施）、`src/render/` 僅餘繪製基座 8 項。
+> **`artifact` 層仍在 `content/**`、`apps/**`**，是否遷移待決（見 `docs/structure/directory.md`）。
 
 ### Q3 的意義加重
 
