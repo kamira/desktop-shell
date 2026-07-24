@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ai-sdlc autopilot 排程器：讀 units.json，算出可派工批次，產生 subagent 派工簡報。
+"""ai-sdlc-autopilot 排程器：讀 units.json，算出可派工批次，產生 subagent 派工簡報。
 
 用法：
   plan.py status                 # 各 wave 進度

@@ -1,11 +1,11 @@
-name: ai-sdlc governance
+name: ai-sdlc-autopilot governance
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   gate:
-    runs-on: ubuntu-latest  # 六道閘門有五道是純文字檢查，不需要 Windows
+    runs-on: ubuntu-latest  # 七道閘門只有 G3 需要實際跑測試，其餘為純文字/邏輯檢查，不需要 Windows
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
