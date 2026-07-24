@@ -12,7 +12,10 @@ U = {u["id"]: u for u in json.load(
     open(os.path.join(ROOT, "docs/backlog/units.json"), encoding="utf-8"))["units"]}
 
 # 任何單元都可寫的共用路徑
-COMMON = ["docs/worklog/**", "docs/knowledge/errors.md", "docs/changes/**", "docs/acceptance/**"]
+# docs/structure/** 必須放行：G4 要求「動了 src/ 就得同步 docs/structure/」，
+# 若不放行，寫 src/ 的單元會同時被 G1（越權）與 G4（未同步）夾殺，成為無解路徑。
+COMMON = ["docs/worklog/**", "docs/knowledge/errors.md", "docs/changes/**",
+          "docs/acceptance/**", "docs/structure/**"]
 
 
 def main():

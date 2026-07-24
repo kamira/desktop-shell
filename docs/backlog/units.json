@@ -21,7 +21,17 @@
    "neutral": 113,
    "api-divergence": 34
   },
-  "backend_followup": 63
+  "backend_followup": 63,
+  "by_layer": {
+   "component": 24,
+   "core": 152
+  },
+  "by_stage": {
+   "A": 116,
+   "B": 24,
+   "C": 13,
+   "D": 23
+  }
  },
  "units": [
   {
@@ -29,6 +39,8 @@
    "title": "具名圖層列舉與 z-order 維持",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K2"
@@ -56,6 +68,8 @@
    "title": "輸入策略四態",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K3"
@@ -83,6 +97,8 @@
    "title": "逐像素 alpha surface",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K1"
@@ -110,6 +126,8 @@
    "title": "幾何命中測試",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K4"
@@ -137,6 +155,8 @@
    "title": "具名碰撞區域 → 事件參數",
    "priority": "P0",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E1",
    "primitives": [
     "K4"
@@ -164,6 +184,8 @@
    "title": "命中與繪製層序",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K2",
@@ -192,6 +214,8 @@
    "title": "anchor 定位模型",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K13"
@@ -219,6 +243,8 @@
    "title": "自由拖曳與位置記憶",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K3",
@@ -249,6 +275,8 @@
    "title": "邊緣吸附",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K13"
@@ -277,6 +305,8 @@
    "title": "保持在螢幕內",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K13"
@@ -305,6 +335,8 @@
    "title": "從屬 surface 相對定位",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K13"
@@ -332,6 +364,8 @@
    "title": "多重從屬 surface 並存",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E1",
    "primitives": [
     "K2"
@@ -359,6 +393,8 @@
    "title": "多 profile 實例並存",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K2"
@@ -386,6 +422,8 @@
    "title": "短暫 profile 生命週期",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K3"
@@ -414,6 +452,8 @@
    "title": "視窗級透明度與懸停淡變",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K1",
@@ -443,6 +483,8 @@
    "title": "螢幕邊緣熱區",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K4"
@@ -470,6 +512,8 @@
    "title": "DPI 感知與混合 DPI",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K13"
@@ -495,6 +539,8 @@
    "title": "具名螢幕與每螢幕實例",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K13"
@@ -522,6 +568,8 @@
    "title": "顯示器熱插拔復原",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K13"
@@ -550,6 +598,8 @@
    "title": "睡眠喚醒復原",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K2"
@@ -578,6 +628,8 @@
    "title": "能力矩陣宣告檔",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [],
    "depends_on": [],
@@ -601,6 +653,8 @@
    "title": "建置期能力閘控 lint",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [],
    "depends_on": [
@@ -626,6 +680,8 @@
    "title": "分層失敗的手動降級路徑",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K2"
@@ -654,6 +710,8 @@
    "title": "統一指標介面（名稱/值/單位/範圍/歷史）",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -679,6 +737,8 @@
    "title": "採集頻率分級與除頻",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -706,6 +766,8 @@
    "title": "CPU 負載（總體與每核心）",
    "priority": "P0",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -734,6 +796,8 @@
    "title": "記憶體使用量（實體/交換）",
    "priority": "P0",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -762,6 +826,8 @@
    "title": "GPU 使用率 / VRAM / 溫度",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -790,6 +856,8 @@
    "title": "儲存容量",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -818,6 +886,8 @@
    "title": "儲存 IO 吞吐與佇列",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -846,6 +916,8 @@
    "title": "網路流量",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -874,6 +946,8 @@
    "title": "電源與電池狀態",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -902,6 +976,8 @@
    "title": "時間與日期",
    "priority": "P0",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -929,6 +1005,8 @@
    "title": "系統運行時間",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -957,6 +1035,8 @@
    "title": "系統靜態資訊",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -984,6 +1064,8 @@
    "title": "媒體播放中繼資料",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1012,6 +1094,8 @@
    "title": "HTTP 取得與結構化解析",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1040,6 +1124,8 @@
    "title": "音訊峰值與頻譜",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1068,6 +1154,8 @@
    "title": "已安裝應用列舉",
    "priority": "P0",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1093,6 +1181,8 @@
    "title": "主機板感測器（溫度/風扇/電壓）",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1122,6 +1212,8 @@
    "title": "效能計數器（任意）",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1150,6 +1242,8 @@
    "title": "行程監看",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1178,6 +1272,8 @@
    "title": "網路連通性",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1206,6 +1302,8 @@
    "title": "使用者文字輸入值",
    "priority": "P2",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1234,6 +1332,8 @@
    "title": "登錄檔讀取",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1261,6 +1361,8 @@
    "title": "檔案系統列舉",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1288,6 +1390,8 @@
    "title": "Wi-Fi 狀態",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1316,6 +1420,8 @@
    "title": "剪貼簿監看",
    "priority": "P2",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1341,6 +1447,8 @@
    "title": "RSS / 標題抓取",
    "priority": "P2",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1369,6 +1477,8 @@
    "title": "螢幕像素取樣",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E2",
    "primitives": [
     "K5"
@@ -1394,6 +1504,8 @@
    "title": "外部命令執行",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1421,6 +1533,8 @@
    "title": "啟動程式 / 開檔 / 網頁搜尋",
    "priority": "P0",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1448,6 +1562,8 @@
    "title": "媒體播放控制",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1476,6 +1592,8 @@
    "title": "電源動作",
    "priority": "P1",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1503,6 +1621,8 @@
    "title": "音量設定",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1530,6 +1650,8 @@
    "title": "亮度設定",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1557,6 +1679,8 @@
    "title": "剪貼簿寫入",
    "priority": "P2",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1584,6 +1708,8 @@
    "title": "網路 / 藍牙開關",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1611,6 +1737,8 @@
    "title": "系統旗標切換",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1638,6 +1766,8 @@
    "title": "桌布設定",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1665,6 +1795,8 @@
    "title": "螢幕擷取",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E3",
    "primitives": [
     "K7"
@@ -1692,6 +1824,8 @@
    "title": "文字排版與渲染",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K15"
@@ -1719,6 +1853,8 @@
    "title": "圖片元件",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1746,6 +1882,8 @@
    "title": "長條 / 進度 / 量表",
    "priority": "P0",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1774,6 +1912,8 @@
    "title": "按鈕三態",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14",
@@ -1804,6 +1944,8 @@
    "title": "過場動畫與緩動",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1829,6 +1971,8 @@
    "title": "Surface 編號定址與切換",
    "priority": "P0",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1856,6 +2000,8 @@
    "title": "幀序列動畫",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1884,6 +2030,8 @@
    "title": "圖層合成",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1912,6 +2060,8 @@
    "title": "動畫驅動源",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1939,6 +2089,8 @@
    "title": "閒置自動動畫觸發",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K14"
@@ -1967,6 +2119,8 @@
    "title": "逐字顯示",
    "priority": "P0",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K15"
@@ -1995,6 +2149,8 @@
    "title": "可點文字區段",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K15",
@@ -2024,6 +2180,8 @@
    "title": "文字流內嵌物件",
    "priority": "P2",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K15"
@@ -2052,6 +2210,8 @@
    "title": "長文捲動與分頁",
    "priority": "P2",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K15"
@@ -2079,6 +2239,8 @@
    "title": "就地輸入框",
    "priority": "P2",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K15"
@@ -2107,6 +2269,8 @@
    "title": "輸入建議與補全呈現",
    "priority": "P2",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E4",
    "primitives": [
     "K15"
@@ -2135,6 +2299,8 @@
    "title": "直方圖",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2163,6 +2329,8 @@
    "title": "徑向線 / 指針",
    "priority": "P1",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2191,6 +2359,8 @@
    "title": "旋轉元件",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2219,6 +2389,8 @@
    "title": "向量圖形",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2246,6 +2418,8 @@
    "title": "漸層填色",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2273,6 +2447,8 @@
    "title": "2D 變形矩陣",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2300,6 +2476,8 @@
    "title": "容器裁切與遮罩",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2327,6 +2505,8 @@
    "title": "反鋸齒與內距",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2354,6 +2534,8 @@
    "title": "背景模式",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K1",
@@ -2383,6 +2565,8 @@
    "title": "音效播放",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2408,6 +2592,8 @@
    "title": "綁定式合成（著替）",
    "priority": "P2",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2435,6 +2621,8 @@
    "title": "透視與景深呈現",
    "priority": "P2",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2462,6 +2650,8 @@
    "title": "折線圖",
    "priority": "P2",
    "group": "監控",
+   "layer": "core",
+   "stage": "A",
    "module": "E4",
    "primitives": [
     "K14"
@@ -2489,6 +2679,8 @@
    "title": "全螢幕調光覆蓋",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E4",
    "primitives": [
     "K1"
@@ -2517,6 +2709,8 @@
    "title": "基本滑鼠按鍵事件",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E5",
    "primitives": [
     "K8",
@@ -2545,6 +2739,8 @@
    "title": "懸停進出事件",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E5",
    "primitives": [
     "K8",
@@ -2573,6 +2769,8 @@
    "title": "生命週期事件",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2598,6 +2796,8 @@
    "title": "心跳事件",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2623,6 +2823,8 @@
    "title": "全域熱鍵註冊",
    "priority": "P0",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2648,6 +2850,8 @@
    "title": "滾輪事件",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2675,6 +2879,8 @@
    "title": "區域內連續拖曳判定",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E5",
    "primitives": [
     "K8",
@@ -2703,6 +2909,8 @@
    "title": "系統事件",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2728,6 +2936,8 @@
    "title": "機率排程器",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2755,6 +2965,8 @@
    "title": "逾時計時器",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2782,6 +2994,8 @@
    "title": "可點區段選取事件",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2810,6 +3024,8 @@
    "title": "全域指標手勢",
    "priority": "P1",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2835,6 +3051,8 @@
    "title": "鍵盤與輸入提交事件",
    "priority": "P2",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E5",
    "primitives": [
     "K8"
@@ -2860,6 +3078,8 @@
    "title": "碰撞區域名事件參數",
    "priority": "P0",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E5",
    "primitives": [
     "K8",
@@ -2889,6 +3109,8 @@
    "title": "命令匯流排與分派",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E6",
    "primitives": [
     "K7"
@@ -2914,6 +3136,8 @@
    "title": "動作註冊表與前綴/模糊分派",
    "priority": "P1",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E6",
    "primitives": [
     "K7"
@@ -2941,6 +3165,8 @@
    "title": "條件動作與去抖",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E6",
    "primitives": [
     "K7"
@@ -2969,6 +3195,8 @@
    "title": "延遲與批次執行",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E6",
    "primitives": [
     "K7"
@@ -2996,6 +3224,8 @@
    "title": "跨 surface 控制",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E6",
    "primitives": [
     "K7"
@@ -3024,6 +3254,8 @@
    "title": "宣告式格式核心 + 版本欄位",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3049,6 +3281,8 @@
    "title": "變數系統",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3076,6 +3310,8 @@
    "title": "段落變數",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3103,6 +3339,8 @@
    "title": "動態變數與執行期重算",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3130,6 +3368,8 @@
    "title": "公式運算引擎",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3157,6 +3397,8 @@
    "title": "錯誤可見性",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3184,6 +3426,8 @@
    "title": "熱重載",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K11"
@@ -3212,6 +3456,8 @@
    "title": "設定遷移與版本相容",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K11"
@@ -3240,6 +3486,8 @@
    "title": "缺席模組的降級解析",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3268,6 +3516,8 @@
    "title": "字串處理",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3295,6 +3545,8 @@
    "title": "群組與批次操作",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3323,6 +3575,8 @@
    "title": "設定值寫回",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K11"
@@ -3350,6 +3604,8 @@
    "title": "階層式項目結構",
    "priority": "P0",
    "group": "啟動",
+   "layer": "core",
+   "stage": "C",
    "module": "E7",
    "primitives": [
     "K6"
@@ -3377,6 +3633,8 @@
    "title": "圖形化設定與就地編輯",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K11"
@@ -3404,6 +3662,8 @@
    "title": "拖放產生設定項",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K11"
@@ -3432,6 +3692,8 @@
    "title": "腳本引擎（QML/JS）",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E8",
    "primitives": [
     "K9"
@@ -3459,6 +3721,8 @@
    "title": "對話腳本直譯器",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E8",
    "primitives": [
     "K9",
@@ -3487,6 +3751,8 @@
    "title": "表現控制指令集",
    "priority": "P1",
    "group": "角色",
+   "layer": "core",
+   "stage": "B",
    "module": "E8",
    "primitives": [
     "K9"
@@ -3516,6 +3782,8 @@
    "title": "行程內模組載入",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E8",
    "primitives": [
     "K9"
@@ -3543,6 +3811,8 @@
    "title": "外部模組開發介面",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E8",
    "primitives": [
     "K9"
@@ -3570,6 +3840,8 @@
    "title": "統一套件格式定義",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K10"
@@ -3597,6 +3869,8 @@
    "title": "manifest（含 requires/permissions）",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K10"
@@ -3622,6 +3896,8 @@
    "title": "可互換元件組合",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K10"
@@ -3649,6 +3925,8 @@
    "title": "主題切換",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K12"
@@ -3677,6 +3955,8 @@
    "title": "佈局存檔與還原",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K11"
@@ -3704,6 +3984,8 @@
    "title": "套件卸載流程",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K10"
@@ -3731,6 +4013,8 @@
    "title": "拖放安裝",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K10"
@@ -3759,6 +4043,8 @@
    "title": "圖形安裝器",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E9",
    "primitives": [
     "K10"
@@ -3786,6 +4072,8 @@
    "title": "動態配色生成",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E9",
    "primitives": [
     "K12"
@@ -3813,6 +4101,8 @@
    "title": "本機 IPC 訊息投遞",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E10",
    "primitives": [
     "K9"
@@ -3840,6 +4130,8 @@
    "title": "低延遲同機通道",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E10",
    "primitives": [
     "K9"
@@ -3867,6 +4159,8 @@
    "title": "HTTP 端點",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E10",
    "primitives": [
     "K9"
@@ -3894,6 +4188,8 @@
    "title": "事件廣播型模組協定",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E10",
    "primitives": [
     "K9"
@@ -3922,6 +4218,8 @@
    "title": "獨立行程 widget 宿主",
    "priority": "P2",
    "group": "工具",
+   "layer": "core",
+   "stage": "D",
    "module": "E10",
    "primitives": [
     "K9"
@@ -3950,6 +4248,8 @@
    "title": "系統匣圖示與右鍵選單",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E11",
    "primitives": [],
    "depends_on": [
@@ -3975,6 +4275,8 @@
    "title": "自繪選單呈現",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E11",
    "primitives": [
     "K1",
@@ -4005,6 +4307,8 @@
    "title": "開機自動啟動",
    "priority": "P1",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E11",
    "primitives": [],
    "depends_on": [],
@@ -4028,6 +4332,8 @@
    "title": "idle 記憶體與 CPU 門檻",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E12",
    "primitives": [],
    "depends_on": [
@@ -4053,6 +4359,8 @@
    "title": "多語系",
    "priority": "P2",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E12",
    "primitives": [
     "K15"
@@ -4080,6 +4388,8 @@
    "title": "Skin profile",
    "priority": "P0",
    "group": "核心",
+   "layer": "component",
+   "stage": "A",
    "module": "C1",
    "primitives": [],
    "depends_on": [
@@ -4110,6 +4420,8 @@
    "title": "立繪 profile",
    "priority": "P0",
    "group": "角色",
+   "layer": "component",
+   "stage": "B",
    "module": "C1",
    "primitives": [],
    "depends_on": [
@@ -4140,6 +4452,8 @@
    "title": "氣球 profile",
    "priority": "P1",
    "group": "角色",
+   "layer": "component",
+   "stage": "B",
    "module": "C1",
    "primitives": [],
    "depends_on": [
@@ -4168,6 +4482,8 @@
    "title": "OSD 浮層 profile",
    "priority": "P1",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C1",
    "primitives": [],
    "depends_on": [
@@ -4195,6 +4511,8 @@
    "title": "召喚面板 profile",
    "priority": "P0",
    "group": "啟動",
+   "layer": "component",
+   "stage": "C",
    "module": "C1",
    "primitives": [],
    "depends_on": [
@@ -4223,6 +4541,8 @@
    "title": "Dock profile",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C1",
    "primitives": [],
    "depends_on": [
@@ -4250,6 +4570,8 @@
    "title": "全螢幕調光層 profile",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C1",
    "primitives": [],
    "depends_on": [
@@ -4276,6 +4598,8 @@
    "title": "時鐘",
    "priority": "P0",
    "group": "監控",
+   "layer": "component",
+   "stage": "A",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4304,6 +4628,8 @@
    "title": "系統狀態（指標可選：CPU/GPU/RAM/儲存/網路/電池/IO…）",
    "priority": "P0",
    "group": "監控",
+   "layer": "component",
+   "stage": "A",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4335,6 +4661,8 @@
    "title": "天氣",
    "priority": "P1",
    "group": "監控",
+   "layer": "component",
+   "stage": "A",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4364,6 +4692,8 @@
    "title": "圖片",
    "priority": "P1",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4390,6 +4720,8 @@
    "title": "動畫 / 序列圖",
    "priority": "P1",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4416,6 +4748,8 @@
    "title": "媒體控制",
    "priority": "P1",
    "group": "監控",
+   "layer": "component",
+   "stage": "A",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4445,6 +4779,8 @@
    "title": "筆記",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4473,6 +4809,8 @@
    "title": "行事曆 / 待辦",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4501,6 +4839,8 @@
    "title": "網頁",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C2",
    "primitives": [],
    "depends_on": [
@@ -4527,6 +4867,8 @@
    "title": "啟動器選單樹",
    "priority": "P0",
    "group": "啟動",
+   "layer": "component",
+   "stage": "C",
    "module": "C3",
    "primitives": [],
    "depends_on": [
@@ -4554,6 +4896,8 @@
    "title": "角色對話本",
    "priority": "P1",
    "group": "角色",
+   "layer": "component",
+   "stage": "B",
    "module": "C3",
    "primitives": [],
    "depends_on": [
@@ -4581,6 +4925,8 @@
    "title": "角色外觀組",
    "priority": "P0",
    "group": "角色",
+   "layer": "component",
+   "stage": "B",
    "module": "C3",
    "primitives": [],
    "depends_on": [
@@ -4609,6 +4955,8 @@
    "title": "鍵位速查",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C4",
    "primitives": [],
    "depends_on": [
@@ -4635,6 +4983,8 @@
    "title": "截圖與標註",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C4",
    "primitives": [],
    "depends_on": [
@@ -4662,6 +5012,8 @@
    "title": "取色器",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C4",
    "primitives": [],
    "depends_on": [
@@ -4688,6 +5040,8 @@
    "title": "視窗總覽",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C4",
    "primitives": [],
    "depends_on": [
@@ -4714,6 +5068,8 @@
    "title": "AI 對話面板",
    "priority": "P2",
    "group": "工具",
+   "layer": "component",
+   "stage": "D",
    "module": "C4",
    "primitives": [],
    "depends_on": [
@@ -4742,6 +5098,8 @@
    "title": "null 後端參考實作（任何平台可跑）",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [
     "K1",
@@ -4771,6 +5129,8 @@
    "title": "kernel 後端契約測試組（所有後端共用）",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [],
    "depends_on": [
@@ -4795,6 +5155,8 @@
    "title": "後端白名單 lint（相位閘門）",
    "priority": "P0",
    "group": "核心",
+   "layer": "core",
+   "stage": "A",
    "module": "E1",
    "primitives": [],
    "depends_on": [
