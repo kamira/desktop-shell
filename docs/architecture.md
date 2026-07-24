@@ -144,10 +144,31 @@ CPU Usage Widget 存在的意義不是「有一個 CPU 掛件」，而是**證�
 這讓「第三方能不能加」變成目錄結構就看得出來的事——若某個感測器出現在 `src/`，
 那就是擴充點沒做好的訊號。
 
-> **狀態：`module` 層已遷移**（CHG-20260723-08）—— 58 項由 `src/sensors/`、`src/render/`、
-> `src/actuators/` 移至 `modules/<subsystem>/`；`src/actuators/` 因此清空。
-> `src/sensors/` 僅餘 `E2-01`/`E2-02`（指標契約與採集基礎設施）、`src/render/` 僅餘繪製基座 8 項。
-> **`artifact` 層仍在 `content/**`、`apps/**`**，是否遷移待決（見 `docs/structure/directory.md`）。
+> **狀態：`module` 層已遷移**（CHG-20260723-08）—— 58 項移至 `modules/<subsystem>/`，
+> `src/actuators/` 因此清空。
+> **`artifact` 層仍在 `content/**`、`apps/**`**，是否遷移待決。
+
+### `src/` 再收斂為「只放對系統的操作」
+
+`src/` 只放平台還不夠 —— 平台本身也分兩種：**對系統的操作**（需要 per-platform 後端）
+與**平台中立的引擎邏輯**（換平台一行都不用動）。兩者混在一起，「跨平台要改哪裡」
+就仍然看不出來。
+
+故再切一刀：**`src/` 只留對系統的操作，平台中立邏輯遷至 `engine/`。**
+
+| 目錄 | 內容 | 換平台時 |
+|---|---|---|
+| `src/` | surface kernel、宿主整合、全域事件、後端實作 | **只有這裡要改** |
+| `engine/` | 宣告式格式、封裝、命令匯流排、腳本、IPC… | 一行不動 |
+| `modules/` | sysinfo / elements / actuators | 一行不動 |
+
+這讓 A1（Qt/QML 語言選擇）的驗證範圍變得明確：真正需要驗證的就是 `src/` 那些項目。
+
+> **狀態：分批遷移中**（CHG-20260723-10）。已遷出 39 項
+> （`format` 15 / `package` 9 / `command` 5 / `script` 5 / `ipc` 5）。
+> `src/` 仍有平台中立但待遷出者：`render` 8 / `sensors` 2 / `common` 2，及 `events` 中的 11 項。
+> `E1-24` null 後端雖平台中立，**刻意留在 `src/kernel/backend/`** —— 後端家族不拆散，
+> 且 `backend_guard.py` 以 `src/kernel/backend/*` 執行相位閘門。
 
 ### Q3 的意義加重
 

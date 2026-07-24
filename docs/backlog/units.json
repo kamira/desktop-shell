@@ -3185,7 +3185,7 @@
    "risk": "medium",
    "autonomy": null,
    "write_scope": [
-    "src/command/e6_01/**",
+    "engine/command/e6_01/**",
     "tests/e6/test_e6_01*",
     "docs/changes/CHG-*-e6_01.md"
    ],
@@ -3214,7 +3214,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/command/e6_02/**",
+    "engine/command/e6_02/**",
     "tests/e6/test_e6_02*",
     "docs/changes/CHG-*-e6_02.md"
    ],
@@ -3244,7 +3244,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/command/e6_03/**",
+    "engine/command/e6_03/**",
     "tests/e6/test_e6_03*",
     "docs/changes/CHG-*-e6_03.md"
    ],
@@ -3273,7 +3273,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/command/e6_04/**",
+    "engine/command/e6_04/**",
     "tests/e6/test_e6_04*",
     "docs/changes/CHG-*-e6_04.md"
    ],
@@ -3303,7 +3303,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/command/e6_05/**",
+    "engine/command/e6_05/**",
     "tests/e6/test_e6_05*",
     "docs/changes/CHG-*-e6_05.md"
    ],
@@ -3330,7 +3330,7 @@
    "risk": "medium",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_01/**",
+    "engine/format/e7_01/**",
     "tests/e7/test_e7_01*",
     "docs/changes/CHG-*-e7_01.md"
    ],
@@ -3359,7 +3359,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_02/**",
+    "engine/format/e7_02/**",
     "tests/e7/test_e7_02*",
     "docs/changes/CHG-*-e7_02.md"
    ],
@@ -3388,7 +3388,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_03/**",
+    "engine/format/e7_03/**",
     "tests/e7/test_e7_03*",
     "docs/changes/CHG-*-e7_03.md"
    ],
@@ -3417,7 +3417,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_04/**",
+    "engine/format/e7_04/**",
     "tests/e7/test_e7_04*",
     "docs/changes/CHG-*-e7_04.md"
    ],
@@ -3446,7 +3446,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_05/**",
+    "engine/format/e7_05/**",
     "tests/e7/test_e7_05*",
     "docs/changes/CHG-*-e7_05.md"
    ],
@@ -3475,7 +3475,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_06/**",
+    "engine/format/e7_06/**",
     "tests/e7/test_e7_06*",
     "docs/changes/CHG-*-e7_06.md"
    ],
@@ -3505,7 +3505,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_07/**",
+    "engine/format/e7_07/**",
     "tests/e7/test_e7_07*",
     "docs/changes/CHG-*-e7_07.md"
    ],
@@ -3535,7 +3535,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_08/**",
+    "engine/format/e7_08/**",
     "tests/e7/test_e7_08*",
     "docs/changes/CHG-*-e7_08.md"
    ],
@@ -3565,7 +3565,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_09/**",
+    "engine/format/e7_09/**",
     "tests/e7/test_e7_09*",
     "docs/changes/CHG-*-e7_09.md"
    ],
@@ -3594,7 +3594,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_10/**",
+    "engine/format/e7_10/**",
     "tests/e7/test_e7_10*",
     "docs/changes/CHG-*-e7_10.md"
    ],
@@ -3624,7 +3624,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_11/**",
+    "engine/format/e7_11/**",
     "tests/e7/test_e7_11*",
     "docs/changes/CHG-*-e7_11.md"
    ],
@@ -3653,7 +3653,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_12/**",
+    "engine/format/e7_12/**",
     "tests/e7/test_e7_12*",
     "docs/changes/CHG-*-e7_12.md"
    ],
@@ -3682,7 +3682,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_13/**",
+    "engine/format/e7_13/**",
     "tests/e7/test_e7_13*",
     "docs/changes/CHG-*-e7_13.md"
    ],
@@ -3711,7 +3711,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_14/**",
+    "engine/format/e7_14/**",
     "tests/e7/test_e7_14*",
     "docs/changes/CHG-*-e7_14.md"
    ],
@@ -3741,7 +3741,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/format/e7_15/**",
+    "engine/format/e7_15/**",
     "tests/e7/test_e7_15*",
     "docs/changes/CHG-*-e7_15.md"
    ],
@@ -3770,7 +3770,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/script/e8_01/**",
+    "engine/script/e8_01/**",
     "tests/e8/test_e8_01*",
     "docs/changes/CHG-*-e8_01.md"
    ],
@@ -3800,7 +3800,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/script/e8_02/**",
+    "engine/script/e8_02/**",
     "tests/e8/test_e8_02*",
     "docs/changes/CHG-*-e8_02.md"
    ],
@@ -3831,7 +3831,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/script/e8_03/**",
+    "engine/script/e8_03/**",
     "tests/e8/test_e8_03*",
     "docs/changes/CHG-*-e8_03.md"
    ],
@@ -3860,7 +3860,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/script/e8_04/**",
+    "engine/script/e8_04/**",
     "tests/e8/test_e8_04*",
     "docs/changes/CHG-*-e8_04.md"
    ],
@@ -3889,7 +3889,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/script/e8_05/**",
+    "engine/script/e8_05/**",
     "tests/e8/test_e8_05*",
     "docs/changes/CHG-*-e8_05.md"
    ],
@@ -3918,7 +3918,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_01/**",
+    "engine/package/e9_01/**",
     "tests/e9/test_e9_01*",
     "docs/changes/CHG-*-e9_01.md"
    ],
@@ -3945,7 +3945,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_02/**",
+    "engine/package/e9_02/**",
     "tests/e9/test_e9_02*",
     "docs/changes/CHG-*-e9_02.md"
    ],
@@ -3974,7 +3974,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_03/**",
+    "engine/package/e9_03/**",
     "tests/e9/test_e9_03*",
     "docs/changes/CHG-*-e9_03.md"
    ],
@@ -4004,7 +4004,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_04/**",
+    "engine/package/e9_04/**",
     "tests/e9/test_e9_04*",
     "docs/changes/CHG-*-e9_04.md"
    ],
@@ -4033,7 +4033,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_05/**",
+    "engine/package/e9_05/**",
     "tests/e9/test_e9_05*",
     "docs/changes/CHG-*-e9_05.md"
    ],
@@ -4062,7 +4062,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_06/**",
+    "engine/package/e9_06/**",
     "tests/e9/test_e9_06*",
     "docs/changes/CHG-*-e9_06.md"
    ],
@@ -4092,7 +4092,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_07/**",
+    "engine/package/e9_07/**",
     "tests/e9/test_e9_07*",
     "docs/changes/CHG-*-e9_07.md"
    ],
@@ -4121,7 +4121,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_08/**",
+    "engine/package/e9_08/**",
     "tests/e9/test_e9_08*",
     "docs/changes/CHG-*-e9_08.md"
    ],
@@ -4150,7 +4150,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/package/e9_09/**",
+    "engine/package/e9_09/**",
     "tests/e9/test_e9_09*",
     "docs/changes/CHG-*-e9_09.md"
    ],
@@ -4179,7 +4179,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/ipc/e10_01/**",
+    "engine/ipc/e10_01/**",
     "tests/e10/test_e10_01*",
     "docs/changes/CHG-*-e10_01.md"
    ],
@@ -4208,7 +4208,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/ipc/e10_02/**",
+    "engine/ipc/e10_02/**",
     "tests/e10/test_e10_02*",
     "docs/changes/CHG-*-e10_02.md"
    ],
@@ -4237,7 +4237,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/ipc/e10_03/**",
+    "engine/ipc/e10_03/**",
     "tests/e10/test_e10_03*",
     "docs/changes/CHG-*-e10_03.md"
    ],
@@ -4267,7 +4267,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/ipc/e10_04/**",
+    "engine/ipc/e10_04/**",
     "tests/e10/test_e10_04*",
     "docs/changes/CHG-*-e10_04.md"
    ],
@@ -4297,7 +4297,7 @@
    "risk": "low",
    "autonomy": null,
    "write_scope": [
-    "src/ipc/e10_05/**",
+    "engine/ipc/e10_05/**",
     "tests/e10/test_e10_05*",
     "docs/changes/CHG-*-e10_05.md"
    ],
