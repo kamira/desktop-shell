@@ -12,16 +12,16 @@ cp <本包>/AGENTS.md .
 cp <本包>/docs/ai-guideline.md docs/
 cp <本包>/docs/backlog/units.json docs/backlog/
 cp <本包>/scripts/{plan.py,scope_check.py} scripts/
-cp $AI_SDLC/scripts/halt_gate.py scripts/          # 來自 ai-sdlc skill
+cp $AI_SDLC/scripts/halt_gate.py scripts/          # 來自上游 base ai-sdlc skill
 cp $AI_SDLC/assets/halt_policy.json assets/
 cp <本包>/.github/workflows/governance.yml .github/workflows/
 : > docs/knowledge/errors.md
 pytest --version && python scripts/plan.py status   # 確認可跑
-git add -A && git commit -m "chore: ai-sdlc governance bootstrap"
+git add -A && git commit -m "chore: ai-sdlc-autopilot governance bootstrap"
 ```
 
 GitHub 端設定（一次）：
-- 開啟 branch protection on `main`：required status check = `ai-sdlc governance / gate`
+- 開啟 branch protection on `main`：required status check = `ai-sdlc-autopilot governance / gate`
 - 開啟 repo 的 Allow auto-merge
 - 建立標籤 `halt:awaiting-human`
 
@@ -36,8 +36,8 @@ python3 scripts/plan.py brief E1-03 --n 2 > /tmp/brief-E1-03.md
 
 # 3) I1 依簡報派出 I1.n，並稽核其 scoped ack（四把鑰匙必須逐項覆述才准動工）
 
-# 4) subagent 開 PR 後，CI 六道閘門自動跑：
-#    G1 鎖定範圍 → G2 CHG 連結 → G3 測試 → G4 結構同步 → G5 ACC+身分 → G6 停點契約
+# 4) subagent 開 PR 後，CI 七道閘門自動跑：
+#    G1 鎖定範圍 → G1b 相位閘門 → G2 CHG 連結 → G3 測試 → G4 結構同步 → G5 ACC+身分 → G6 停點契約
 #    G6 判 AUTO  → 自動 squash merge + 刪分支
 #    G6 判 HALT  → 貼上 halt:awaiting-human 標籤，等你核准
 
@@ -53,19 +53,22 @@ PY
 
 | wave | 單元 | 建議並行 subagent |
 |---|---|---|
-| 0 | 21 | 8 |
-| 1 | 47 | 11 |
-| 2 | 59 | 13 |
-| 3 | 24 | 10 |
-| 4 | 19 | 8 |
-| 5–6 | 3 | 2 |
+| 0 | 18 | 8 |
+| 1 | 36 | 10 |
+| 2 | 36 | 10 |
+| 3 | 25 | 8 |
+| 4 | 29 | 8 |
+| 5 | 17 | 6 |
+| 6 | 12 | 5 |
+| 7 | 2 | 2 |
+| 8 | 1 | 1 |
 
 `plan.py next` 已自動排除**寫入範圍衝突**的單元，同一批派出的 subagent 不會互相踩踏。
 agent-hierarchy 建議巢狀深度 2–3 層：你 → I1 → I1.n，不要再往下疊。
 
-## 人工介入點（共 14 次）
+## 人工介入點（共 16 次）
 
-14 個 medium 風險單元會在 `before_merge_or_release` 停下。它們是承重 ≥ 8x 的介面設計項
+16 個 medium 風險單元會在 `before_merge_or_release` 停下。它們是承重 ≥ 8x 的介面設計項
 加上 3 個能力閘控項——**正好是錯了最貴的地方**。
 
 想批次核准可在 CHG header 寫

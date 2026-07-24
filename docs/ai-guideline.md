@@ -5,7 +5,7 @@
 - Version: v1.0
 - Date: 2026-07-23 (UTC+0)
 - Status: Confirmed
-- Skill: ai-sdlc v1.16+
+- Skill: ai-sdlc-autopilot v1.16+
 
 ## 1. 背景與目標
 
@@ -35,7 +35,7 @@
 
 ## 4. 功能需求
 
-見 `docs/backlog/units.json`（173 單元，機器可讀，含相依圖、承重度、風險分級、鎖定範圍）。
+見 `docs/backlog/units.json`（176 單元，機器可讀，含相依圖、承重度、風險分級、鎖定範圍）。
 人類可讀版本：`desktop-shell-build-list-v4.md`。
 
 ## 5. 非功能需求（可驗收）
@@ -58,13 +58,13 @@
 
 其餘為 `low`。本專案無 `high`（無正式環境、無資料遷移、無金流、無憑證）。
 
-現況：medium 14 項、low 159 項。
+現況：medium 16 項、low 160 項。
 
 ## 7. 驗收標準
 
 - **low**：單元測試綠燈 + CHG 內留一行可重跑證據（inline 自驗）
 - **medium**：單元測試綠燈 + V1 獨立驗收產出 ACC + 能力閘控項附降級路徑測試
-- **階段一整體**：wave 0 的 21 個單元全數 Accepted，且 NFR-01 達標
+- **階段一整體**：wave 0 的 18 個單元全數 Accepted，且 NFR-01 達標
 
 ## 8. 假設與待決
 

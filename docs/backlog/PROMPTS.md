@@ -1,14 +1,14 @@
 # 給 Claude Code 的指令
 
 以下四段直接複製貼上。**不要改寫措辭**——「四把鑰匙」「scoped ack」
-這些是 ai-sdlc 契約裡的固定詞，改了 subagent 就對不上。
+這些是 ai-sdlc-autopilot 契約裡的固定詞，改了 subagent 就對不上。
 
 ---
 
 ## 指令 1 — 進場握手（第一次開 session 必跑）
 
 ```
-讀 AGENTS.md，依其指示完成 ai-sdlc 進場握手。
+讀 AGENTS.md，依其指示完成 ai-sdlc-autopilot 進場握手。
 
 你的角色是 I1（lead implementer / 協調者）。你的職責是派工、追蹤、
 稽核 subagent 產出、彙整、把錯誤寫進知識庫。你本人不實作任何工作單元。

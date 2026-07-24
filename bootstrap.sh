@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# desktop-shell — ai-sdlc 治理 bootstrap
-# 用法：在 repo 根目錄解開本包後執行 ./bootstrap.sh /path/to/ai-sdlc-skill
+# desktop-shell — ai-sdlc-autopilot 治理 bootstrap
+# 用法：在 repo 根目錄解開本包後執行 ./bootstrap.sh /path/to/ai-sdlc-skill（上游 base skill，提供 halt_gate.py / halt_policy.json）
 set -euo pipefail
 
 SKILL="${1:-}"
@@ -43,8 +43,8 @@ chmod +x scripts/*.py
 python3 scripts/plan.py status
 echo
 echo "bootstrap 完成。接著："
-echo "  git add -A && git commit -m 'chore: ai-sdlc governance bootstrap' && git push"
+echo "  git add -A && git commit -m 'chore: ai-sdlc-autopilot governance bootstrap' && git push"
 echo "  然後在 GitHub Settings 完成三件事："
 echo "    1. Allow auto-merge"
-echo "    2. main 的 branch protection，required check = 'ai-sdlc governance / gate'"
+echo "    2. main 的 branch protection，required check = 'ai-sdlc-autopilot governance / gate'"
 echo "    3. 建立標籤 halt:awaiting-human"
