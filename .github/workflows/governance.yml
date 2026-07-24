@@ -5,7 +5,7 @@ on:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest  # 七道閘門只有 G3 需要實際跑測試，其餘為純文字/邏輯檢查，不需要 Windows
+    runs-on: ubuntu-latest  # 八道閘門只有 G3 需要實際跑測試，其餘為純文字/邏輯檢查，不需要 Windows
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -25,6 +25,10 @@ jobs:
       # G1b 相位閘門：當前相位不得出現未允許的平台後端
       - name: G1b backend_guard
         run: python scripts/backend_guard.py
+
+      # G1c 階段閘門（NFR-08）：較早階段不得依賴較晚階段
+      - name: G1c stage_check
+        run: python scripts/stage_check.py
 
       # G2 PR 必須連結 CHG
       - name: G2 CHG linked
