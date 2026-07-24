@@ -16,11 +16,18 @@ src/                  對系統的操作（需要 per-platform 後端）—— �
 │                     平台中立、不綁後端；相位 1 has() 回傳宣告的預設可用性、未知能力保守回 false。
 ├── events/           全域事件 3 項：全域熱鍵、系統事件、全域指標手勢（其餘事件已遷 engine/）
 └── host/             宿主整合 3 項：系統匣、自繪選單、開機自啟
+    └── e11_03/       開機自動啟動（E11-03）：登入時自動啟動的設定介面。能力閘控項
+                      （host.autostart，E1-21 宣告為 optional / 相位 1 預設不可用）；
+                      平台中立介面 + null 後端（has()==false、操作 no-op 回 Unsupported），
+                      呼叫端須先 has() 閘控。
 
 engine/               平台中立的引擎邏輯（62 項）—— 換平台一行都不用動
 ├── format/           宣告式格式、變數、公式引擎、熱重載、設定遷移 15 項
 ├── package/          套件格式、manifest、可互換元件組合、佈局存檔、安裝器 9 項
 ├── events/           非全域事件 11 項：滑鼠 / 懸停 / 心跳 / 滾輪 / 拖曳判定 / 計時器…
+│   └── e5_04/        心跳事件（E5-04）：週期性心跳／計時觸發，供閒置動畫、定時輪詢消費。
+│                     以邏輯時間 / tick 計，注入 advance(dt)／tick() 推進、對到期訂閱者發事件；
+│                     不綁真實 OS 計時器，完全可單元測試。
 ├── render/           繪製基座（paint / transform / clip / text）8 項
 ├── command/          命令匯流排與分派、動作註冊表、條件動作 5 項
 ├── script/           腳本引擎、對話直譯器、表現控制、行程內模組載入 5 項
@@ -89,9 +96,11 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 （`E2-01` / `E4` / `E6-01` / `E1` / `E8-01`+`E8-04`）定稿後補上，
 在此之前產出的內容只會是猜測。
 
-## 單元目錄補記
+## 已落地單元備註（G4 同步）
 
-- `src/events/e5_08/`（E5-08 系統事件，CHG-20260724-e5_08）：作業系統層級事件
-  （睡眠/喚醒、顯示器變更、session 鎖定/解鎖、電源狀態變更）的訂閱介面。
-  平台中立介面 + null 後端（`NullSystemEventSource`，事件由 `inject()` 手動注入），
-  相位 1 不綁任何真實平台後端。
+- `engine/package/e9_02/`（E9-02 manifest）：套件/模組 manifest 的格式定義與解析，
+  含 `format_version`（版本欄位）、`requires`（所需能力）、`permissions`（所需權限）。
+  平台中立純邏輯，解析失敗回帶行號的錯誤（不靜默）。測試 `tests/e9/test_e9_02.cpp`。
+- `src/events/e5_08/`（E5-08 系統事件）：作業系統層級事件（睡眠/喚醒、顯示器變更、
+  session 鎖定/解鎖、電源狀態變更）的訂閱介面。平台中立介面 + null 後端
+  （`NullSystemEventSource`，事件由 `inject()` 手動注入），相位 1 不綁真實後端。測試 `tests/e5/test_e5_08.cpp`。
