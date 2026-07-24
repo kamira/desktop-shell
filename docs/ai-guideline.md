@@ -106,5 +106,5 @@
 | A2 | `desktop-shell-scope-v1.md` §5 的 6 個 `*` 判定 | 待覆核 |
 | A3 | 是否砍 `啟動` 功能群（13 單元） | 未決；砍掉可移除 kernel 最易翻車的獨占焦點路徑 |
 | A4 | 目標 181 單元中未點名的 4 個 | **待補清單或產生器** |
-| A5 | 組件由 `content/`+`apps/` 遷至 `modules/`+`examples/` | 未執行；需改 24 個單元的 `write_scope` |
+| A5 | `artifact` 層（`content/`+`apps/`）是否遷至 `examples/` | 未執行；需改 24 個單元的 `write_scope`。`module` 層已於 CHG-08 遷至 `modules/<subsystem>/` |
 | A6 | `E8-06` 的相依 / wave / 風險分級、`E8-04` 升 P0 | 待決後開 CHG 寫入 units.json |
