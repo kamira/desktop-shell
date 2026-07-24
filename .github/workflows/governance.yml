@@ -45,13 +45,15 @@ jobs:
           sys.exit(0 if t else print('::error::本 repo 沒有任何測試，綠燈無意義') or 1)"
           pytest -q
 
-      # G4 結構同步：動了 src/ 就得動 docs/structure/
+      # G4 結構同步：動了 src/ 或 modules/ 就得動 docs/structure/
+      # modules/ 納入涵蓋範圍：docs/structure/directory.md 的分層對應表同時記錄
+      # modules/ 的組成，模組增減若不同步會造成結構文件漂移。
       - name: G4 structure sync
         shell: bash
         run: |
           D=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
-          echo "$D" | grep -q '^src/' && ! echo "$D" | grep -q '^docs/structure/' \
-            && { echo "::error::改了 src/ 但沒更新 docs/structure/"; exit 1; } || true
+          echo "$D" | grep -qE '^(src|modules)/' && ! echo "$D" | grep -q '^docs/structure/' \
+            && { echo "::error::改了 src/ 或 modules/ 但沒更新 docs/structure/"; exit 1; } || true
 
       # G5 medium 以上：ACC 存在且驗收者 ≠ 實作者
       - name: G5 ACC + identity
