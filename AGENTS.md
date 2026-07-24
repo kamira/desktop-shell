@@ -1,7 +1,7 @@
 # AGENTS.md — AI 進入點（任何 agent、任何廠商）
 
 本專案由 **ai-sdlc-autopilot** 治理。工作單元來自機器可讀的 backlog，由 `scripts/plan.py`
-自動排程派工，七道 CI 閘門把治理紀律變成機器強制，合併與否由停點契約查表決定。
+自動排程派工，八道 CI 閘門把治理紀律變成機器強制，合併與否由停點契約查表決定。
 **任務、鎖定範圍、風險分級、合併權限一律查表得來，沒有憑感覺行事的空間。**
 
 ## 1. 進場握手（動任何一行程式碼之前必做）
@@ -31,6 +31,7 @@ agent-hierarchy 深度上限：人類 → I1 → I1.n（2 層），**不得再�
 | 可派工批次（已排除相依未滿足與寫入範圍衝突） | `python3 scripts/plan.py next [--limit N]` |
 | 派工簡報（**原文交給 subagent，不得摘要或改寫**） | `python3 scripts/plan.py brief <UNIT_ID> --n <序號>` |
 | 由分支反查工作單元 | `python3 scripts/plan.py unit-for-branch <REF>` |
+| 檢查階段相依 | `python3 scripts/stage_check.py [--unit <UNIT_ID>]` |
 | 進度總覽 | `python3 scripts/plan.py status` |
 | 查停點契約 | `python3 scripts/plan.py gate <UNIT_ID> --gate <GATE>` |
 
@@ -48,12 +49,13 @@ agent-hierarchy 深度上限：人類 → I1 → I1.n（2 層），**不得再�
 - 需要超出鎖定範圍 → **停下回報，不得自行擴權**
 - 錯誤要記錄「錯誤 + 根因 + 解法」進 `docs/knowledge/errors.md`；機密只記位置不記值
 
-## 5. 七道 CI 閘門（PR 一開就自動跑）
+## 5. 八道 CI 閘門（PR 一開就自動跑）
 
 | 閘門 | 擋什麼 |
 |---|---|
 | **G1** `scope_check` | 變更超出該單元的 `write_scope` |
 | **G1b** `backend_guard` | 出現當前相位不允許的平台後端 |
+| **G1c** `stage_check` | 較早階段依賴較晚階段（NFR-08） |
 | **G2** CHG linked | PR 內文缺少 CHG 參照 |
 | **G3** tests | 測試沒綠；**repo 沒有任何測試也算紅**（真空綠燈防線） |
 | **G4** structure sync | 動了 `src/` 卻沒更新 `docs/structure/` |

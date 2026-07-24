@@ -27,9 +27,9 @@
    "core": 152
   },
   "by_stage": {
-   "A": 116,
+   "A": 117,
    "B": 24,
-   "C": 13,
+   "C": 12,
    "D": 23
   }
  },
@@ -3605,7 +3605,7 @@
    "priority": "P0",
    "group": "啟動",
    "layer": "core",
-   "stage": "C",
+   "stage": "A",
    "module": "E7",
    "primitives": [
     "K6"

@@ -11,7 +11,7 @@ mkdir -p src tests docs/{changes,acceptance,structure,knowledge,worklog,backlog}
 cp <本包>/AGENTS.md .
 cp <本包>/docs/ai-guideline.md docs/
 cp <本包>/docs/backlog/units.json docs/backlog/
-cp <本包>/scripts/{plan.py,scope_check.py} scripts/
+cp <本包>/scripts/{plan.py,scope_check.py,stage_check.py} scripts/
 cp $AI_SDLC/scripts/halt_gate.py scripts/          # 來自上游 base ai-sdlc skill
 cp $AI_SDLC/assets/halt_policy.json assets/
 cp <本包>/.github/workflows/governance.yml .github/workflows/
@@ -36,8 +36,9 @@ python3 scripts/plan.py brief E1-03 --n 2 > /tmp/brief-E1-03.md
 
 # 3) I1 依簡報派出 I1.n，並稽核其 scoped ack（四把鑰匙必須逐項覆述才准動工）
 
-# 4) subagent 開 PR 後，CI 七道閘門自動跑：
-#    G1 鎖定範圍 → G1b 相位閘門 → G2 CHG 連結 → G3 測試 → G4 結構同步 → G5 ACC+身分 → G6 停點契約
+# 4) subagent 開 PR 後，CI 八道閘門自動跑：
+#    G1 鎖定範圍 → G1b 相位閘門 → G1c 階段閘門 → G2 CHG 連結 → G3 測試
+#    → G4 結構同步 → G5 ACC+身分 → G6 停點契約
 #    G6 判 AUTO  → 自動 squash merge + 刪分支
 #    G6 判 HALT  → 貼上 halt:awaiting-human 標籤，等你核准
 

@@ -16,7 +16,7 @@
 進場握手完成後，做以下驗證並回報，不要開始實作：
 
 1. 確認 bootstrap 完整：
-   - scripts/{plan.py,scope_check.py,backend_guard.py,halt_gate.py} 皆可執行
+   - scripts/{plan.py,scope_check.py,backend_guard.py,stage_check.py,halt_gate.py} 皆可執行
    - docs/backlog/{units.json,phase.json,state.json} 存在
    - .github/workflows/governance.yml 存在
    - assets/halt_policy.json 存在
@@ -41,7 +41,7 @@
    取得派工簡報，**原文交給 subagent，不要摘要或改寫**
 3. 每個 subagent 回覆 scoped ack（逐項覆述四把鑰匙）之後才准動工。
    ack 有任何一把鑰匙對不上 → 退回重來，不要放行
-4. subagent 完成後開 PR，CI 七道閘門自動跑
+4. subagent 完成後開 PR，CI 八道閘門自動跑
 5. 你負責稽核：確認產出在鎖定範圍內、CHG header 完整、
    worklog 有動工前的紀錄、錯誤有記錄根因與解法
 6. 把所有 subagent 回報的錯誤彙整進 docs/knowledge/errors.md（去重、歸納通則）

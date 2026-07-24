@@ -74,7 +74,7 @@
 | NFR-05 | 熱重載：改設定檔即生效，不重啟 | `E7-07` 整合測試 | 待實作 |
 | NFR-06 | 每個 PR 的變更必須落在該單元 `write_scope` 內 | CI `scope_check.py` | **已實作 ✓** |
 | NFR-07 | 組件載入不得需要修改核心 | `E8-06` 斷言 `src/` diff 為空 | 待 `E8-06` 入 units.json |
-| NFR-08 | 較早階段不得依賴較晚階段 | CI `stage_check.py` | **腳本尚未存在** |
+| NFR-08 | 較早階段不得依賴較晚階段 | CI `stage_check.py`（G1c） | **已實作 ✓** |
 
 > NFR-02 / NFR-03 目前不可驗證：CI 只跑 `pytest`，沒有任何 C++/Qt 建置步驟。
 > 這兩條在建置閘門補上之前是空的。
