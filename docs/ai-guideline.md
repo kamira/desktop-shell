@@ -27,16 +27,19 @@
 
 ### 納入
 
-`docs/backlog/units.json` 的工作單元。三層分層 `core` / `module` / `artifact`
-（見 `docs/architecture.md`）。分四階段推進，每階段的完成定義包含
-「該階段範例在不修改 `src/` 的前提下載入運作」。
+`docs/backlog/units.json` 的工作單元。四層分層 `platform` / `engine` / `module` / `artifact`
+（前二者合為平台本身，見 `docs/architecture.md`）。分四階段推進，每階段的完成定義包含
+「該階段範例在不修改 `src/`、`engine/` 的前提下載入運作」。
 
 | layer | 現況 | 內容 |
 |---|---|---|
-| **core** | **94** | 平台本身：定義五個擴充點的契約與基座 |
+| **platform** | **32** | 對系統的操作 + 後端契約基礎設施（`src/**`）—— 換平台只有這裡要改 |
+| **engine** | **62** | 平台中立的引擎邏輯（`engine/**`）—— 換平台一行不動 |
 | **module** | **58** | 擴充點上的提供者（`subsystem`：`sysinfo` 25 / `elements` 22 / `actuators` 11） |
 | **artifact** | **24** | 桌面上顯示的產出物，角色是驗證器 |
 | 合計 | **176** | |
+
+> `platform` + `engine` = 平台本身（先前合稱 `core`，94 項）。
 
 > 草案原記「核心 160 / 組件 21 = 181」，與現況相差 5 個單元（僅 `E8-06` 有定義，其餘 4 個無出處）。
 > **派工一律以 `units.json` 現況為準**，不得自行補足差額。
