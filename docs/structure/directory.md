@@ -39,8 +39,9 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 
 | layer | 位置 | 項數 | 說明 |
 |---|---|---|---|
-| **core** | `src/**` | 152 | 平台核心，提供組件消費的能力 |
-| **component** | `content/**`、`apps/**`（模組 C1–C4） | 24 | 驗證器：證明擴充點真的能被外部使用 |
+| **core** | `src/**`（kernel / 繪製基座 / format / events / command / script / package / ipc / host / common） | 94 | 平台本身，定義五個擴充點 |
+| **module** | `src/sensors/**`（`sysinfo` 25）、`src/render/**` 之元件型別（`elements` 22）、`src/actuators/**`（`actuators` 11） | 58 | 掛在擴充點上的提供者 |
+| **artifact** | `content/**`、`apps/**`（`C1`–`C4`） | 24 | 驗證器：證明擴充點真的能被外部使用 |
 
 ## 目標結構（`docs/architecture.md` 指定，**尚未遷移**）
 
@@ -49,7 +50,8 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 
 | 項目 | 現況 | 目標 |
 |---|---|---|
-| 第一方模組 | `content/`、`apps/` | `modules/` |
+| `module` 層（sysinfo / elements / actuators） | 混在 `src/sensors/`、`src/render/`、`src/actuators/` | `modules/<subsystem>/` |
+| `artifact` 層（C1–C4） | `content/`、`apps/` | `modules/` 或 `examples/` |
 | 範例 | （無） | `examples/`，含 `examples/hello-module/`（`E8-06` 的受測對象） |
 
 **遷移尚未執行。** 需要改動 24 個組件單元的 `write_scope`，屬設計決策，
