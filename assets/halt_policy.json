@@ -1,0 +1,11 @@
+{
+ "version": 1,
+ "_note": "停點契約政策。tighten-only：未在某停點的 auto 清單內的風險一律 HALT。放寬需改此檔並經人工核准。",
+ "default": "halt",
+ "gates": {
+  "before_merge_or_release": {
+   "auto": ["low"],
+   "halt": ["medium", "high"]
+  }
+ }
+}
