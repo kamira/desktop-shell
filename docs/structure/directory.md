@@ -9,20 +9,21 @@
 ## 現況（由 `units.json` 的 `write_scope` 反推，機器可複算）
 
 ```
-src/                  對系統的操作（需要 per-platform 後端）—— 換平台時只有這裡要改
-├── kernel/           surface kernel、四參數 profile、後端（backend/null、backend/win32…）24 項
-├── events/           事件 14 項 —— 其中全域熱鍵 / 系統事件 / 全域手勢 3 項屬對系統操作
-├── render/           繪製基座 8 項 ⧗ 平台中立，待遷出
-├── host/             宿主整合（系統匣、自繪選單、開機自啟）3 項
-├── sensors/          指標介面契約與採集基礎設施（E2-01 / E2-02）2 項 ⧗ 平台中立，待遷出
-└── common/           共用基礎 2 項 ⧗ 平台中立，待遷出
+src/                  對系統的操作（需要 per-platform 後端）—— 換平台時只有這裡要改，共 30 條
+├── kernel/           surface kernel、四參數 profile、後端 24 項（含 backend/null 參考實作）
+├── events/           全域事件 3 項：全域熱鍵、系統事件、全域指標手勢（其餘事件已遷 engine/）
+└── host/             宿主整合 3 項：系統匣、自繪選單、開機自啟
 
-engine/               平台中立的引擎邏輯（39 項）—— 換平台一行都不用動
-├── format/           描述子系統（宣告式格式、變數、公式引擎、熱重載、設定遷移）15 項
+engine/               平台中立的引擎邏輯（62 項）—— 換平台一行都不用動
+├── format/           宣告式格式、變數、公式引擎、熱重載、設定遷移 15 項
 ├── package/          套件格式、manifest、可互換元件組合、佈局存檔、安裝器 9 項
+├── events/           非全域事件 11 項：滑鼠 / 懸停 / 心跳 / 滾輪 / 拖曳判定 / 計時器…
+├── render/           繪製基座（paint / transform / clip / text）8 項
 ├── command/          命令匯流排與分派、動作註冊表、條件動作 5 項
 ├── script/           腳本引擎、對話直譯器、表現控制、行程內模組載入 5 項
-└── ipc/              本機 IPC、低延遲通道、HTTP 端點、獨立行程宿主 5 項
+├── ipc/              本機 IPC、低延遲通道、HTTP 端點、獨立行程宿主 5 項
+├── sensors/          指標介面契約與採集基礎設施（E2-01 / E2-02）2 項
+└── common/           idle 資源門檻、多語系 2 項
 
 modules/              module 層（58 項）—— 掛在擴充點上的提供者
 ├── sysinfo/          指標提供者 25 項（CPU / GPU / 記憶體 / 儲存 / IO / 網路 / 電池…）
@@ -41,11 +42,14 @@ docs/                 治理文件（changes / acceptance / structure / knowledg
 scripts/              治理工具（plan / scope_check / backend_guard / halt_gate）
 ```
 
-> `src/actuators/` 已隨 module 層搬移而清空，不再存在。
-> ⧗ 標記者為**平台中立但尚未遷出 `src/`** 的項目（`render` 8 / `sensors` 2 / `common` 2、
-> 以及 `events` 中的 11 項）。遷移分批進行，本批已完成 `format` / `package` / `command` /
-> `script` / `ipc` 共 39 項。`E1-24` null 後端雖平台中立，**刻意留在 `src/kernel/backend/`**
-> ——後端家族不拆散，且 `backend_guard.py` 以 `src/kernel/backend/*` 執行相位閘門。
+> `src/` 現在**只剩對系統的操作**：29 項語意分歧（kernel 23 / 全域 events 3 / host 3）
+> 加上 `E1-24` null 後端。`E1-24` 雖平台中立，**刻意留在 `src/kernel/backend/`** ——
+> 它是後端契約的第一個實作，與 win32/cocoa 同屬後端家族不拆散，
+> 且 `backend_guard.py` 以 `src/kernel/backend/*` 執行相位閘門。
+> **`E5` 事件子系統橫跨兩處**：3 個全域事件（需 OS 後端）在 `src/events/`，
+> 11 個非全域事件（純邏輯）在 `engine/events/` —— 目錄位置即標示是否需要 per-platform 後端。
+> `E1-25`（契約測試組，`tests/contract/`）、`E1-26`（後端白名單 lint，`scripts/`）
+> 本就不在 `src/`，無需搬移。
 > `tests/` 維持依 `module` 欄位（e2 / e3 / e4…）分群 —— `plan.py` 的派工簡報以 `module`
 > 組出 `tests/<modl>/test_<slug>*`，改動會使簡報與 `write_scope` 不一致而觸發 G1 紅燈。
 
@@ -53,7 +57,7 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 
 | layer | 位置 | 項數 | 說明 |
 |---|---|---|---|
-| **core** | `src/**` 53 條 + `engine/**` 39 條 | 94 | 平台本身，定義五個擴充點。`src/` = 對系統的操作、`engine/` = 平台中立邏輯 |
+| **core** | `src/**` 30 條 + `engine/**` 62 條 + `E1-25`(tests)/`E1-26`(scripts) | 94 | 平台本身，定義五個擴充點。`src/` = 對系統的操作（29 語意分歧 + null 後端）、`engine/` = 平台中立邏輯 |
 | **module** | `modules/sysinfo/**` 25、`modules/elements/**` 22、`modules/actuators/**` 11 | 58 | 掛在擴充點上的提供者 |
 | **artifact** | `content/**`、`apps/**`（`C1`–`C4`） | 24 | 驗證器：證明擴充點真的能被外部使用 |
 
