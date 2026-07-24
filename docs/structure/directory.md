@@ -9,18 +9,20 @@
 ## 現況（由 `units.json` 的 `write_scope` 反推，機器可複算）
 
 ```
-src/                  平台核心（core，94 項）—— 只放平台，不放模組
-├── kernel/           surface kernel、四參數 profile、後端（backend/null、backend/win32…）
-├── render/           繪製基座（paint / transform / clip / text）8 項
-├── format/           描述子系統（宣告式格式、變數、求值）
-├── events/           事件
-├── command/          命令匯流排與分派
-├── sensors/          指標介面契約與採集基礎設施（E2-01 / E2-02）2 項
-├── script/           腳本引擎、模組載入
-├── package/          套件格式、manifest、持久化
-├── ipc/              行程間介接
-├── host/             宿主整合
-└── common/           共用基礎
+src/                  對系統的操作（需要 per-platform 後端）—— 換平台時只有這裡要改
+├── kernel/           surface kernel、四參數 profile、後端（backend/null、backend/win32…）24 項
+├── events/           事件 14 項 —— 其中全域熱鍵 / 系統事件 / 全域手勢 3 項屬對系統操作
+├── render/           繪製基座 8 項 ⧗ 平台中立，待遷出
+├── host/             宿主整合（系統匣、自繪選單、開機自啟）3 項
+├── sensors/          指標介面契約與採集基礎設施（E2-01 / E2-02）2 項 ⧗ 平台中立，待遷出
+└── common/           共用基礎 2 項 ⧗ 平台中立，待遷出
+
+engine/               平台中立的引擎邏輯（39 項）—— 換平台一行都不用動
+├── format/           描述子系統（宣告式格式、變數、公式引擎、熱重載、設定遷移）15 項
+├── package/          套件格式、manifest、可互換元件組合、佈局存檔、安裝器 9 項
+├── command/          命令匯流排與分派、動作註冊表、條件動作 5 項
+├── script/           腳本引擎、對話直譯器、表現控制、行程內模組載入 5 項
+└── ipc/              本機 IPC、低延遲通道、HTTP 端點、獨立行程宿主 5 項
 
 modules/              module 層（58 項）—— 掛在擴充點上的提供者
 ├── sysinfo/          指標提供者 25 項（CPU / GPU / 記憶體 / 儲存 / IO / 網路 / 電池…）
@@ -40,6 +42,10 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 ```
 
 > `src/actuators/` 已隨 module 層搬移而清空，不再存在。
+> ⧗ 標記者為**平台中立但尚未遷出 `src/`** 的項目（`render` 8 / `sensors` 2 / `common` 2、
+> 以及 `events` 中的 11 項）。遷移分批進行，本批已完成 `format` / `package` / `command` /
+> `script` / `ipc` 共 39 項。`E1-24` null 後端雖平台中立，**刻意留在 `src/kernel/backend/`**
+> ——後端家族不拆散，且 `backend_guard.py` 以 `src/kernel/backend/*` 執行相位閘門。
 > `tests/` 維持依 `module` 欄位（e2 / e3 / e4…）分群 —— `plan.py` 的派工簡報以 `module`
 > 組出 `tests/<modl>/test_<slug>*`，改動會使簡報與 `write_scope` 不一致而觸發 G1 紅燈。
 
@@ -47,7 +53,7 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 
 | layer | 位置 | 項數 | 說明 |
 |---|---|---|---|
-| **core** | `src/**` | 94 | 平台本身，定義五個擴充點 |
+| **core** | `src/**` 53 條 + `engine/**` 39 條 | 94 | 平台本身，定義五個擴充點。`src/` = 對系統的操作、`engine/` = 平台中立邏輯 |
 | **module** | `modules/sysinfo/**` 25、`modules/elements/**` 22、`modules/actuators/**` 11 | 58 | 掛在擴充點上的提供者 |
 | **artifact** | `content/**`、`apps/**`（`C1`–`C4`） | 24 | 驗證器：證明擴充點真的能被外部使用 |
 
