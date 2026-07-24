@@ -88,3 +88,9 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 邏輯結構、設計結構、資料結構**尚未產出** —— 待五個擴充點的契約
 （`E2-01` / `E4` / `E6-01` / `E1` / `E8-01`+`E8-04`）定稿後補上，
 在此之前產出的內容只會是猜測。
+
+## 已落地單元備註（G4 同步）
+
+- `engine/package/e9_02/`（E9-02 manifest）：套件/模組 manifest 的格式定義與解析，
+  含 `format_version`（版本欄位）、`requires`（所需能力）、`permissions`（所需權限）。
+  平台中立純邏輯，解析失敗回帶行號的錯誤（不靜默）。測試 `tests/e9/test_e9_02.cpp`。
