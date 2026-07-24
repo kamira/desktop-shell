@@ -104,3 +104,6 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 - `engine/package/e9_02/`（E9-02 manifest）：套件/模組 manifest 的格式定義與解析，
   含 `format_version`（版本欄位）、`requires`（所需能力）、`permissions`（所需權限）。
   平台中立純邏輯，解析失敗回帶行號的錯誤（不靜默）。測試 `tests/e9/test_e9_02.cpp`。
+- `src/events/e5_08/`（E5-08 系統事件）：作業系統層級事件（睡眠/喚醒、顯示器變更、
+  session 鎖定/解鎖、電源狀態變更）的訂閱介面。平台中立介面 + null 後端
+  （`NullSystemEventSource`，事件由 `inject()` 手動注入），相位 1 不綁真實後端。測試 `tests/e5/test_e5_08.cpp`。
