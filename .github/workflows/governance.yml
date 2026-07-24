@@ -77,9 +77,11 @@ jobs:
         continue-on-error: true
         run: python scripts/plan.py gate ${{ steps.unit.outputs.id }} --gate before_merge_or_release
 
+      # 用 --auto 排隊，等本 job 的 gate check 轉綠後才合併。
+      # 不可用即時合併：那會在 gate check 仍 pending 時觸發，被 branch protection 擋（自我死鎖）。
       - name: 自動合併（僅 AUTO）
         if: steps.halt.outcome == 'success'
-        run: gh pr merge ${{ github.event.pull_request.number }} --squash --delete-branch
+        run: gh pr merge ${{ github.event.pull_request.number }} --auto --squash --delete-branch
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
 
       - name: 標記待人工核准（HALT）
