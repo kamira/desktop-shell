@@ -24,8 +24,9 @@
   "backend_followup": 63,
   "by_layer": {
    "artifact": 24,
-   "core": 94,
-   "module": 58
+   "engine": 62,
+   "module": 58,
+   "platform": 32
   },
   "by_stage": {
    "A": 117,
@@ -45,7 +46,7 @@
    "title": "具名圖層列舉與 z-order 維持",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -74,7 +75,7 @@
    "title": "輸入策略四態",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -103,7 +104,7 @@
    "title": "逐像素 alpha surface",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -132,7 +133,7 @@
    "title": "幾何命中測試",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -161,7 +162,7 @@
    "title": "具名碰撞區域 → 事件參數",
    "priority": "P0",
    "group": "角色",
-   "layer": "core",
+   "layer": "platform",
    "stage": "B",
    "module": "E1",
    "primitives": [
@@ -190,7 +191,7 @@
    "title": "命中與繪製層序",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -220,7 +221,7 @@
    "title": "anchor 定位模型",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -249,7 +250,7 @@
    "title": "自由拖曳與位置記憶",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -281,7 +282,7 @@
    "title": "邊緣吸附",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -311,7 +312,7 @@
    "title": "保持在螢幕內",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -341,7 +342,7 @@
    "title": "從屬 surface 相對定位",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -370,7 +371,7 @@
    "title": "多重從屬 surface 並存",
    "priority": "P1",
    "group": "角色",
-   "layer": "core",
+   "layer": "platform",
    "stage": "B",
    "module": "E1",
    "primitives": [
@@ -399,7 +400,7 @@
    "title": "多 profile 實例並存",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -428,7 +429,7 @@
    "title": "短暫 profile 生命週期",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -458,7 +459,7 @@
    "title": "視窗級透明度與懸停淡變",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -489,7 +490,7 @@
    "title": "螢幕邊緣熱區",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -518,7 +519,7 @@
    "title": "DPI 感知與混合 DPI",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -545,7 +546,7 @@
    "title": "具名螢幕與每螢幕實例",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -574,7 +575,7 @@
    "title": "顯示器熱插拔復原",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -604,7 +605,7 @@
    "title": "睡眠喚醒復原",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -634,7 +635,7 @@
    "title": "能力矩陣宣告檔",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [],
@@ -659,7 +660,7 @@
    "title": "建置期能力閘控 lint",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [],
@@ -686,7 +687,7 @@
    "title": "分層失敗的手動降級路徑",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -716,7 +717,7 @@
    "title": "統一指標介面（名稱/值/單位/範圍/歷史）",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E2",
    "primitives": [
@@ -743,7 +744,7 @@
    "title": "採集頻率分級與除頻",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E2",
    "primitives": [
@@ -1866,7 +1867,7 @@
    "title": "文字排版與渲染",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E4",
    "primitives": [
@@ -1989,7 +1990,7 @@
    "title": "過場動畫與緩動",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E4",
    "primitives": [
@@ -2016,7 +2017,7 @@
    "title": "Surface 編號定址與切換",
    "priority": "P0",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E4",
    "primitives": [
@@ -2076,7 +2077,7 @@
    "title": "圖層合成",
    "priority": "P1",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E4",
    "primitives": [
@@ -2106,7 +2107,7 @@
    "title": "動畫驅動源",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E4",
    "primitives": [
@@ -2505,7 +2506,7 @@
    "title": "2D 變形矩陣",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E4",
    "primitives": [
@@ -2534,7 +2535,7 @@
    "title": "容器裁切與遮罩",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E4",
    "primitives": [
@@ -2563,7 +2564,7 @@
    "title": "反鋸齒與內距",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E4",
    "primitives": [
@@ -2773,7 +2774,7 @@
    "title": "基本滑鼠按鍵事件",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E5",
    "primitives": [
@@ -2803,7 +2804,7 @@
    "title": "懸停進出事件",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E5",
    "primitives": [
@@ -2833,7 +2834,7 @@
    "title": "生命週期事件",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E5",
    "primitives": [
@@ -2860,7 +2861,7 @@
    "title": "心跳事件",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E5",
    "primitives": [
@@ -2887,7 +2888,7 @@
    "title": "全域熱鍵註冊",
    "priority": "P0",
    "group": "啟動",
-   "layer": "core",
+   "layer": "platform",
    "stage": "C",
    "module": "E5",
    "primitives": [
@@ -2914,7 +2915,7 @@
    "title": "滾輪事件",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E5",
    "primitives": [
@@ -2943,7 +2944,7 @@
    "title": "區域內連續拖曳判定",
    "priority": "P1",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E5",
    "primitives": [
@@ -2973,7 +2974,7 @@
    "title": "系統事件",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E5",
    "primitives": [
@@ -3000,7 +3001,7 @@
    "title": "機率排程器",
    "priority": "P1",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E5",
    "primitives": [
@@ -3029,7 +3030,7 @@
    "title": "逾時計時器",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E5",
    "primitives": [
@@ -3058,7 +3059,7 @@
    "title": "可點區段選取事件",
    "priority": "P1",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E5",
    "primitives": [
@@ -3088,7 +3089,7 @@
    "title": "全域指標手勢",
    "priority": "P1",
    "group": "啟動",
-   "layer": "core",
+   "layer": "platform",
    "stage": "C",
    "module": "E5",
    "primitives": [
@@ -3115,7 +3116,7 @@
    "title": "鍵盤與輸入提交事件",
    "priority": "P2",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E5",
    "primitives": [
@@ -3142,7 +3143,7 @@
    "title": "碰撞區域名事件參數",
    "priority": "P0",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E5",
    "primitives": [
@@ -3173,7 +3174,7 @@
    "title": "命令匯流排與分派",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E6",
    "primitives": [
@@ -3200,7 +3201,7 @@
    "title": "動作註冊表與前綴/模糊分派",
    "priority": "P1",
    "group": "啟動",
-   "layer": "core",
+   "layer": "engine",
    "stage": "C",
    "module": "E6",
    "primitives": [
@@ -3229,7 +3230,7 @@
    "title": "條件動作與去抖",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E6",
    "primitives": [
@@ -3259,7 +3260,7 @@
    "title": "延遲與批次執行",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E6",
    "primitives": [
@@ -3288,7 +3289,7 @@
    "title": "跨 surface 控制",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E6",
    "primitives": [
@@ -3318,7 +3319,7 @@
    "title": "宣告式格式核心 + 版本欄位",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3345,7 +3346,7 @@
    "title": "變數系統",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3374,7 +3375,7 @@
    "title": "段落變數",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3403,7 +3404,7 @@
    "title": "動態變數與執行期重算",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3432,7 +3433,7 @@
    "title": "公式運算引擎",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3461,7 +3462,7 @@
    "title": "錯誤可見性",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3490,7 +3491,7 @@
    "title": "熱重載",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3520,7 +3521,7 @@
    "title": "設定遷移與版本相容",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3550,7 +3551,7 @@
    "title": "缺席模組的降級解析",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3580,7 +3581,7 @@
    "title": "字串處理",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3609,7 +3610,7 @@
    "title": "群組與批次操作",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3639,7 +3640,7 @@
    "title": "設定值寫回",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3668,7 +3669,7 @@
    "title": "階層式項目結構",
    "priority": "P0",
    "group": "啟動",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3697,7 +3698,7 @@
    "title": "圖形化設定與就地編輯",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3726,7 +3727,7 @@
    "title": "拖放產生設定項",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E7",
    "primitives": [
@@ -3756,7 +3757,7 @@
    "title": "腳本引擎（QML/JS）",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E8",
    "primitives": [
@@ -3785,7 +3786,7 @@
    "title": "對話腳本直譯器",
    "priority": "P1",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E8",
    "primitives": [
@@ -3815,7 +3816,7 @@
    "title": "表現控制指令集",
    "priority": "P1",
    "group": "角色",
-   "layer": "core",
+   "layer": "engine",
    "stage": "B",
    "module": "E8",
    "primitives": [
@@ -3846,7 +3847,7 @@
    "title": "行程內模組載入",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E8",
    "primitives": [
@@ -3875,7 +3876,7 @@
    "title": "外部模組開發介面",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E8",
    "primitives": [
@@ -3904,7 +3905,7 @@
    "title": "統一套件格式定義",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -3933,7 +3934,7 @@
    "title": "manifest（含 requires/permissions）",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -3960,7 +3961,7 @@
    "title": "可互換元件組合",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -3989,7 +3990,7 @@
    "title": "主題切換",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -4019,7 +4020,7 @@
    "title": "佈局存檔與還原",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -4048,7 +4049,7 @@
    "title": "套件卸載流程",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -4077,7 +4078,7 @@
    "title": "拖放安裝",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -4107,7 +4108,7 @@
    "title": "圖形安裝器",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E9",
    "primitives": [
@@ -4136,7 +4137,7 @@
    "title": "動態配色生成",
    "priority": "P2",
    "group": "工具",
-   "layer": "core",
+   "layer": "engine",
    "stage": "D",
    "module": "E9",
    "primitives": [
@@ -4165,7 +4166,7 @@
    "title": "本機 IPC 訊息投遞",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E10",
    "primitives": [
@@ -4194,7 +4195,7 @@
    "title": "低延遲同機通道",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E10",
    "primitives": [
@@ -4223,7 +4224,7 @@
    "title": "HTTP 端點",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E10",
    "primitives": [
@@ -4252,7 +4253,7 @@
    "title": "事件廣播型模組協定",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E10",
    "primitives": [
@@ -4282,7 +4283,7 @@
    "title": "獨立行程 widget 宿主",
    "priority": "P2",
    "group": "工具",
-   "layer": "core",
+   "layer": "engine",
    "stage": "D",
    "module": "E10",
    "primitives": [
@@ -4312,7 +4313,7 @@
    "title": "系統匣圖示與右鍵選單",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E11",
    "primitives": [],
@@ -4339,7 +4340,7 @@
    "title": "自繪選單呈現",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E11",
    "primitives": [
@@ -4371,7 +4372,7 @@
    "title": "開機自動啟動",
    "priority": "P1",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E11",
    "primitives": [],
@@ -4396,7 +4397,7 @@
    "title": "idle 記憶體與 CPU 門檻",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E12",
    "primitives": [],
@@ -4423,7 +4424,7 @@
    "title": "多語系",
    "priority": "P2",
    "group": "核心",
-   "layer": "core",
+   "layer": "engine",
    "stage": "A",
    "module": "E12",
    "primitives": [
@@ -5162,7 +5163,7 @@
    "title": "null 後端參考實作（任何平台可跑）",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [
@@ -5193,7 +5194,7 @@
    "title": "kernel 後端契約測試組（所有後端共用）",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [],
@@ -5219,7 +5220,7 @@
    "title": "後端白名單 lint（相位閘門）",
    "priority": "P0",
    "group": "核心",
-   "layer": "core",
+   "layer": "platform",
    "stage": "A",
    "module": "E1",
    "primitives": [],
