@@ -43,9 +43,18 @@ add_test(NAME e1_21 COMMAND test_e1_21)
 | 當前相位不得出現 `src/kernel/backend/win32|cocoa/` | G1b `backend_guard` |
 | 較早階段不得依賴較晚階段 | G1c `stage_check` |
 | 至少一個可跑的 CTest 測試 | G3（`ctest`，0 測試即紅） |
-| 動了 `src|engine|modules/` 就得同步 `docs/structure/`（共用路徑，允許寫） | G4 |
+| 動了 `src|engine|modules/` 就得同步 `docs/structure/` | G4 |
 | **核心 API 不得出現絕對座標與數字 z-order**（NFR-02） | 待 `E1-22` lint 上線；在那之前靠 code review |
 | **能力閘控呼叫必須有 `has()` 保護**（NFR-03） | 同上 |
+
+### G4 同步：寫**每單元獨立**的結構檔，**不要動共用的 `directory.md`**
+
+滿足 G4 的方式：在 **`docs/structure/units/<slug>.md`** 新增一個**只屬於你這個單元**的結構註記
+（`<slug>` = 單元 id 小寫底線，如 `e1_21`）。內容三五行：本單元的目錄位置、放了什麼、對外介面一句話。
+
+**絕對不要編輯 `docs/structure/directory.md`。** 那是共用檔——多個並行單元同時改它會造成
+合併衝突、甚至互相覆蓋彼此的註記。每單元一檔則永不衝突，且一樣滿足 G4（`docs/structure/` 有變更）。
+`docs/structure/units/**` 已在 `scope_check` 的 COMMON 共用路徑內，可寫。
 
 ## 平台後端（相位 1 = Mac / null 期）
 
