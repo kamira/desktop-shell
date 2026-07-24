@@ -57,8 +57,8 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 
 | layer | 位置 | 項數 | 說明 |
 |---|---|---|---|
-| **platform** | `src/**` 30 條 + `E1-25`(tests)/`E1-26`(scripts) | 32 | 對系統的操作 + 後端契約基礎設施。29 語意分歧 + null 後端 + 契約測試 + 白名單 lint |
-| **engine** | `engine/**` 62 條 | 62 | 平台中立邏輯，換平台一行不動 |
+| **platform** | `src/**` 30 條 | 30 | 對系統的操作：29 語意分歧 + `E1-24` null 後端 |
+| **engine** | `engine/**` 62 條 + `E1-25`(tests)/`E1-26`(scripts) | 64 | 平台中立邏輯，換平台一行不動 |
 | **module** | `modules/sysinfo/**` 25、`modules/elements/**` 22、`modules/actuators/**` 11 | 58 | 掛在擴充點上的提供者 |
 | **artifact** | `content/**`、`apps/**`（`C1`–`C4`） | 24 | 驗證器：證明擴充點真的能被外部使用 |
 

@@ -24,9 +24,9 @@
   "backend_followup": 63,
   "by_layer": {
    "artifact": 24,
-   "engine": 62,
+   "engine": 64,
    "module": 58,
-   "platform": 32
+   "platform": 30
   },
   "by_stage": {
    "A": 117,
@@ -5194,7 +5194,7 @@
    "title": "kernel 後端契約測試組（所有後端共用）",
    "priority": "P0",
    "group": "核心",
-   "layer": "platform",
+   "layer": "engine",
    "stage": "A",
    "module": "E1",
    "primitives": [],
@@ -5220,7 +5220,7 @@
    "title": "後端白名單 lint（相位閘門）",
    "priority": "P0",
    "group": "核心",
-   "layer": "platform",
+   "layer": "engine",
    "stage": "A",
    "module": "E1",
    "primitives": [],
