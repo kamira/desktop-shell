@@ -729,7 +729,7 @@
    "risk": "medium",
    "autonomy": null,
    "write_scope": [
-    "engine/sensors/e2_01/**",
+    "engine/metrics/e2_01/**",
     "tests/e2/test_e2_01*",
     "docs/changes/CHG-*-e2_01.md"
    ],
@@ -758,7 +758,7 @@
    "risk": "medium",
    "autonomy": null,
    "write_scope": [
-    "engine/sensors/e2_02/**",
+    "engine/metrics/e2_02/**",
     "tests/e2/test_e2_02*",
     "docs/changes/CHG-*-e2_02.md"
    ],
