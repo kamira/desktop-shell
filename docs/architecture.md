@@ -172,7 +172,7 @@ CPU Usage Widget 存在的意義不是「有一個 CPU 掛件」，而是**證�
 
 > **狀態：遷移完成**（CHG-20260723-10 第一批 39 項、CHG-20260723-11 其餘 23 項）。
 > `engine/` 共 62 項（format 15 / package 9 / events 11 / render 8 / command 5 / script 5 /
-> ipc 5 / sensors 2 / common 2）。
+> ipc 5 / metrics 2 / common 2）。
 > `src/` 只剩 **29 項對系統的操作**（kernel 23 / 全域 events 3 / host 3）加上 `E1-24` null 後端 ——
 > 後者雖平台中立，**刻意留在 `src/kernel/backend/`**（後端家族不拆散，且 `backend_guard.py`
 > 以 `src/kernel/backend/*` 執行相位閘門）。
