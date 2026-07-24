@@ -118,6 +118,16 @@ CPU Usage Widget 存在的意義不是「有一個 CPU 掛件」，而是**證�
 
 連帶把 `E8-04`（行程內模組載入）從 `P1` 升為 `P0` —— 它從輔助設施變成主要擴充機制。
 
+### 驗證器歸類為 `example`
+
+四個階段的驗證器（A：CPU/GPU Usage Widget；B：最小角色範例；C：最小啟動器範例；
+D：最小浮層範例）與 `E8-06` 的 `hello-module`，**分類為 `example`**——不是 `artifact`。
+區別在角色：`artifact`（C1–C4）是隨附的第一方內容；`example` 純粹是「證明擴充點可用」的
+最小驗收範例，位於 `examples/`。名稱本身就在防止它們被當成交付目標。
+
+> **狀態：尚未進入 `units.json`。** 這 4 個驗證器 + `E8-06` 的相依、wave、風險分級待規格確認後
+> 開 CHG 寫入；屆時 `layer` 值域將新增 `example`。目前 backlog 仍為 176 單元。
+
 > **狀態：尚未進入 `units.json`。** `E8-06` 的相依、wave、風險分級屬設計判斷，
 > 不由本檔逕自決定；`E8-04` 的 `P1 → P0` 同理。兩者待決後開 CHG 一併寫入。
 
@@ -168,7 +178,9 @@ CPU Usage Widget 存在的意義不是「有一個 CPU 掛件」，而是**證�
 | `modules/` | sysinfo / elements / actuators | 58 | 一行不動 |
 | `content/`、`apps/` | artifact（驗證器） | 24 | 一行不動 |
 
-這讓 A1（Qt/QML 語言選擇）的驗證範圍變得明確：真正需要驗證的就是 `src/` 那些項目。
+這讓語言選擇（A1）的驗證範圍變得明確：真正需要驗證的就是 `src/` 那 30 項對系統的操作。
+語言本身不限定（C/C++ 允許，見 `docs/requirements.md`），被驗證的是這批項目的 API 面
+能否跨平台表達，而不是用什麼語言寫。
 
 > **狀態：遷移完成**（CHG-20260723-10 第一批 39 項、CHG-20260723-11 其餘 23 項）。
 > `engine/` 共 62 項（format 15 / package 9 / events 11 / render 8 / command 5 / script 5 /
