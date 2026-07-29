@@ -30,7 +30,11 @@ file(GLOB _unit_cmakes
   "${CMAKE_SOURCE_DIR}/engine/*/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/modules/*/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/tests/contract/CMakeLists.txt"
-  "${CMAKE_SOURCE_DIR}/tests/contract/*/CMakeLists.txt")
+  "${CMAKE_SOURCE_DIR}/tests/contract/*/CMakeLists.txt"
+  # artifact 層（C 系列）：content/<slug>/（C3，深度2）、content/profiles|widgets/<slug>/（C1/C2，深度3）、apps/<slug>/（C4，深度2）。
+  "${CMAKE_SOURCE_DIR}/content/*/CMakeLists.txt"
+  "${CMAKE_SOURCE_DIR}/content/*/*/CMakeLists.txt"
+  "${CMAKE_SOURCE_DIR}/apps/*/CMakeLists.txt")
 
 foreach(_cml ${_unit_cmakes})
   get_filename_component(_dir "${_cml}" DIRECTORY)
