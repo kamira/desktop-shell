@@ -23,11 +23,14 @@ FetchContent_MakeAvailable(googletest)
 # 自動納入各工作單元的 CMakeLists（platform=src/、engine/、modules/）。
 # 單元子目錄多為 <top>/<subsystem>/<unit_slug>/（深度 2），後端如 src/kernel/backend/null/（深度 3）。
 # 用明確層級的 GLOB（每個 * = 一段路徑）涵蓋深度 2 與 3，穩定不誤收。
+# 另收 tests/contract/（跨後端契約測試組 E1-25：無 src/engine/modules 目錄，測試本身即交付物）。
 file(GLOB _unit_cmakes
   "${CMAKE_SOURCE_DIR}/src/*/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/src/*/*/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/engine/*/*/CMakeLists.txt"
-  "${CMAKE_SOURCE_DIR}/modules/*/*/CMakeLists.txt")
+  "${CMAKE_SOURCE_DIR}/modules/*/*/CMakeLists.txt"
+  "${CMAKE_SOURCE_DIR}/tests/contract/CMakeLists.txt"
+  "${CMAKE_SOURCE_DIR}/tests/contract/*/CMakeLists.txt")
 
 foreach(_cml ${_unit_cmakes})
   get_filename_component(_dir "${_cml}" DIRECTORY)
