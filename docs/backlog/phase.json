@@ -2,5 +2,31 @@
  "phase": 1,
  "allowed_backends": [
   "null"
- ]
+ ],
+ "phases": {
+  "1": {
+   "name": "Mac / 平台中立期",
+   "allowed_backends": [
+    "null"
+   ],
+   "goal": "介面、契約測試、平台中立項與 API 分歧項的 macOS 實作；唯一允許 null 後端"
+  },
+  "2": {
+   "name": "Windows 期",
+   "allowed_backends": [
+    "null",
+    "win32"
+   ],
+   "goal": "語意分歧項的 win32 後端 + E2/E3 的 Windows 實作，契約測試不變"
+  },
+  "3": {
+   "name": "跨平台期",
+   "allowed_backends": [
+    "null",
+    "win32",
+    "cocoa"
+   ],
+   "goal": "第三後端上線，能力矩陣的 ⚠ 項首次回報 has()==false；紀律守住則只是換後端"
+  }
+ }
 }
