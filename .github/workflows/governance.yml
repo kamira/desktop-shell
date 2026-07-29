@@ -46,7 +46,9 @@ jobs:
       - name: G3 tests（C++ / CMake + CTest）
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build -j
+          # -j 不帶數字 = make 無限並行；單元數破百後同時起 100+ 個 gtest 編譯會 OOM（runner 被 SIGTERM，exit 143）。
+          # 明確限制並行度以壓住峰值記憶體（每個 Debug gtest TU 可達 ~1.5–2GB；-j 2 → ~4GB，留安全邊際至 176 單元）。
+          cmake --build build -j 2
           # 真空綠燈防線：沒有任何註冊測試 = 紅燈（空 repo 或忘了寫測試都擋）
           N=$(ctest --test-dir build -N 2>/dev/null | sed -n 's/.*Total Tests: //p')
           [ "${N:-0}" -gt 0 ] || { echo "::error::repo 沒有任何 CTest 測試，綠燈無意義"; exit 1; }
