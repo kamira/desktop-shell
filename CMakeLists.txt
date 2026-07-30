@@ -20,21 +20,23 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-# 自動納入各工作單元的 CMakeLists（platform=src/、engine/、modules/）。
-# 單元子目錄多為 <top>/<subsystem>/<unit_slug>/（深度 2），後端如 src/kernel/backend/null/（深度 3）。
-# 用明確層級的 GLOB（每個 * = 一段路徑）涵蓋深度 2 與 3，穩定不誤收。
-# 另收 tests/contract/（跨後端契約測試組 E1-25：無 src/engine/modules 目錄，測試本身即交付物）。
+# 自動納入各子系統的 CMakeLists（CHG-20260730-03 目錄扁平化後）。
+# 已去除 per-unit <slug>/ 層：各單元源碼直接置於子系統目錄，該目錄一個合併 CMakeLists 定義其下
+# 所有單元的 add_library / test target。故 GLOB 深度較扁平化前少一層。
+#   - platform：src/<subsystem>/（kernel / events / host，深度1）；後端 src/kernel/backend/null/（深度3，保留）。
+#   - engine / modules：<top>/<subsystem>/（深度1）。
+#   - artifact：content/（C3，深度0）、content/<profiles|widgets>/（C1/C2，深度1）、apps/（C4，深度0）。
+#   - tests/contract/（跨後端契約測試組 E1-25，非子系統，保留原收法）。
 file(GLOB _unit_cmakes
-  "${CMAKE_SOURCE_DIR}/src/*/*/CMakeLists.txt"
+  "${CMAKE_SOURCE_DIR}/src/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/src/*/*/*/CMakeLists.txt"
-  "${CMAKE_SOURCE_DIR}/engine/*/*/CMakeLists.txt"
-  "${CMAKE_SOURCE_DIR}/modules/*/*/CMakeLists.txt"
+  "${CMAKE_SOURCE_DIR}/engine/*/CMakeLists.txt"
+  "${CMAKE_SOURCE_DIR}/modules/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/tests/contract/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/tests/contract/*/CMakeLists.txt"
-  # artifact 層（C 系列）：content/<slug>/（C3，深度2）、content/profiles|widgets/<slug>/（C1/C2，深度3）、apps/<slug>/（C4，深度2）。
+  "${CMAKE_SOURCE_DIR}/content/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/content/*/CMakeLists.txt"
-  "${CMAKE_SOURCE_DIR}/content/*/*/CMakeLists.txt"
-  "${CMAKE_SOURCE_DIR}/apps/*/CMakeLists.txt")
+  "${CMAKE_SOURCE_DIR}/apps/CMakeLists.txt")
 
 foreach(_cml ${_unit_cmakes})
   get_filename_component(_dir "${_cml}" DIRECTORY)
