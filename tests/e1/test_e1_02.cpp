@@ -28,10 +28,10 @@ void make_surface(NullKernelBackend& b, const SurfaceId& id) {
 
 // --- 純函式：命中測試 ---
 TEST(E1_02_PureFn, HitResultPerState) {
-    EXPECT_EQ(hit_result(InputStrategy::Interactive), HitResult::Solid);
-    EXPECT_EQ(hit_result(InputStrategy::Capture), HitResult::Solid);
-    EXPECT_EQ(hit_result(InputStrategy::ClickThrough), HitResult::Transparent);
-    EXPECT_EQ(hit_result(InputStrategy::Inert), HitResult::Solid);
+    EXPECT_EQ(hit_result(InputStrategy::Interactive), InputHitResult::Solid);
+    EXPECT_EQ(hit_result(InputStrategy::Capture), InputHitResult::Solid);
+    EXPECT_EQ(hit_result(InputStrategy::ClickThrough), InputHitResult::Transparent);
+    EXPECT_EQ(hit_result(InputStrategy::Inert), InputHitResult::Solid);
 }
 
 // --- 純函式：單體路由決策 ---

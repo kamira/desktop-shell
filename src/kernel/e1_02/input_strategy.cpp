@@ -7,16 +7,16 @@ namespace ds::kernel {
 
 // --- 純函式：四態 → 行為 / 對映 ---
 
-HitResult hit_result(InputStrategy s) noexcept {
+InputHitResult hit_result(InputStrategy s) noexcept {
     switch (s) {
         case InputStrategy::ClickThrough:
-            return HitResult::Transparent;  // 唯一穿透態
+            return InputHitResult::Transparent;  // 唯一穿透態
         case InputStrategy::Interactive:
         case InputStrategy::Capture:
         case InputStrategy::Inert:
-            return HitResult::Solid;
+            return InputHitResult::Solid;
     }
-    return HitResult::Solid;  // 防禦：不可達
+    return InputHitResult::Solid;  // 防禦：不可達
 }
 
 RouteDecision route_decision(InputStrategy s) noexcept {

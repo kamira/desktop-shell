@@ -4,7 +4,7 @@
 // 能力不存在拒絕）、E1-16 熱區叫出（probe_hot_zone 命中已固定邊緣時自動 reveal、未命中 /
 // 非本 dock 邊緣 / 未啟用自動隱藏時皆為 no-op）、auto_hide / reveal / hide 行為、E1-01
 // 頂層指派（layer_stack 驗證 Topmost + undock 後移除）、E1-02 輸入策略透傳
-// （Interactive / ClickThrough 對映 InputPolicy / HitResult）、add_item（成功 / 重複 id
+// （Interactive / ClickThrough 對映 InputPolicy / InputHitResult）、add_item（成功 / 重複 id
 // 拒絕）、以及解構安全（開啟中解構不留殘留頂層指派）。
 #include "dock_profile.hpp"
 
@@ -16,7 +16,7 @@
 
 using ds::kernel::CapabilityDecl;
 using ds::kernel::CapabilityMatrix;
-using ds::kernel::HitResult;
+using ds::kernel::InputHitResult;
 using ds::kernel::InputPolicy;
 using ds::kernel::InputStrategy;
 using ds::kernel::LayerStack;
@@ -318,14 +318,14 @@ TEST(DockProfileTest, InteractiveStrategyMapsToAcceptingAndSolid) {
     LayerStack layer_stack;
     DockProfile dock("dock.main", layer_stack, InputStrategy::Interactive);
     EXPECT_EQ(dock.backend_input_policy(), InputPolicy::Accepting);
-    EXPECT_EQ(dock.hit_result(), HitResult::Solid);
+    EXPECT_EQ(dock.hit_result(), InputHitResult::Solid);
 }
 
 TEST(DockProfileTest, ClickThroughStrategyMapsToPassThroughAndTransparent) {
     LayerStack layer_stack;
     DockProfile dock("dock.hint", layer_stack, InputStrategy::ClickThrough);
     EXPECT_EQ(dock.backend_input_policy(), InputPolicy::PassThrough);
-    EXPECT_EQ(dock.hit_result(), HitResult::Transparent);
+    EXPECT_EQ(dock.hit_result(), InputHitResult::Transparent);
 }
 
 // -----------------------------------------------------------------------------

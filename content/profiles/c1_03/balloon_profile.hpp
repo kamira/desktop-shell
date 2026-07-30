@@ -49,8 +49,6 @@
 #include <optional>
 #include <string>
 
-#include "character_bridge.hpp"    // 本單元內部橋接層（不透明，前置宣告 PortraitProfile；理由
-                                    //   與如何避免上游命名碰撞見該標頭說明）
 #include "subordinate_layout.hpp"  // E1-11（上游，可讀不可改）：SubordinateLayout / AnchorStatus；
                                     //   經其標頭傳遞 E1-07 anchor_model.hpp（Anchor / AnchorSpec /
                                     //   Offset / Size / ResolvedPlacement）
@@ -61,6 +59,9 @@
                                     //   E1-14 標頭）
 
 namespace ds::profiles {
+
+// C1-02 依附角色：前置宣告即足（show_balloon 僅取其 const 參考；完整定義由 .cpp 引入）。
+class PortraitProfile;
 
 // 氣球的具名生命週期狀態（NFR-02：具名，非數字）。
 enum class BalloonState {
