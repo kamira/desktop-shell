@@ -108,7 +108,7 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 |---|---|
 | `module` 層（sysinfo / elements / actuators） | **已遷移至 `modules/<subsystem>/`**（CHG-20260723-08） |
 | `artifact` 層（C1–C4） | 仍在 `content/`、`apps/`；是否遷移待決 |
-| 範例 | `examples/` 尚未建立，含 `examples/hello-module/`（`E8-06` 的受測對象） |
+| 範例 | `examples/` **已建立**（CHG-20260730-04）：`examples/cpu_gpu_validator/`（CPU/GPU Usage Widget 驗證器，組裝 C2-02 + E2-01 + E4-03…，不改 src/，root GLOB 增收 `examples/*/CMakeLists.txt`）。`examples/hello-module/`（`E8-06`）待補。 |
 
 `artifact` 層是否遷移仍待決 —— 需改動 24 個單元的 `write_scope`，屬設計決策。
 在此之前 `content/` 與 `apps/` 仍為 `artifact` 層的正式位置。
