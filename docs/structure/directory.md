@@ -78,6 +78,27 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 **「感測器不得出現在 `src/`」現在是目錄結構就看得出來的事** ——
 若某個指標提供者出現在 `src/`，那就是擴充點沒做好的訊號。
 
+## 目錄扁平化（CHG-20260730-03）
+
+全部 176 單元合併後，去除了 **per-unit 代號（slug）目錄層**：源碼直接置於**子系統**目錄下，
+不再多一層 `<slug>/`。
+
+| 扁平化前 | 扁平化後 |
+|---|---|
+| `src/kernel/e1_02/input_strategy.cpp` | `src/kernel/input_strategy.cpp` |
+| `engine/format/e7_01/value.cpp` | `engine/format/value.cpp` |
+| `modules/elements/e4_07/frame_animation.cpp` | `modules/elements/frame_animation.cpp` |
+| `content/widgets/c2_02/system_status_widget.cpp` | `content/widgets/system_status_widget.cpp` |
+| `apps/c4_03/color_picker.cpp` | `apps/color_picker.cpp` |
+
+- **CMakeLists 合併**：原每單元一個 `CMakeLists.txt`，現每**子系統**一個合併檔，逐一保留各單元的
+  `add_library(<slug>)` / `add_executable(test_<slug>)` / `add_test`（target 名沿用 slug 不變）。
+- **include 不變**：本庫慣例為裸檔名 `#include "foo.hpp"` + 每 lib `target_include_directories(PUBLIC .)`，
+  扁平化後子系統目錄即 include 目錄，解析結果不變（全庫零檔名衝突）。
+- **測試位置不變**：`tests/<module>/test_<slug>.cpp` 本就獨立於單元目錄，未搬動。
+- **保留 `src/kernel/backend/null/`**：後端家族非 slug 代號層，維持原巢狀位置。
+- 各 `docs/structure/units/<slug>.md` 內文提及的源碼路徑，一律少一層 `<slug>/`（機械對應，語意不變）。
+
 ## 目標結構（`docs/architecture.md` 指定）
 
 架構文件要求「`src/` 只放平台，模組放 `modules/`，範例放 `examples/`」，
@@ -101,9 +122,9 @@ scripts/              治理工具（plan / scope_check / backend_guard / halt_g
 
 ## 已落地單元備註（G4 同步）
 
-- `engine/package/e9_02/`（E9-02 manifest）：套件/模組 manifest 的格式定義與解析，
+- `engine/package/`（E9-02 manifest，源碼 `manifest.*`）：套件/模組 manifest 的格式定義與解析，
   含 `format_version`（版本欄位）、`requires`（所需能力）、`permissions`（所需權限）。
   平台中立純邏輯，解析失敗回帶行號的錯誤（不靜默）。測試 `tests/e9/test_e9_02.cpp`。
-- `src/events/e5_08/`（E5-08 系統事件）：作業系統層級事件（睡眠/喚醒、顯示器變更、
+- `src/events/`（E5-08 系統事件，源碼 `system_event.*`）：作業系統層級事件（睡眠/喚醒、顯示器變更、
   session 鎖定/解鎖、電源狀態變更）的訂閱介面。平台中立介面 + null 後端
   （`NullSystemEventSource`，事件由 `inject()` 手動注入），相位 1 不綁真實後端。測試 `tests/e5/test_e5_08.cpp`。
