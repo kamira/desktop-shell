@@ -14,12 +14,12 @@
 //     `backend_input_policy()` / `hit_result()` 直接透傳 E1-02 純函式，供驗證組裝正確
 //     （與 C1-05 慣例一致）。
 //
-// **已知上游命名碰撞（記錄備查，非本單元可修復）**：E1-02（`input_strategy.hpp`）於
-// `ds::kernel` 宣告 `enum class HitResult`；E1-16（`edge_hot_zone.hpp` → 內部
-// `#include "hit_test.hpp"`）於同一命名空間宣告**另一個不同型別**的 `struct HitResult`。
-// 兩者標頭若同時出現在同一翻譯單元會編譯失敗（已於本機以 g++ 實測重現）。本單元藉
-// `dock_hot_zone_bridge.hpp/.cpp`（見其標頭說明）把 E1-16 的實際串接隔離到獨立翻譯單元
-// 解決，`dock_profile.hpp` 本身安全地同時 `#include` E1-02 與該橋接層。
+// **原上游命名碰撞——已於 CHG-20260730-02 解除**：E1-02（`input_strategy.hpp`）原於
+// `ds::kernel` 宣告 `enum class HitResult`，與 E1-16（`edge_hot_zone.hpp` → 內部
+// `#include "hit_test.hpp"` → E1-04）於同一命名空間宣告的 `struct HitResult` 同名不同型別，
+// 兩標頭同時出現在同一翻譯單元會編譯失敗。CHG-20260730-02 已把 E1-02 的型別改名為
+// `InputHitResult`，碰撞根因消除。`dock_hot_zone_bridge.hpp/.cpp`（把 E1-16 串接隔離到獨立
+// 翻譯單元）因而不再是必要，僅作為本單元既有的內部間接層保留（移除屬獨立的可選清理）。
 //
 // 相位 1（Mac / null 期）約束：純資料 / 邏輯組裝，無真實 GUI、無平台分支（無 `#ifdef` /
 // win32 / cocoa）、無絕對座標 / 數字 z-order（NFR-02）。任何無效操作（重複固定、對未固定
@@ -36,7 +36,7 @@
 
 #include "dock_hot_zone_bridge.hpp"  // 本單元橋接層（不透明，安全與 E1-02 標頭共存）
 #include "dock_types.hpp"            // DockEdge / DockPoint / DockScreenExtent / ...
-#include "input_strategy.hpp"  // E1-02（上游，可讀不可改）：InputStrategy / InputPolicy / HitResult /
+#include "input_strategy.hpp"  // E1-02（上游，可讀不可改）：InputStrategy / InputPolicy / InputHitResult /
                                 // to_backend_policy / hit_result
 #include "layer_stack.hpp"  // E1-01（上游，可讀不可改）：LayerStack / SurfaceLayer / SurfaceId /
                              // LayerAssign / layer_capability
@@ -149,7 +149,7 @@ public:
 
     // --- E1-02 組裝入口（同 C1-05 慣例：純函式透傳，供驗證組裝正確）---
     ds::kernel::InputPolicy backend_input_policy() const noexcept;
-    ds::kernel::HitResult hit_result() const noexcept;
+    ds::kernel::InputHitResult hit_result() const noexcept;
     ds::kernel::InputStrategy strategy() const noexcept { return strategy_; }
 
     // --- 查詢 ---

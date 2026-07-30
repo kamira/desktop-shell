@@ -201,7 +201,7 @@ SkinStatus SkinProfile::load_skin(const ds::format::Value& definition) {
     ds::kernel::SurfaceProfile sp;
     sp.layer = layer_new;
     sp.input = ds::kernel::to_backend_policy(strategy_new);
-    sp.hit = (ds::kernel::hit_result(strategy_new) == ds::kernel::HitResult::Solid)
+    sp.hit = (ds::kernel::hit_result(strategy_new) == ds::kernel::InputHitResult::Solid)
                  ? ds::kernel::HitPolicy::Solid
                  : ds::kernel::HitPolicy::Transparent;
     sp.lifecycle = ds::kernel::SurfaceLifecycle::Persistent;  // 桌面角色常駐

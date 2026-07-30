@@ -1,6 +1,6 @@
 # content/profiles/c1_03/CMakeLists.txt — C1-03 氣球 profile
 # 根 CMakeLists 以 content/*/*/CMakeLists.txt 的 GLOB 自動收入本檔（見 docs/backlog/BUILD.md）。
-add_library(c1_03 STATIC balloon_profile.cpp character_bridge.cpp)
+add_library(c1_03 STATIC balloon_profile.cpp)
 target_include_directories(c1_03 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(c1_03 PUBLIC cxx_std_17)
 
@@ -11,12 +11,11 @@ target_compile_features(c1_03 PUBLIC cxx_std_17)
 #   - c1_02（依附對象：立繪 profile，PUBLIC 相依 e1_01 / e1_03 / e1_08 / e4_06 / e5_14 / e7_01）
 # 標頭皆直接 include 其上游標頭，故 PUBLIC 傳遞其 include 目錄。
 #
-# 既有上游命名碰撞（不可修改上游解決，見 balloon_profile.hpp / character_bridge.hpp 說明，
-# 同 content/profiles/c1_06 已記錄之相同手法）：e1_14 經 input_strategy.hpp（E1-02）宣告
-# `enum class ds::kernel::HitResult`，c1_02 經 e5_14 -> e5_01 -> hit_test.hpp（E1-04）宣告
-# 另一個不同型別的 `struct ds::kernel::HitResult`——兩者標頭不可同時出現在同一翻譯單元。
-# character_bridge.cpp 把 c1_02 的實際串接隔離到獨立翻譯單元，balloon_profile.cpp 則以 pimpl
-# 隔離 e1_14 的實際串接，故 add_library 需列出兩個 .cpp。
+# 原上游命名碰撞已於 CHG-20260730-02 解除：E1-02 的 `HitResult` 改名為 `InputHitResult` 後，
+# 不再與 E1-04（經 c1_02 → e5_14 → e5_01 → hit_test.hpp）的 `struct HitResult` 同名衝突。
+# 因此 character_bridge.cpp（原用於把 c1_02 串接隔離到獨立翻譯單元）已移除，balloon_profile.cpp
+# 直接 `#include "portrait_profile.hpp"` 讀取角色狀態。（E1-14 串接仍以 balloon_profile.cpp 內的
+# pimpl 表達，屬實作選擇，非碰撞所需。）
 target_link_libraries(c1_03 PUBLIC e1_11 e1_14 e4_11 c1_02)
 
 # 單元測試在 tests/c1/（也是本單元的 write_scope），以絕對來源路徑指向。

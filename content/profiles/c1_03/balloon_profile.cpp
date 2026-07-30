@@ -15,6 +15,11 @@
 
 #include <utility>  // std::move
 
+#include "portrait_profile.hpp"  // C1-02（上游，可讀不可改）：PortraitProfile —— 直接引入讀取
+                                 //   依附角色 is_loaded()/id()。E1-02 HitResult 改名為
+                                 //   InputHitResult 後，其 transitively 帶入的 E1-04 struct
+                                 //   HitResult 與 E1-14 的 InputHitResult 不再同名碰撞，可安全共存。
+
 #include "transient_profile.hpp"  // E1-14（上游，可讀不可改）：TransientProfileManager /
                                    //   TransientProfile / TransientId / ExpiryReason；經其標頭
                                    //   傳遞 E5-10 timeout_timer.hpp（TimeoutTimer）與 E1-02
@@ -87,10 +92,10 @@ BalloonStatus BalloonProfile::show_balloon(const PortraitProfile& character, con
         return BalloonStatus::AlreadyShowing;  // 不靜默覆寫；先 dismiss() 或等逾時
     }
 
-    std::string character_id;
-    if (!detail::character_snapshot(character, character_id)) {
+    if (!character.is_loaded()) {
         return BalloonStatus::Invalid;  // 未載入的角色無有效 surface 可依附
     }
+    std::string character_id = character.id();
     if (ttl == 0) {
         return BalloonStatus::Invalid;
     }

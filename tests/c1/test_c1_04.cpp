@@ -13,7 +13,7 @@
 
 using ds::kernel::CapabilityDecl;
 using ds::kernel::CapabilityMatrix;
-using ds::kernel::HitResult;
+using ds::kernel::InputHitResult;
 using ds::kernel::InputPolicy;
 using ds::kernel::InputStrategy;
 using ds::kernel::LayerStack;
@@ -219,14 +219,14 @@ TEST_F(OsdOverlayProfileTest, DestructorWhileShowingClosesLifecycleAndLayerEntry
 TEST_F(OsdOverlayProfileTest, InputStrategyClickThroughMapsToPassThroughAndTransparent) {
     OsdOverlayProfile osd("osd.volume", manager, layers);  // 預設 ClickThrough。
     EXPECT_EQ(osd.backend_input_policy(), InputPolicy::PassThrough);
-    EXPECT_EQ(osd.hit_result(), HitResult::Transparent);
+    EXPECT_EQ(osd.hit_result(), InputHitResult::Transparent);
 }
 
 TEST_F(OsdOverlayProfileTest, InputStrategyInteractiveMapsToAcceptingAndSolid) {
     OsdOverlayProfile osd("osd.dialog_like", manager, layers, InputStrategy::Interactive);
     EXPECT_EQ(osd.strategy(), InputStrategy::Interactive);
     EXPECT_EQ(osd.backend_input_policy(), InputPolicy::Accepting);
-    EXPECT_EQ(osd.hit_result(), HitResult::Solid);
+    EXPECT_EQ(osd.hit_result(), InputHitResult::Solid);
 }
 
 // -----------------------------------------------------------------------------

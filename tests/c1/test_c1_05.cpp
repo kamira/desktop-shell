@@ -21,7 +21,7 @@ using ds::events::NullGlobalHotkeys;
 using ds::events::TimeoutTimer;
 using ds::format::Item;
 using ds::format::Value;
-using ds::kernel::HitResult;
+using ds::kernel::InputHitResult;
 using ds::kernel::InputPolicy;
 using ds::kernel::InputStrategy;
 using ds::kernel::TransientProfileManager;
@@ -291,13 +291,13 @@ TEST_F(SummonPanelProfileTest, DestructorWhileOpenClosesLifecycleEntry) {
 TEST_F(SummonPanelProfileTest, InputStrategyCaptureMapsToModalAndSolid) {
     SummonPanelProfile panel("panel.spotlight", manager, hotkeys, InputStrategy::Capture);
     EXPECT_EQ(panel.backend_input_policy(), InputPolicy::Modal);
-    EXPECT_EQ(panel.hit_result(), HitResult::Solid);
+    EXPECT_EQ(panel.hit_result(), InputHitResult::Solid);
 }
 
 TEST_F(SummonPanelProfileTest, InputStrategyClickThroughMapsToPassThroughAndTransparent) {
     SummonPanelProfile panel("panel.hint", manager, hotkeys, InputStrategy::ClickThrough);
     EXPECT_EQ(panel.backend_input_policy(), InputPolicy::PassThrough);
-    EXPECT_EQ(panel.hit_result(), HitResult::Transparent);
+    EXPECT_EQ(panel.hit_result(), InputHitResult::Transparent);
 }
 
 // -----------------------------------------------------------------------------

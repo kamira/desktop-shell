@@ -188,7 +188,7 @@ ds::kernel::InputPolicy SummonPanelProfile::backend_input_policy() const noexcep
     return ds::kernel::to_backend_policy(strategy_);
 }
 
-ds::kernel::HitResult SummonPanelProfile::hit_result() const noexcept {
+ds::kernel::InputHitResult SummonPanelProfile::hit_result() const noexcept {
     return ds::kernel::hit_result(strategy_);
 }
 

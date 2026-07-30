@@ -109,7 +109,7 @@ ds::kernel::InputPolicy OsdOverlayProfile::backend_input_policy() const noexcept
     return ds::kernel::to_backend_policy(strategy_);
 }
 
-ds::kernel::HitResult OsdOverlayProfile::hit_result() const noexcept {
+ds::kernel::InputHitResult OsdOverlayProfile::hit_result() const noexcept {
     return ds::kernel::hit_result(strategy_);
 }
 

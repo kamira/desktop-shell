@@ -25,7 +25,7 @@ using ds::kernel::alpha_capable_matrix;
 using ds::kernel::CapabilityDecl;
 using ds::kernel::CapabilityMatrix;
 using ds::kernel::DragStatus;
-using ds::kernel::HitResult;
+using ds::kernel::InputHitResult;
 using ds::kernel::InputPolicy;
 using ds::kernel::InputStrategy;
 using ds::kernel::LayerStack;
@@ -115,7 +115,7 @@ TEST(SkinProfile, LoadSkinAppliesDeclarativeConfigAndRealizes) {
     // E1-02 輸入策略
     EXPECT_EQ(skin.input_strategy(), InputStrategy::ClickThrough);
     EXPECT_EQ(skin.backend_input_policy(), InputPolicy::PassThrough);
-    EXPECT_EQ(skin.hit_result(), HitResult::Transparent);
+    EXPECT_EQ(skin.hit_result(), InputHitResult::Transparent);
     // E1-03 透明外形
     EXPECT_EQ(skin.alpha().mode, AlphaMode::PerPixel);
     EXPECT_FLOAT_EQ(skin.alpha().opacity, 0.75f);
@@ -226,7 +226,7 @@ TEST(SkinProfile, InputStrategyMappingsAssembleE1_02) {
     EXPECT_EQ(inert.load_skin(Value::map({{"input", Value::string("inert")}})), SkinStatus::Ok);
     EXPECT_EQ(inert.input_strategy(), InputStrategy::Inert);
     EXPECT_EQ(inert.backend_input_policy(), InputPolicy::Accepting);
-    EXPECT_EQ(inert.hit_result(), HitResult::Solid);
+    EXPECT_EQ(inert.hit_result(), InputHitResult::Solid);
 }
 
 // -----------------------------------------------------------------------------

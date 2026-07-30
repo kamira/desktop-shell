@@ -40,7 +40,7 @@ enum class InputStrategy {
 };
 
 // 命中測試結果 —— 具名，非座標。
-enum class HitResult {
+enum class InputHitResult {
     Solid,        // 命中落在本 surface（實心）。
     Transparent,  // 命中穿透本 surface（視為落到其後）。
 };
@@ -56,7 +56,7 @@ enum class RouteDecision {
 // --- 純函式：四態 → 行為 / 對映（無狀態，可獨立測試）---
 
 // 該策略下的命中測試結果。
-HitResult hit_result(InputStrategy s) noexcept;
+InputHitResult hit_result(InputStrategy s) noexcept;
 
 // 該策略對「落在自己身上的事件」的單體路由決策（不考慮堆疊；堆疊解析見 Controller）。
 RouteDecision route_decision(InputStrategy s) noexcept;

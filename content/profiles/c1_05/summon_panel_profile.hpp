@@ -158,7 +158,7 @@ public:
     // E1-02 組裝入口：本面板設定策略對映的後端策略 / 命中結果（純函式透傳，供驗證組裝
     // 正確）。與面板目前是否開啟無關 —— 這是策略本身的靜態對映，非執行期狀態。
     ds::kernel::InputPolicy backend_input_policy() const noexcept;
-    ds::kernel::HitResult hit_result() const noexcept;
+    ds::kernel::InputHitResult hit_result() const noexcept;
 
     // --- 事件掛勾 ---
     void on_open(std::function<void()> cb);

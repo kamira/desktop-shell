@@ -174,7 +174,7 @@ public:
     ds::kernel::InputPolicy backend_input_policy() const noexcept {
         return ds::kernel::to_backend_policy(strategy_);
     }
-    ds::kernel::HitResult hit_result() const noexcept { return ds::kernel::hit_result(strategy_); }
+    ds::kernel::InputHitResult hit_result() const noexcept { return ds::kernel::hit_result(strategy_); }
 
     // 目前 / 期望的透明外形設定（E1-03）。load_skin 會據宣告式 `alpha` 欄位覆寫，預設
     // per-pixel、opacity 1.0。
