@@ -17,14 +17,27 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
 
-      # 從分支名 feat/<slug> 反查工作單元（改用 plan.py，避免 bash 唯讀變數 UID 在 -eo pipefail 下 exit 1）
+      # 從分支名反查工作單元。feat/<slug> = 工作單元（跑全部 unit 專屬閘）；
+      # 其餘（chore/、fix/ 等 infra/bootstrap 分支，如 root CMake、governance、全庫重構）
+      # 對不到單元，設 is_unit=false：跳過 unit 專屬閘（G1 scope / G5 ACC / G6 halt），
+      # 但仍跑 repo 級閘（G1b 後端 / G1c 階段 / G2 CHG / G3 建置 / G4 結構）——
+      # 這樣 infra 變更（尤其動到建置結構者）也能拿到真正的 G3 建置綠燈才合併。
       - id: unit
         shell: bash
         run: |
-          python scripts/plan.py unit-for-branch "$GITHUB_HEAD_REF" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_HEAD_REF" == feat/* ]]; then
+            python scripts/plan.py unit-for-branch "$GITHUB_HEAD_REF" >> "$GITHUB_OUTPUT"
+            echo "is_unit=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::非 feat/ 分支（$GITHUB_HEAD_REF）：以 infra 變更處理，跳過 unit 專屬閘、仍跑 G3 建置"
+            echo "is_unit=false" >> "$GITHUB_OUTPUT"
+            echo "id=" >> "$GITHUB_OUTPUT"
+            echo "risk=low" >> "$GITHUB_OUTPUT"
+          fi
 
-      # G1 鎖定範圍（把「不得擴權」變成機器強制）
+      # G1 鎖定範圍（把「不得擴權」變成機器強制）——僅工作單元；infra 變更本就跨範圍，不適用。
       - name: G1 scope_check
+        if: steps.unit.outputs.is_unit == 'true'
         run: python scripts/scope_check.py --unit ${{ steps.unit.outputs.id }} --base origin/${{ github.base_ref }}
 
       # G1b 相位閘門：當前相位不得出現未允許的平台後端
@@ -65,9 +78,9 @@ jobs:
           echo "$D" | grep -qE '^(src|engine|modules)/' && ! echo "$D" | grep -q '^docs/structure/' \
             && { echo "::error::改了 src/、engine/ 或 modules/ 但沒更新 docs/structure/"; exit 1; } || true
 
-      # G5 medium 以上：ACC 存在且驗收者 ≠ 實作者
+      # G5 medium 以上：ACC 存在且驗收者 ≠ 實作者（僅工作單元）
       - name: G5 ACC + identity
-        if: steps.unit.outputs.risk != 'low'
+        if: steps.unit.outputs.is_unit == 'true' && steps.unit.outputs.risk != 'low'
         shell: bash
         run: |
           S=$(echo "${GITHUB_HEAD_REF#feat/}")
@@ -78,23 +91,30 @@ jobs:
           VER=$(grep -m1 'Verifier:' "$A" | sed 's/.*: *//')
           [ "$IMP" = "$VER" ] && { echo "::error::驗收者與實作者同一人：$IMP"; exit 1; } || true
 
-      # G6 停點契約
+      # G6 停點契約（僅工作單元；infra 變更無對應單元，不跑）
       - name: G6 halt gate
         id: halt
+        if: steps.unit.outputs.is_unit == 'true'
         continue-on-error: true
         run: python scripts/plan.py gate ${{ steps.unit.outputs.id }} --gate before_merge_or_release
 
       # 用 --auto 排隊，等本 job 的 gate check 轉綠後才合併。
       # 不可用即時合併：那會在 gate check 仍 pending 時觸發，被 branch protection 擋（自我死鎖）。
-      - name: 自動合併（僅 AUTO）
-        if: steps.halt.outcome == 'success'
+      - name: 自動合併（單元 AUTO）
+        if: steps.unit.outputs.is_unit == 'true' && steps.halt.outcome == 'success'
         run: gh pr merge ${{ github.event.pull_request.number }} --auto --squash --delete-branch
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
 
       - name: 標記待人工核准（HALT）
-        if: steps.halt.outcome == 'failure'
+        if: steps.unit.outputs.is_unit == 'true' && steps.halt.outcome == 'failure'
         run: |
           gh pr edit ${{ github.event.pull_request.number }} --add-label "halt:awaiting-human"
           gh pr comment ${{ github.event.pull_request.number }} --body \
             "停點契約判定 **HALT**（risk=${{ steps.unit.outputs.risk }}）。所有 CI 閘門已綠，等待人工核准後手動合併。"
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+      # infra/bootstrap 分支：前述 repo 級閘（含 G3 建置）全綠即自動合併（無 halt 契約，屬 low 自主）。
+      - name: 自動合併（infra AUTO）
+        if: success() && steps.unit.outputs.is_unit == 'false'
+        run: gh pr merge ${{ github.event.pull_request.number }} --auto --squash --delete-branch
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
