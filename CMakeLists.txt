@@ -36,7 +36,9 @@ file(GLOB _unit_cmakes
   "${CMAKE_SOURCE_DIR}/tests/contract/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/content/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/content/*/CMakeLists.txt"
-  "${CMAKE_SOURCE_DIR}/apps/CMakeLists.txt")
+  "${CMAKE_SOURCE_DIR}/apps/CMakeLists.txt"
+  # examples/：最終交付的驗證器（組裝擴充點、不改 src/），如 examples/cpu_gpu_validator/。
+  "${CMAKE_SOURCE_DIR}/examples/*/CMakeLists.txt")
 
 foreach(_cml ${_unit_cmakes})
   get_filename_component(_dir "${_cml}" DIRECTORY)
