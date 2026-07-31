@@ -100,7 +100,33 @@ cocoa 對映範例：
 - 風險②：契約不得分叉——平台碼只能在 `src/kernel/backend/<name>/`，`tests/contract/` 維持平台中立（backend_guard token 檢查）。
 - 風險③：A 案推翻「Windows 優先」定案，屬需人工核准的方向決策。
 
-## 6. 下一步（待使用者拍板）
-1. **決策 A vs B**（相位順序；A 需核准推翻 Windows 優先）。
-2. 定案後：先做 **WS1**（翻 phase.json + CI 平台矩陣），讓對應後端「可以開始寫」。
-3. 把 WS2–WS4 的暫名單元正式編號、加進 `units.json`（正式治理化），再照 autopilot 逐波派工。
+## 6. 決策：**B 案（Windows 優先）已選定**（2026-07-31）
+
+使用者確認「本次交接的目的即為轉移到 Windows 開發」→ 走 **B 案 = 相位 2 win32**，與 PHASE-PLAN 原定案一致（非翻案）。
+相位順序維持：相位 2 = win32（Windows），相位 3 = cocoa（Mac 真桌面）。以下 WS 以 win32 為對象。
+
+### Windows 接手 checklist（day-1 順序）
+1. **取得原始碼 + 工具鏈**：clone；裝 CMake（≥3.16）+ Visual Studio 2022（MSVC）或 clang-cl。GoogleTest 由 CMake FetchContent 於首次 configure 下載（需網路）。
+2. **首次全建（最重要）**：`cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug` → `cmake --build build` → `ctest --test-dir build`。
+   - 176 單元平台中立，**預期可編**；但從未在 MSVC 實編過。若有 error/warning，**多為 MSVC 嚴格度**（非邏輯錯）：
+     補遺漏的 `#include`、`windows.h` 的 `min/max` 巨集撞 `std::min/max`（加 `NOMINMAX` 或 `#define NOMINMAX`）、
+     two-phase lookup、`and/or` 替代 token。逐一機械修正，開 CHG 記錄（infra）。
+   - `examples/cpu_gpu_validator`（CHG-20260731-01 已跨平台）走 `#ifdef _WIN32` 的 `GetSystemTimes` 路徑，應可直接編過。
+3. **CI 平台矩陣（WS1 的一半）**：現行 governance.yml G3 在 **ubuntu** 建（驗證平台中立性）。加一個 **windows runner** job 跑 MSVC 全建，
+   讓「Windows 編不編得過」進入閘門。（或先本機守，CI 之後補。）
+4. **翻相位（WS1 的另一半）**：開 CHG（Risk: medium，PHASE-PLAN §相位2 切換程序）→ `phase.json` 設 `"phase": 2`
+   （`allowed_backends` 已含 `["null","win32"]`）→ `backend_guard` 自動放行 `src/kernel/backend/win32/`。
+5. **開始 WS2**：win32 後端單元（HWND / SetWindowPos HWND_TOPMOST / WS_EX_TRANSPARENT 穿透 / Shell_NotifyIcon 托盤…），
+   跑**同一套** E1-25 契約測試（不改一行）。
+6. WS2 完成後 → WS3 host shell → WS4 skin 格式。把暫名單元正式編號進 `units.json`，照 autopilot 逐波派工。
+
+### win32 API 對映（WS2 速查）
+| 契約 / 需求 | win32 |
+|---|---|
+| create_surface / show / hide | `CreateWindowEx` / `ShowWindow` |
+| SurfaceLayer::Topmost（E1-01） | `SetWindowPos(..., HWND_TOPMOST, ...)` |
+| InputPolicy::PassThrough 穿透（E1-02） | `WS_EX_TRANSPARENT | WS_EX_LAYERED` |
+| 拖曳（E1-08） | `WM_NCHITTEST` 回 `HTCAPTION` / `SetWindowPos` |
+| 系統匣（E11-01） | `Shell_NotifyIcon` + `WM_CONTEXTMENU` |
+| poll_input | `PeekMessage` / `GetMessage` 迴圈 |
+| 繪製（E4） | GDI+ / Direct2D |
