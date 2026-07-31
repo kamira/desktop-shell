@@ -14,9 +14,10 @@
 //   指標介面） · E4-03 BarGauge（量表 render_model，取 fill_ratio） · E4-01 TextLayout · E7-01
 //   Value（宣告式設定） · C1-01 SkinProfile（桌面基底）。
 //
-// 指標來源（驗證器層自行取得，非 src/）：CPU 讀**真實**主機負載（getloadavg / hw.ncpu），
-// GPU 與 RAM 以動態 sweep 模擬（相位 1 無 sudo-free 的 GPU/精確記憶體 API）——重點在證明 widget
-// 對「任意指標」皆能組裝呈現，不寫死任何具體感測器。
+// 指標來源（驗證器層自行取得，非 src/）：CPU 讀**真實**主機負載（**跨平台**：Windows 用
+// GetSystemTimes，Mac/Linux 用 getloadavg），GPU 與 RAM 以動態 sweep 模擬——重點在證明 widget
+// 對「任意指標」皆能組裝呈現，不寫死任何具體感測器。此為 example（非治理 src/ 單元），故容許
+// `#ifdef _WIN32` 平台分支；176 個核心單元維持平台中立、無平台分支。
 
 #include <cmath>
 #include <cstddef>
@@ -25,8 +26,12 @@
 #include <string>
 #include <vector>
 
-#include <cstdlib>     // getloadavg（POSIX，Mac / Linux 皆有）
+#if defined(_WIN32)
+#include <windows.h>   // GetSystemTimes（Windows CPU 取樣，MSVC）
+#else
+#include <cstdlib>     // getloadavg（POSIX，Mac / Linux）
 #include <unistd.h>    // sysconf(_SC_NPROCESSORS_ONLN)（可攜取核心數）
+#endif
 
 #include "document.hpp"              // E7-01：ds::format::Value（map / list / string / number）
 #include "metric.hpp"                 // E2-01
@@ -46,7 +51,30 @@ using ds::widgets::SystemStatusWidget;
 
 namespace {
 
-// 讀真實主機 CPU 負載 → 粗略百分比（1 分鐘負載 / 核心數，夾限 0..100）。
+// 讀真實主機 CPU 負載 → 百分比（夾限 0..100）。跨平台：Windows 用 GetSystemTimes，
+// 其餘（Mac / Linux）用 POSIX getloadavg。這是驗證器層自行取得指標的示範，非 src/ 平台碼。
+#if defined(_WIN32)
+// Windows：GetSystemTimes 兩次取樣差分算瞬時 CPU%（kernel 時間已含 idle）。
+// 首次呼叫無前值 → 回 0；之後每幀差分得真實使用率。
+double real_cpu_percent() {
+    static ULONGLONG prev_idle = 0, prev_kernel = 0, prev_user = 0;
+    FILETIME idle_ft, kernel_ft, user_ft;
+    if (!GetSystemTimes(&idle_ft, &kernel_ft, &user_ft)) return 0.0;
+    auto to_u64 = [](const FILETIME& f) {
+        return (static_cast<ULONGLONG>(f.dwHighDateTime) << 32) | f.dwLowDateTime;
+    };
+    ULONGLONG idle = to_u64(idle_ft), kernel = to_u64(kernel_ft), user = to_u64(user_ft);
+    ULONGLONG d_idle = idle - prev_idle, d_kernel = kernel - prev_kernel, d_user = user - prev_user;
+    prev_idle = idle; prev_kernel = kernel; prev_user = user;
+    ULONGLONG total = d_kernel + d_user;  // kernel 已含 idle → total 為總 CPU 時間
+    if (total == 0) return 0.0;
+    double busy = static_cast<double>(total - d_idle) / static_cast<double>(total) * 100.0;
+    if (busy < 0) busy = 0;
+    if (busy > 100) busy = 100;
+    return busy;
+}
+#else
+// POSIX（Mac / Linux）：1 分鐘負載平均 / 核心數。
 double real_cpu_percent() {
     double load[3] = {0, 0, 0};
     if (getloadavg(load, 3) < 1) return 0.0;
@@ -57,6 +85,7 @@ double real_cpu_percent() {
     if (pct > 100) pct = 100;
     return pct;
 }
+#endif
 
 // 把一個 [0,1] 的 fill_ratio 畫成寬 w 的 ASCII 長條。
 std::string bar(double ratio, int w) {

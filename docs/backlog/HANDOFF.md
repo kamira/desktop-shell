@@ -16,7 +16,9 @@
 
 **本機環境**：已裝 cmake 4.4.1（`brew install cmake`）。全驗證 = `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j2 && ctest --test-dir build`（約 18 分）。
 
-**下一個大工作（待使用者決策）**：把擴充點變成 **Rainmeter 式桌面 runtime**（托盤選單、最上層切換、浮動⇄固定、點擊穿透、widget skin 設定檔）。完整 backlog + A/B 相位決策見 **`docs/backlog/phase2-desktop-runtime.md`**。核心結論：功能全是現成單元的組裝，**引擎不需新 repo**；缺的是相位 N 的 cocoa 真實後端 + host shell app（同 repo）；只有 skin 內容包適合獨立 repo。**卡點**：cocoa 只能在 macOS 建，現行 ubuntu CI 的 G3 需先加 platform runner / 條件編譯。**決策**：cocoa 是否提前（原路線排在相位 3，Windows 優先）屬需人工核准的方向調整。
+**下一個大工作 = 轉移到 Windows 開發（2026-07-31 使用者確認，已選 B 案）**：把擴充點變成 **Rainmeter 式桌面 runtime**（托盤選單、最上層切換、浮動⇄固定、點擊穿透、widget skin 設定檔）。完整 backlog + **Windows 接手 checklist** 見 **`docs/backlog/phase2-desktop-runtime.md`**（B 案 = 相位 2 win32，與 PHASE-PLAN 原定案一致）。核心結論：功能全是現成單元的組裝（E11-01 托盤 / E1-01 最上層 / E1-08 拖曳 / E1-02 穿透 / E9+E7 設定檔），**引擎不需新 repo**；缺的是 win32 真實後端 + host shell app（同 repo）；只有 skin 內容包適合獨立 repo。
+
+**Windows 接手前置（CHG-20260731-01 已處理）**：全庫平台相依審計 → **176 核心單元全平台中立、MSVC 應可編**；唯一 POSIX 相依 `examples/cpu_gpu_validator`（getloadavg）**已改跨平台**（`#ifdef _WIN32` 走 GetSystemTimes）。**MSVC caveat**：176 單元從未在 MSVC 實編（以 clang/g++ 寫），Windows **day-1 先跑完整 MSVC 全建**，把 MSVC 嚴格度問題（缺 include、`NOMINMAX`、two-phase lookup）一次機械修掉，再開始 win32 後端。CI 現為 ubuntu（守平台中立性），需加 windows runner 才守得住 MSVC 編譯。相位翻轉（`phase.json` → `"phase":2`）為 Windows day-1 的治理動作，見 phase2 checklist。
 
 ---
 
