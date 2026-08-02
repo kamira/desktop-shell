@@ -9,6 +9,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# 本庫原始碼一律 UTF-8（無 BOM）且註解與字串含中文。GCC / Clang 預設即以 UTF-8 解讀，
+# 但 MSVC 預設用「非 Unicode 程式的系統地區設定」那個 ANSI codepage（例如 CP950 / CP932）
+# 去讀原始碼——中文位元組會被當成雙位元組前導碼吃掉結尾引號，報 C2001「常數中包含新行字元」。
+# /utf-8 同時把來源字集與執行字集設為 UTF-8，是此問題的標準解。
+if(MSVC)
+  add_compile_options(/utf-8)
+endif()
+
 enable_testing()
 
 # GoogleTest（CI 有網路；本地首次建置會下載）
