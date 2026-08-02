@@ -6,8 +6,12 @@ if(WIN32)
   add_executable(desktop_shell_host WIN32 host_main.cpp)
   target_link_libraries(desktop_shell_host PRIVATE
       w1_01          # W1-01 win32 kernel 後端
+      w1_02          # W1-02 win32 系統匣後端
+      h1_02_controls # H1-02 選單與命令裝配（與 test_h1_02 共用同一份）
       h1_01_paint    # H1-01 GDI 繪製橋接
       c2_02          # C2-02 系統狀態 widget
-      e2_01)         # E2-01 指標介面
+      e2_01          # E2-01 指標介面
+      e11_01         # E11-01 SystemTray / TrayMenu
+      e6_01)         # E6-01 命令匯流排
   target_compile_features(desktop_shell_host PRIVATE cxx_std_17)
 endif()

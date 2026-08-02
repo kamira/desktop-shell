@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 178,
+  "units": 180,
   "by_priority": {
-   "P0": 59,
+   "P0": 61,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
-   "medium": 17,
-   "low": 161
+   "medium": 18,
+   "low": 162
   },
-  "waves": 10,
+  "waves": 11,
   "by_platform": {
-   "semantic-divergence": 30,
+   "semantic-divergence": 31,
    "neutral": 113,
-   "api-divergence": 35
+   "api-divergence": 36
   },
   "backend_followup": 63,
   "by_layer": {
-   "artifact": 25,
+   "artifact": 26,
    "engine": 64,
    "module": 58,
-   "platform": 31
+   "platform": 32
   },
   "by_stage": {
    "A": 117,
-   "B": 26,
+   "B": 28,
    "C": 12,
    "D": 23
   },
@@ -5309,6 +5309,66 @@
    ],
    "branch": "feat/h1_01",
    "acceptance": "建 Topmost surface → 組裝 C2-02 widget → 餵真實 CPU 指標 → 每幀把 render_model 以 GDI 繪出。繪製橋接刻意置於 host 而非後端：它吃 E4 的 render_model（engine/module 層型別），放進 platform 層會造成反向依賴；且繪製必然涉及座標，放進 kernel 契約直接違反 NFR-02。驗收為**操作驗收**：widget 實際浮在 Windows 桌面最上層並顯示變動的 CPU 數值（截圖存證）。",
+   "platform": "api-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "W1-02",
+   "title": "win32 系統匣後端 + 原生右鍵選單",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "platform",
+   "stage": "B",
+   "module": "W1",
+   "primitives": [
+    "K1",
+    "K3"
+   ],
+   "depends_on": [
+    "E11-01",
+    "E11-02",
+    "W1-01"
+   ],
+   "wave": 10,
+   "load_bearing": 1,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "src/host/win32/**",
+    "tests/e11/test_tray_win32*",
+    "docs/changes/CHG-*-w1_02.md"
+   ],
+   "branch": "feat/w1_02",
+   "acceptance": "實作 ds::host::TrayBackend；Shell_NotifyIcon 建立真實匣圖示、TrackPopupMenu 顯示原生選單、TrayMenu 模型（含 Checkbox 勾選狀態與 Submenu）逐項映射為 HMENU。使用者選取的項目以**索引路徑**回報，交由 E11-01 SystemTray::click 分派 E6-01 命令——選單邏輯與命令分派完全不重寫。tests/e11 自有 gtest 全綠（僅 Windows 建置）。",
+   "platform": "semantic-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "H1-02",
+   "title": "host 托盤裝配 + widget 控制命令",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "artifact",
+   "stage": "B",
+   "module": "H1",
+   "primitives": [],
+   "depends_on": [
+    "W1-02",
+    "H1-01"
+   ],
+   "wave": 10,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/**",
+    "tests/h1/test_h1_02*",
+    "docs/changes/CHG-*-h1_02.md"
+   ],
+   "branch": "feat/h1_02",
+   "acceptance": "以 E11-01 TrayMenu 組出選單（最上層切換 / 點擊穿透切換 / 結束），每項綁一個 E6-01 命令；命令處理器呼叫 W1-01 後端既有方法（apply_layer / set_input_policy）。驗收為**操作驗收**：托盤圖示出現、右鍵開得出原生選單、三個項目實際生效（截圖 + 狀態查驗）。",
    "platform": "api-divergence",
    "phase": 2,
    "backend_followup": false

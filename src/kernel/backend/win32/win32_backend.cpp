@@ -256,6 +256,14 @@ HWND Win32KernelBackend::hwnd_for(const SurfaceId& id) const {
     return rec ? rec->hwnd : nullptr;
 }
 
+bool Win32KernelBackend::set_surface_layer(const SurfaceId& id, SurfaceLayer layer) {
+    SurfaceRecord* rec = find(id);
+    if (!rec || !rec->hwnd) return false;
+    rec->profile.layer = layer;  // profile 要跟著更新，否則 surface_profile() 會說謊
+    apply_layer(rec->hwnd, layer);
+    return true;
+}
+
 Win32KernelBackend::SurfaceRecord* Win32KernelBackend::find(const SurfaceId& id) {
     for (auto& kv : surfaces_) {
         if (kv.first == id) return &kv.second;

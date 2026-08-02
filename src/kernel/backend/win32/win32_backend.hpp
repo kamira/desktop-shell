@@ -90,6 +90,17 @@ public:
     // --- win32 專屬擴充（非契約的一部分，僅供 win32 host 使用）---
     // 取得具名 surface 的原生視窗控制碼；未知 id 回 nullptr。
     HWND hwnd_for(const SurfaceId& id) const;
+
+    // 事後更改具名 surface 的圖層（如托盤選單的「最上層」切換）。未知 id 回 false。
+    //
+    // 為什麼是擴充而不是契約方法：`KernelBackend` 只能在 `create_surface` 時指定
+    // `SurfaceProfile.layer`，**沒有事後改圖層的方法**——這是上游契約 E1-24 的缺口，
+    // 於 W1-02 托盤選單接線時才浮現（CHG-20260803-06）。上游可讀不可改，故先以
+    // win32 專屬的非虛擬方法補上；補進契約應另開 CHG（會連帶影響 null 後端與所有呼叫端）。
+    //
+    // 放這裡而不是讓 host 直接呼叫 SetWindowPos，是因為「具名圖層 → win32 z-order」
+    // 的對映屬於後端職責；散到 host 去就變成兩處各自維護同一張對照表。
+    bool set_surface_layer(const SurfaceId& id, SurfaceLayer layer);
     // 抽送一輪視窗訊息並回報是否收到結束請求（WM_CLOSE / WM_QUIT）。
     // poll_input() 內部也會抽訊息；host 若只想推進訊息迴圈而不取事件可用本方法。
     bool pump();
