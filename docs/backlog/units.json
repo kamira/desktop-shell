@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 176,
+  "units": 178,
   "by_priority": {
-   "P0": 57,
+   "P0": 59,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
-   "medium": 16,
-   "low": 160
+   "medium": 17,
+   "low": 161
   },
-  "waves": 9,
+  "waves": 10,
   "by_platform": {
-   "semantic-divergence": 29,
+   "semantic-divergence": 30,
    "neutral": 113,
-   "api-divergence": 34
+   "api-divergence": 35
   },
   "backend_followup": 63,
   "by_layer": {
-   "artifact": 24,
+   "artifact": 25,
    "engine": 64,
    "module": 58,
-   "platform": 30
+   "platform": 31
   },
   "by_stage": {
    "A": 117,
-   "B": 24,
+   "B": 26,
    "C": 12,
    "D": 23
   },
@@ -5249,6 +5249,68 @@
    "acceptance": "相位 1 時偵測到 backend/win32 或 backend/cocoa 目錄即 exit 1",
    "platform": "neutral",
    "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "W1-01",
+   "title": "win32 kernel 後端（視窗 / 具名圖層 / 輸入策略）",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "platform",
+   "stage": "B",
+   "module": "W1",
+   "primitives": [
+    "K1",
+    "K2",
+    "K3"
+   ],
+   "depends_on": [
+    "E1-21",
+    "E1-24"
+   ],
+   "wave": 9,
+   "load_bearing": 1,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "src/kernel/backend/win32/**",
+    "tests/e1/test_backend_win32*",
+    "docs/changes/CHG-*-w1_01.md"
+   ],
+   "branch": "feat/w1_01",
+   "acceptance": "實作 ds::kernel::KernelBackend 全部方法；SurfaceLayer::Topmost→HWND_TOPMOST、InputPolicy::PassThrough→WS_EX_TRANSPARENT|WS_EX_LAYERED；tests/e1 自有 gtest 全綠（僅 Windows 建置，ubuntu 由 CMake if(WIN32) 排除）。**不宣稱通過 E1-25 契約測試**——該套件測的是另一個介面，見 CHG-20260803-03 §契約缺口。",
+   "platform": "semantic-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "H1-01",
+   "title": "host shell app（GDI 繪製橋接 + 主迴圈 + 浮動 CPU widget）",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "artifact",
+   "stage": "B",
+   "module": "H1",
+   "primitives": [],
+   "depends_on": [
+    "W1-01",
+    "C2-02",
+    "E2-01",
+    "E4-03"
+   ],
+   "wave": 9,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/**",
+    "tests/h1/test_h1_01*",
+    "docs/changes/CHG-*-h1_01.md"
+   ],
+   "branch": "feat/h1_01",
+   "acceptance": "建 Topmost surface → 組裝 C2-02 widget → 餵真實 CPU 指標 → 每幀把 render_model 以 GDI 繪出。繪製橋接刻意置於 host 而非後端：它吃 E4 的 render_model（engine/module 層型別），放進 platform 層會造成反向依賴；且繪製必然涉及座標，放進 kernel 契約直接違反 NFR-02。驗收為**操作驗收**：widget 實際浮在 Windows 桌面最上層並顯示變動的 CPU 數值（截圖存證）。",
+   "platform": "api-divergence",
+   "phase": 2,
    "backend_followup": false
   }
  ],
