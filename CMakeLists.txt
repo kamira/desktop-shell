@@ -45,6 +45,9 @@ file(GLOB _unit_cmakes
   "${CMAKE_SOURCE_DIR}/content/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/content/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/apps/CMakeLists.txt"
+  # host/：相位 2 起的 host shell（把擴充點組裝成真的跑起來的桌面 runtime）。
+  # 各子目錄自帶 if(WIN32) 守衛，非 Windows 上收得到檔但不產生任何目標。
+  "${CMAKE_SOURCE_DIR}/host/*/CMakeLists.txt"
   # examples/：最終交付的驗證器（組裝擴充點、不改 src/），如 examples/cpu_gpu_validator/。
   "${CMAKE_SOURCE_DIR}/examples/*/CMakeLists.txt")
 
