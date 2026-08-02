@@ -19,11 +19,13 @@
 // 對「任意指標」皆能組裝呈現，不寫死任何具體感測器。此為 example（非治理 src/ 單元），故容許
 // `#ifdef _WIN32` 平台分支；176 個核心單元維持平台中立、無平台分支。
 
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #if defined(_WIN32)
@@ -53,31 +55,45 @@ namespace {
 
 // 讀真實主機 CPU 負載 → 百分比（夾限 0..100）。跨平台：Windows 用 GetSystemTimes，
 // 其餘（Mac / Linux）用 POSIX getloadavg。這是驗證器層自行取得指標的示範，非 src/ 平台碼。
+//
+// **回傳負值 = 這次取樣無效**（尚無基準點、或兩次取樣之間時鐘未前進）。
+// 不可以拿 0.0 當「無效」的代表值——0.0 是合法的 CPU%，混用會讓「量表死掉」看起來像「CPU 很閒」，
+// 呼叫端與驗收條件都分辨不出來（CHG-20260803-02 踩過）。
 #if defined(_WIN32)
-// Windows：GetSystemTimes 兩次取樣差分算瞬時 CPU%（kernel 時間已含 idle）。
-// 首次呼叫無前值 → 回 0；之後每幀差分得真實使用率。
+// Windows：GetSystemTimes 回傳的是**累計**時間，必須兩次取樣之間真的經過時間才有意義
+// （系統時鐘約 15.6ms 跳一次）。kernel 時間已含 idle。
 double real_cpu_percent() {
+    static bool primed = false;
     static ULONGLONG prev_idle = 0, prev_kernel = 0, prev_user = 0;
     FILETIME idle_ft, kernel_ft, user_ft;
-    if (!GetSystemTimes(&idle_ft, &kernel_ft, &user_ft)) return 0.0;
+    if (!GetSystemTimes(&idle_ft, &kernel_ft, &user_ft)) return -1.0;
     auto to_u64 = [](const FILETIME& f) {
         return (static_cast<ULONGLONG>(f.dwHighDateTime) << 32) | f.dwLowDateTime;
     };
     ULONGLONG idle = to_u64(idle_ft), kernel = to_u64(kernel_ft), user = to_u64(user_ft);
+
+    // 首次呼叫只建立基準點。**不可以拿 prev_* 的初值 0 去差分**——那算出來的是
+    // 「開機至今的平均 CPU」而非瞬時值，看起來像個合理數字，其實完全不是要量的東西。
+    if (!primed) {
+        prev_idle = idle; prev_kernel = kernel; prev_user = user;
+        primed = true;
+        return -1.0;
+    }
+
     ULONGLONG d_idle = idle - prev_idle, d_kernel = kernel - prev_kernel, d_user = user - prev_user;
     prev_idle = idle; prev_kernel = kernel; prev_user = user;
     ULONGLONG total = d_kernel + d_user;  // kernel 已含 idle → total 為總 CPU 時間
-    if (total == 0) return 0.0;
+    if (total == 0) return -1.0;          // 時鐘未前進 → 無效取樣（不是 0%）
     double busy = static_cast<double>(total - d_idle) / static_cast<double>(total) * 100.0;
     if (busy < 0) busy = 0;
     if (busy > 100) busy = 100;
     return busy;
 }
 #else
-// POSIX（Mac / Linux）：1 分鐘負載平均 / 核心數。
+// POSIX（Mac / Linux）：1 分鐘負載平均 / 核心數。無狀態——不需基準點、不依賴取樣間隔。
 double real_cpu_percent() {
     double load[3] = {0, 0, 0};
-    if (getloadavg(load, 3) < 1) return 0.0;
+    if (getloadavg(load, 3) < 1) return -1.0;
     long ncpu = sysconf(_SC_NPROCESSORS_ONLN);
     if (ncpu < 1) ncpu = 1;
     double pct = (load[0] / static_cast<double>(ncpu)) * 100.0;
@@ -152,9 +168,26 @@ int main() {
     // --- 4) live 迴圈：每幀更新指標 → widget.refresh()/render() → 把 render_model 畫成螢幕 ---
     const int kFrames = 12;
     const int kBarW = 24;
+    // 取樣間隔：Windows 的 GetSystemTimes 是差分式的，兩次取樣之間必須真的經過時間，
+    // 否則系統時鐘（約 15.6ms 一跳）根本沒前進，差分恆為 0。250ms 遠大於一個時鐘刻度。
+    // `std::this_thread::sleep_for` 是標準 C++，不引入平台分支；Mac/Linux 的 getloadavg
+    // 不依賴間隔，行為不受影響（只是迴圈變成真的「live 更新」而非瞬間跑完）。
+    const auto kSampleInterval = std::chrono::milliseconds(250);
+
+    // 先取樣一次把基準點填好再進迴圈，否則第一幀必定是無效取樣。回傳值必為負，丟棄。
+    (void)real_cpu_percent();
+
+    int invalid_cpu_samples = 0;
     for (int frame = 0; frame < kFrames; ++frame) {
+        std::this_thread::sleep_for(kSampleInterval);
+
         double t = frame * 0.55;
-        cpu.push(real_cpu_percent());                                 // 真實主機 CPU 負載
+        double cpu_pct = real_cpu_percent();  // 真實主機 CPU 負載；負值 = 取樣無效
+        if (cpu_pct < 0.0) {
+            ++invalid_cpu_samples;
+            cpu_pct = 0.0;  // 仍推 0 讓畫面畫得出來，但已計入無效樣本，驗收會擋
+        }
+        cpu.push(cpu_pct);
         gpu.push(45.0 + 35.0 * std::sin(t) + 8.0 * std::sin(t * 3));  // 模擬 GPU sweep
         ram.push(55.0 + 20.0 * std::sin(t * 0.4 + 1.0));              // 模擬 RAM
 
@@ -181,16 +214,28 @@ int main() {
         std::fflush(stdout);
     }
 
-    // --- 5) 驗收判定：最後一幀三指標皆 available 且 fill_ratio 落在 [0,1] ---
+    // --- 5) 驗收判定 ---
+    // 條件 ①（組裝面）：最後一幀三指標皆 available 且 fill_ratio 落在 [0,1]。
     const auto& model = widget.render_model();
     int ok = 0;
     for (const auto& e : model.entries) {
         if (e.available && e.element.fill_ratio >= 0.0 && e.element.fill_ratio <= 1.0) ++ok;
     }
-    std::printf("\n  驗收：%d/%zu 指標成功組裝呈現（fill_ratio ∈ [0,1]、display_text 已格式化）。\n",
+    const bool assembled_ok = ok == static_cast<int>(model.entries.size());
+
+    // 條件 ②（資料面）：CPU 每一幀都必須取到**有效**樣本。
+    // 為什麼需要這條：條件 ① 只看 fill_ratio 是否落在 [0,1]，而 0.0 完美滿足它——
+    // 一旦 CPU 取樣壞掉、量表整輪停在 0.0%，舊版驗收照樣印 ✓ PASS。這是會放行假綠燈的驗收條件，
+    // 比讀不到值本身更危險。這條專門擋它（CHG-20260803-02）。
+    const bool sampling_ok = invalid_cpu_samples == 0;
+
+    std::printf("\n  驗收①組裝：%d/%zu 指標成功組裝呈現（fill_ratio ∈ [0,1]、display_text 已格式化）。\n",
                 ok, model.entries.size());
+    std::printf("  驗收②取樣：CPU 有效樣本 %d/%d 幀%s\n",
+                kFrames - invalid_cpu_samples, kFrames,
+                sampling_ok ? "。" : "——**量表停在 0.0% 不是 CPU 很閒，是取樣失效**。");
     std::printf("  結論：C2-02 widget 純從擴充點組裝、以 E2-01 注入式指標驅動、產出 E4-03 量表\n"
                 "        render_model 並實際渲染為可檢視畫面——CPU 為真實主機負載。%s\n",
-                ok == static_cast<int>(model.entries.size()) ? "✓ PASS" : "✗ FAIL");
-    return ok == static_cast<int>(model.entries.size()) ? 0 : 1;
+                (assembled_ok && sampling_ok) ? "✓ PASS" : "✗ FAIL");
+    return (assembled_ok && sampling_ok) ? 0 : 1;
 }
