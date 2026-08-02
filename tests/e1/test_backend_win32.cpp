@@ -217,6 +217,26 @@ TEST(Win32Backend, ShutdownDestroysAllWindows) {
     EXPECT_FALSE(::IsWindow(c));
 }
 
+// 事後改圖層（托盤「最上層」切換的底層），且 surface_profile() 要跟著更新——
+// 否則後端記的 profile 與 Windows 的真實狀態會分歧，之後誰也說不準哪個才對。
+TEST(Win32Backend, SetSurfaceLayerTogglesTopmostBothWays) {
+    Win32KernelBackend b;
+    ASSERT_TRUE(b.init());
+    ASSERT_TRUE(b.create_surface("surface.panel", topmost_panel()));
+    HWND hwnd = b.hwnd_for("surface.panel");
+    ASSERT_TRUE(has_ex_style(hwnd, WS_EX_TOPMOST));
+
+    ASSERT_TRUE(b.set_surface_layer("surface.panel", SurfaceLayer::Normal));
+    EXPECT_FALSE(has_ex_style(hwnd, WS_EX_TOPMOST));
+    EXPECT_EQ(b.surface_profile("surface.panel")->layer, SurfaceLayer::Normal);
+
+    ASSERT_TRUE(b.set_surface_layer("surface.panel", SurfaceLayer::Topmost));
+    EXPECT_TRUE(has_ex_style(hwnd, WS_EX_TOPMOST));
+    EXPECT_EQ(b.surface_profile("surface.panel")->layer, SurfaceLayer::Topmost);
+
+    EXPECT_FALSE(b.set_surface_layer("surface.nope", SurfaceLayer::Topmost));
+}
+
 // surface_profile 回報的是建立時的具名 profile。
 TEST(Win32Backend, SurfaceProfileRoundTrips) {
     Win32KernelBackend b;

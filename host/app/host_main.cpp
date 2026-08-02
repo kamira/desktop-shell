@@ -25,14 +25,24 @@
 #include <memory>
 #include <string>
 
+#include "command_bus.hpp"           // E6-01：CommandBus / CommandArgs / CommandResult
 #include "document.hpp"              // E7-01：ds::format::Value
 #include "metric.hpp"                // E2-01
 #include "system_status_widget.hpp"  // C2-02
+#include "tray.hpp"                  // E11-01：SystemTray / TrayMenu / TrayMenuItem
+#include "tray_win32.hpp"            // W1-02：Win32TrayBackend
+#include "widget_controls.hpp"       // H1-02：選單與命令的共用裝配
 #include "widget_painter.hpp"        // H1-01 繪製橋接
 #include "win32_backend.hpp"         // W1-01
 
+using ds::command::CommandBus;
 using ds::format::Value;
+using ds::host::build_widget_tray_menu;
 using ds::host::paint_widget;
+using ds::host::register_widget_controls;
+using ds::host::SystemTray;
+using ds::host::WidgetControlState;
+using ds::host::Win32TrayBackend;
 using ds::kernel::CapabilityMatrix;
 using ds::kernel::HitPolicy;
 using ds::kernel::InputPolicy;
@@ -165,12 +175,43 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                 CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
 
+    // --- 3.5) 系統匣：選單每一項都只是「發一個 E6-01 命令」---
+    //
+    // 這裡沒有任何選單邏輯：勾選切換、分隔線/停用項的處理、命令分派全部由 E11-01
+    // `SystemTray::click(path)` 負責；W1-02 後端只回報「使用者選了哪一項」的索引路徑。
+    // host 要做的只有兩件事：把選單組出來、把命令處理器接上後端。
+    // 選單與命令處理器來自 H1-02 的共用裝配（`host/tray/`），不在此就地寫一份——
+    // 同一份邏輯有兩份的話，被測到的那份與實際跑的那份就會慢慢分岔。
+    WidgetControlState controls;
+    CommandBus bus;
+    register_widget_controls(bus, backend, surface_id, controls);
+
+    auto tray_backend = std::make_unique<Win32TrayBackend>();
+    Win32TrayBackend* tray_raw = tray_backend.get();  // 供 poll_selection（win32 專屬擴充）
+    SystemTray tray{std::move(tray_backend), &bus};
+
+    tray.set_menu(build_widget_tray_menu(controls));
+    tray.set_icon("icon.desktop_shell");
+    tray.set_tooltip("desktop-shell — 系統狀態");
+    tray.show();
+
     const int limit = seconds_limit_from_command_line();
     const int max_frames = limit > 0 ? limit * 1000 / kFrameIntervalMs : 0;
 
     // --- 4) 主迴圈：抽訊息 → 更新指標 → refresh/render → 把 render_model 畫上去 ---
     for (int frame = 0; max_frames == 0 || frame < max_frames; ++frame) {
         if (!backend.pump()) break;              // 收到結束請求
+        if (controls.quit) break;                // 托盤選單的「結束」
+
+        // 使用者在托盤選單選了東西 → 交給 E11-01 解釋語意並分派命令。
+        // host 完全不知道那一項是什麼意思，只負責轉交——語意留在選單模型裡。
+        std::vector<std::size_t> chosen;
+        if (tray_raw->poll_selection(chosen)) {
+            tray.click(chosen);
+            tray.sync_menu();  // Checkbox 勾選狀態已由 click() 更新，重推後端讓選單反映
+            if (controls.quit) break;
+        }
+
         ::Sleep(kFrameIntervalMs);               // 取樣間隔，見 real_cpu_percent
 
         const double cpu_pct = real_cpu_percent();
@@ -206,6 +247,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         backend.end_frame(surface_id);
     }
 
+    tray.hide();  // 移除匣圖示，否則行程結束後會留一個死圖示直到滑鼠掃過
     ::DeleteObject(hfont);
     backend.shutdown();
     return 0;

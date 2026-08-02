@@ -37,6 +37,8 @@ FetchContent_MakeAvailable(googletest)
 #   - tests/contract/（跨後端契約測試組 E1-25，非子系統，保留原收法）。
 file(GLOB _unit_cmakes
   "${CMAKE_SOURCE_DIR}/src/*/CMakeLists.txt"
+  # 深度 2：相位 2 起的平台專屬子目錄，如 src/host/win32/（W1-02 系統匣後端）。
+  "${CMAKE_SOURCE_DIR}/src/*/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/src/*/*/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/engine/*/CMakeLists.txt"
   "${CMAKE_SOURCE_DIR}/modules/*/CMakeLists.txt"
