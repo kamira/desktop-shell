@@ -1,7 +1,8 @@
 {
- "phase": 1,
+ "phase": 2,
  "allowed_backends": [
-  "null"
+  "null",
+  "win32"
  ],
  "phases": {
   "1": {

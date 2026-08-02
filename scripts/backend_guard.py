@@ -16,7 +16,43 @@ guard 依 phase.json 的當前相位取該相位的白名單強制之。
 import json, os, sys, glob
 
 # 契約測試禁止出現的平台分支 token（分平台就不再是契約，是兩套測試）。
+# 此組用於 Python 契約檔（既有行為，全文比對）。
 PLATFORM_TOKENS = ("sys.platform", "platform.system", "win32", "darwin", "Cocoa", "ctypes.windll")
+
+# C/C++ 契約檔的平台分支偵測（CHG-20260803-03 補上）。
+#
+# 為什麼不能沿用上面那組全文比對：契約測試的中文註解**本來就會寫**「不得出現 win32 / cocoa」，
+# 全文比對會把這些自我約束的說明判成違規，反而逼人把註解刪掉。
+# 因此 C/C++ 只檢查**前處理器指令行**（第一個非空白字元為 `#` 的行）——真正的平台分支
+# 一定寫在 `#if` / `#ifdef` / `#include` 上，而註解行永遠不以 `#` 開頭，天然不會誤判。
+CPP_PLATFORM_MACROS = ("_WIN32", "_WIN64", "__APPLE__", "__linux__", "__unix__",
+                       "__MACH__", "_MSC_VER", "__MINGW32__")
+CPP_PLATFORM_HEADERS = ("windows.h", "cocoa/", "appkit/", "unistd.h", "sys/", "x11/")
+CPP_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
+
+
+def cpp_platform_violation(src):
+    """在 C/C++ 原始碼中找平台分支。回傳 (行號, 說明) 或 None。
+
+    只看前處理器指令行，避開註解誤判（見 CPP_PLATFORM_MACROS 的說明）。
+    """
+    for lineno, line in enumerate(src.splitlines(), 1):
+        stripped = line.lstrip()
+        if not stripped.startswith("#"):
+            continue
+        directive = stripped[1:].lstrip()
+        if directive.startswith("include"):
+            lowered = directive.lower()
+            for hdr in CPP_PLATFORM_HEADERS:
+                if hdr in lowered:
+                    return lineno, f"平台專屬標頭 `{hdr}`"
+            continue
+        if directive.split(None, 1)[:1] and directive.split(None, 1)[0] in (
+                "if", "ifdef", "ifndef", "elif"):
+            for macro in CPP_PLATFORM_MACROS:
+                if macro in directive:
+                    return lineno, f"平台條件編譯 `{macro}`"
+    return None
 
 
 def repo_root():
@@ -81,15 +117,36 @@ def check(root):
         print("::error::若確實要進入下一相位，請先更新 docs/backlog/phase.json 並開 CHG 記錄該決策")
         return 1
 
-    # 反向檢查：契約測試不得包含平台分支
-    for f in glob.glob(os.path.join(root, "tests/contract/**/*.py"), recursive=True):
+    # 反向檢查：契約測試不得包含平台分支。
+    #
+    # CHG-20260803-03：原本只掃 `tests/contract/**/*.py`，但契約測試其實是 **C++**
+    # （test_contract_backend.cpp / kernel_backend.hpp），該目錄下 .py 檔數為 0
+    # —— 這道檢查從上線起就是空轉的。相位 2 放行 win32 後端的此刻，正是最容易
+    # 不知不覺把契約測試改成遷就某個平台的時候，故一併補上 C/C++ 掃描。
+    for f in sorted(glob.glob(os.path.join(root, "tests/contract/**/*"), recursive=True)):
+        if not os.path.isfile(f):
+            continue
+        ext = os.path.splitext(f)[1].lower()
+        if ext not in (".py",) + CPP_SUFFIXES:
+            continue
         with open(f, encoding="utf-8") as fh:
             src = fh.read()
-        for tok in PLATFORM_TOKENS:
-            if tok in src:
-                print(f"::error file={os.path.relpath(f, root)}::契約測試出現平台分支 `{tok}` —— "
-                      "契約測試必須對所有後端一視同仁")
-                return 1
+        rel = os.path.relpath(f, root).replace(os.sep, "/")
+
+        if ext == ".py":
+            for tok in PLATFORM_TOKENS:
+                if tok in src:
+                    print(f"::error file={rel}::契約測試出現平台分支 `{tok}` —— "
+                          "契約測試必須對所有後端一視同仁")
+                    return 1
+            continue
+
+        hit = cpp_platform_violation(src)
+        if hit:
+            lineno, what = hit
+            print(f"::error file={rel},line={lineno}::契約測試出現{what} —— "
+                  "契約測試必須對所有後端一視同仁；平台碼只能放在 src/kernel/backend/<name>/")
+            return 1
 
     print(f"backend_guard OK — 相位 {phase}，後端 {sorted(found) or ['(尚無)']}")
     return 0
