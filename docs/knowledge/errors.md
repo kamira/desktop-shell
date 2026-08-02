@@ -4,6 +4,62 @@
 
 ---
 
+## K-005 — squash merge 之後，從舊分支再開新分支必然衝突，而且閘門會安靜地不跑
+
+- 日期：2026-08-03 | 來源：`CHG-20260803-07`（發生於 `CHG-20260803-06` 的 PR #196）
+
+### 錯誤
+
+開了 PR，結果 `gh pr checks` 回 **`no checks reported`**，PR 停在 OPEN 不動。
+看起來像 CI 壞了或 workflow 沒設好——實際上 workflow 完全正常，
+是 PR 本身處於 `mergeStateStatus: DIRTY`（有合併衝突），GitHub 因此不跑檢查。
+
+### 根因
+
+本 repo 的 governance workflow 一律以 **squash merge** 合併（`gh pr merge --squash`）。
+squash 會把分支上的多個 commit 壓成 **main 上一個全新的 commit**，
+**原本那些 commit 永遠不會成為 main 的祖先**。
+
+於是：分支 A 被 squash 進 main 之後，如果又從**分支 A**（而不是從 `origin/main`）開分支 B，
+分支 B 就同時帶著「A 的原始 commit」與「B 自己的 commit」，
+而 main 帶著「A 的 squash 版本」。同一份內容出現在兩條互不相干的祖先線上 → 衝突。
+
+**為什麼特別容易中招**：本機看起來一切正常——分支建得出來、commit 得了、
+建置與測試全綠。問題只在**推上去之後**才顯現，而且第一個症狀（沒有檢查）
+指向的方向完全錯誤（會讓人去查 workflow 設定、觸發條件、權限）。
+
+### 解法
+
+**squash merge 的 repo 裡，每一條新分支都必須從 `origin/main` 開：**
+
+```bash
+git fetch origin
+git checkout -b <新分支> origin/main
+git cherry-pick <要帶過來的 commit>
+```
+
+已經開錯的話，把分支重設到 main 再 cherry-pick，然後 force-push 更新 PR：
+
+```bash
+git fetch origin
+git reset --hard origin/main
+git cherry-pick <commit>
+git push --force-with-lease origin <分支>
+```
+
+**換基底之後要重跑驗證。** 內容一樣不代表結果一樣——新基底上的其他變更可能與之互動。
+本次即在新基底上重跑了全建與全套測試才推。
+
+### 可帶走的通則
+
+- **「沒有檢查」不等於「CI 壞了」。** 先查 `gh pr view --json mergeStateStatus`：
+  `DIRTY` = 衝突、`BLOCKED` = 等檢查、`CLEAN` = 可合併。症狀與根因常常離很遠。
+- **squash merge 會讓「分支已合併」與「commit 在 main 的歷史裡」變成兩件事。**
+  用 `git log origin/main..HEAD` 判斷「還沒進 main 的東西」時，
+  已被 squash 的 commit 仍會出現在列表裡——那是正常的，不是漏推。
+- 連續交付多個相依的變更時，**每一輪都回到 `origin/main` 重新開分支**，
+  不要在前一條分支上疊。前一條隨時可能被 squash 掉。
+
 ## K-004 — 同一個字集陷阱的第二次現身：PowerShell 讀 BOM-less `.ps1` 也用 ANSI codepage
 
 - 日期：2026-08-03 | 來源：`CHG-20260803-05` 施工過程（工具鏈問題，未進 repo 的 scratchpad 腳本）
