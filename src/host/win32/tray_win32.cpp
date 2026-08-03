@@ -279,9 +279,22 @@ LRESULT CALLBACK Win32TrayBackend::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPAR
 
 void Win32TrayBackend::on_tray_callback(WPARAM, LPARAM lp) {
     const UINT event = LOWORD(lp);
-    if (event == WM_RBUTTONUP || event == WM_CONTEXTMENU || event == WM_LBUTTONUP) {
-        popup_menu_at_cursor();
+    if (event != WM_RBUTTONUP && event != WM_CONTEXTMENU && event != WM_LBUTTONUP) return;
+
+    if (owner_drawn_) {
+        // 自繪模式：只記下「使用者要開選單」與游標位置，呈現交給 host（W1-05）。
+        ::GetCursorPos(&menu_request_cursor_);
+        menu_requested_ = true;
+        return;
     }
+    popup_menu_at_cursor();
+}
+
+bool Win32TrayBackend::poll_menu_request(POINT& out_cursor) {
+    if (!menu_requested_) return false;
+    out_cursor = menu_request_cursor_;
+    menu_requested_ = false;
+    return true;
 }
 
 void Win32TrayBackend::popup_menu_at_cursor() {

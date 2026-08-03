@@ -82,6 +82,17 @@ public:
     // --- win32 專屬擴充（非契約）---
     // 取走使用者最近一次的選取。有選取回 true 並填入索引路徑；否則回 false。
     bool poll_selection(std::vector<std::size_t>& out_path);
+
+    // W1-05：把選單呈現交給 host 自繪。
+    //
+    // 開啟後，使用者右鍵時本後端**不再**呼叫 TrackPopupMenu，而是記下游標位置供
+    // `poll_menu_request()` 取走，由 host 用 E11-02 的自繪選單呈現。
+    // 預設關閉——原生選單免費提供無障礙與鍵盤行為，是保守的預設值。
+    void set_owner_drawn(bool enabled) noexcept { owner_drawn_ = enabled; }
+    bool owner_drawn() const noexcept { return owner_drawn_; }
+
+    // 取走「使用者要求開啟選單」的通知（僅 owner_drawn 模式下會產生）。
+    bool poll_menu_request(POINT& out_cursor);
     // 目前匣圖示是否已加入系統匣（供測試與診斷）。
     bool icon_added() const noexcept { return icon_added_; }
     // 目前圖示是否真的從 .ico 檔載入（false = 用了程式繪製的後備圖示）。
@@ -126,6 +137,9 @@ private:
     BuiltMenu built_;
     std::vector<std::size_t> pending_selection_;
     bool has_pending_ = false;
+    bool owner_drawn_ = false;
+    bool menu_requested_ = false;
+    POINT menu_request_cursor_ = {};
 };
 
 }  // namespace ds::host

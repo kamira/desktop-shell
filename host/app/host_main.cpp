@@ -29,6 +29,7 @@
 #include "document.hpp"              // E7-01：ds::format::Value
 #include "draggable_surface.hpp"     // E1-08：拖曳狀態機 + 位置記憶
 #include "metric.hpp"                // E2-01
+#include "owner_drawn_menu.hpp"      // W1-05：自繪選單呈現
 #include "position_store.hpp"        // H1-03：拖曳裝配 + 位置持久化
 #include "system_status_widget.hpp"  // C2-02
 #include "tray.hpp"                  // E11-01：SystemTray / TrayMenu / TrayMenuItem
@@ -44,6 +45,7 @@ using ds::host::build_widget_tray_menu;
 using ds::host::default_positions_path;
 using ds::host::default_ui_state_path;
 using ds::host::kDefaultSnapThreshold;
+using ds::host::OwnerDrawnMenu;
 using ds::host::snap_to_work_area_edges;
 using ds::host::WorkArea;
 using ds::host::parse_ui_state;
@@ -242,6 +244,15 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     tray.set_menu(build_widget_tray_menu(controls));
     tray.set_icon("icon.desktop_shell");
     tray.set_tooltip("desktop-shell — 系統狀態");
+
+    // W1-05：改用 E11-02 的自繪選單呈現。
+    // 取捨很明確——自繪拿到一致的外觀（與 widget、托盤圖示同一套配色），
+    // 但**失去原生選單免費提供的無障礙支援**（螢幕閱讀器讀不到）。
+    // 見 CHG-20260803-15 的已知限制；若要退回原生選單，把這一行拿掉即可。
+    tray_raw->set_owner_drawn(true);
+    OwnerDrawnMenu owner_menu;
+    owner_menu.set_menu(tray.menu());
+
     tray.show();
 
     const int limit = seconds_limit_from_command_line();
@@ -292,8 +303,22 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
             if (positions.remember_current(moved)) positions.flush();
         }
 
+        // 使用者右鍵托盤圖示 → 用自繪選單呈現（W1-05），選到的路徑仍走同一條分派路徑。
+        POINT menu_at = {};
+        if (tray_raw->poll_menu_request(menu_at)) {
+            owner_menu.set_menu(tray.menu());  // 帶入目前的勾選狀態
+            std::vector<std::size_t> picked;
+            if (owner_menu.popup_at(menu_at, picked)) {
+                tray.click(picked);
+                tray.sync_menu();
+                save_ui_state();
+                if (controls.quit) break;
+            }
+        }
+
         // 使用者在托盤選單選了東西 → 交給 E11-01 解釋語意並分派命令。
         // host 完全不知道那一項是什麼意思，只負責轉交——語意留在選單模型裡。
+        // （原生選單路徑；自繪模式下不會有選取事件，見上方。）
         std::vector<std::size_t> chosen;
         if (tray_raw->poll_selection(chosen)) {
             tray.click(chosen);
