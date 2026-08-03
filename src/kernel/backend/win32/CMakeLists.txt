@@ -17,4 +17,13 @@ if(WIN32)
   add_executable(test_backend_win32 ${CMAKE_SOURCE_DIR}/tests/e1/test_backend_win32.cpp)
   target_link_libraries(test_backend_win32 PRIVATE w1_01 GTest::gtest_main)
   add_test(NAME backend_win32 COMMAND test_backend_win32)
+
+  # E1-25 契約套件跑在 win32 真實後端上（CHG-20260803-10，修 K-003）。
+  # 契約標頭在 tests/contract/ 且**一字未改**；本目標只是換一個 factory 註冊進去。
+  # 放在這裡（而非 tests/contract/）是因為 win32 後端只能在 Windows 建，
+  # 而 tests/contract/ 的目標在 ubuntu CI 也要建得起來。
+  add_executable(test_contract_win32 ${CMAKE_SOURCE_DIR}/tests/e1/test_contract_win32.cpp)
+  target_include_directories(test_contract_win32 PRIVATE ${CMAKE_SOURCE_DIR}/tests/contract)
+  target_link_libraries(test_contract_win32 PRIVATE w1_01 GTest::gtest_main)
+  add_test(NAME contract_win32 COMMAND test_contract_win32)
 endif()

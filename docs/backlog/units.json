@@ -5207,7 +5207,8 @@
    "module": "E1",
    "primitives": [],
    "depends_on": [
-    "E1-21"
+    "E1-21",
+    "E1-24"
    ],
    "wave": 1,
    "load_bearing": 3,

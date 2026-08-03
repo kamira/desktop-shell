@@ -105,6 +105,25 @@ TEST(NullKernelBackend, CustomCapabilityMatrixInjectable) {
     EXPECT_FALSE(b.has("kernel.surface"));  // 未宣告 -> 保守 false
 }
 
+// ⚠ 已知後端分歧（知識庫 K-007，CHG-20260803-10 發現）——**本測試釘住的是現況，不是理想**。
+//
+// null 後端未 init 也能建立 surface；**win32 後端不能**（真實後端必須先註冊視窗類別，
+// 見 tests/e1/test_backend_win32.cpp 的 `CreateSurfaceRequiresInit`）。
+//
+// 影響：16 個既有單元的測試都在未初始化的 null 後端上建 surface，
+// 那些程式路徑在任何真實後端上都不可能成立。
+//
+// 之所以先釘住現況而非直接對齊：對齊要改 E1-24 的行為並牽動 16 個單元的測試
+// （實測 151 個插入點），屬獨立的方向決策。對齊後**本測試應被刪除**，
+// 並把該前置條件放回 `tests/contract/kernel_backend_contract.hpp` 的共用契約。
+TEST(NullKernelBackend, CreateSurfaceCurrentlyDoesNotRequireInit) {
+    NullKernelBackend b;
+    ASSERT_FALSE(b.is_initialized());
+    EXPECT_TRUE(b.create_surface("surface.before_init", SurfaceProfile{}))
+        << "現況：null 後端未 init 也能建立。win32 在此回 false——這就是 K-007 的分歧。";
+    EXPECT_EQ(b.surface_count(), 1u);
+}
+
 // K1：建立 surface / 查詢存在 / 計數；空 id 與重複 id 皆拒絕。
 TEST(NullKernelBackend, CreateSurfaceAndDuplicateRejection) {
     NullKernelBackend b;
