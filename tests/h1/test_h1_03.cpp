@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdio>
+#include <fstream>
 #include <string>
 
 #include "position_store.hpp"
@@ -115,6 +116,28 @@ TEST(PositionStore, TextFileRoundTrips) {
     const std::string p = temp_path("ds_pos_roundtrip.conf");
     ASSERT_TRUE(write_text_file(p, "hello\nworld\n"));
     EXPECT_EQ(read_text_file(p), "hello\nworld\n");
+    std::remove(p.c_str());
+}
+
+// UTF-8 BOM 必須被去掉——否則使用者用記事本改過設定檔之後，設定會被**靜默丟棄**
+// 而退回預設值（CHG-20260803-12 的操作驗收實際踩到；同 K-001 / K-004 的字集家族）。
+TEST(PositionStore, ReadStripsUtf8Bom) {
+    const std::string p = temp_path("ds_pos_bom.conf");
+    const std::string body = "format_version: 1.0\nwidget.controls:\n  locked: true\n";
+    {
+        std::ofstream out(p, std::ios::binary | std::ios::trunc);
+        out << "\xEF\xBB\xBF" << body;  // 帶 BOM 寫入
+    }
+    EXPECT_EQ(read_text_file(p), body) << "BOM 必須被去掉，否則第一行解析必失敗";
+    std::remove(p.c_str());
+}
+
+// 只去掉開頭的 BOM，不得動到內容中其他位元組。
+TEST(PositionStore, ReadDoesNotStripNonBomBytes) {
+    const std::string p = temp_path("ds_pos_nobom.conf");
+    const std::string body = "format_version: 1.0\n";
+    ASSERT_TRUE(write_text_file(p, body));
+    EXPECT_EQ(read_text_file(p), body);
     std::remove(p.c_str());
 }
 

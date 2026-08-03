@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 182,
+  "units": 183,
   "by_priority": {
-   "P0": 63,
+   "P0": 64,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
    "medium": 19,
-   "low": 163
+   "low": 164
   },
-  "waves": 12,
+  "waves": 13,
   "by_platform": {
    "semantic-divergence": 32,
    "neutral": 113,
-   "api-divergence": 37
+   "api-divergence": 38
   },
   "backend_followup": 63,
   "by_layer": {
-   "artifact": 27,
+   "artifact": 28,
    "engine": 64,
    "module": 58,
    "platform": 33
   },
   "by_stage": {
    "A": 117,
-   "B": 30,
+   "B": 31,
    "C": 12,
    "D": 23
   },
@@ -5431,6 +5431,37 @@
    ],
    "branch": "feat/h1_03",
    "acceptance": "以 E1-08 DraggableSurface 承接拖曳狀態機與位置記憶；像素 ↔ AnchorSpec 雙向換算（正規化分數，解析度無關）；開機自檔案還原、拖曳結束提交、關閉時序列化寫回。驗收為**操作驗收**：拖動 widget 後關閉再開，位置仍在原處（截圖 + 座標比對）。",
+   "platform": "api-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "H1-04",
+   "title": "鎖定位置開關 + UI 狀態持久化",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "artifact",
+   "stage": "B",
+   "module": "H1",
+   "primitives": [],
+   "depends_on": [
+    "H1-02",
+    "H1-03",
+    "W1-03",
+    "E7-01",
+    "E7-12"
+   ],
+   "wave": 12,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/**",
+    "tests/h1/test_h1_04*",
+    "docs/changes/CHG-*-h1_04.md"
+   ],
+   "branch": "feat/h1_04",
+   "acceptance": "托盤選單新增「鎖定位置」勾選項，勾選後 widget 拖不動（W1-03 set_draggable）；三個 UI 開關（最上層 / 穿透 / 鎖定）以 E7-01 宣告式格式持久化，關閉再開維持原狀態。驗收為**操作驗收**：鎖定後合成滑鼠拖曳不得移動視窗，解鎖後可移動。",
    "platform": "api-divergence",
    "phase": 2,
    "backend_followup": false

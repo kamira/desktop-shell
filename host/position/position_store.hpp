@@ -47,6 +47,10 @@ std::string default_positions_path();
 
 // 讀 / 寫純文字。寫入會自動建立父目錄。失敗回 false / 空字串——
 // **持久化失敗絕不能讓 widget 掛掉**，呼叫端一律容忍。
+//
+// `read_text_file` 會**去掉開頭的 UTF-8 BOM**：設定檔是使用者會用記事本改的東西，
+// 而許多 Windows 編輯器預設寫 BOM；不去掉的話解析必失敗，設定被靜默丟棄
+// （CHG-20260803-12 的操作驗收實際踩到）。
 bool write_text_file(const std::string& path, const std::string& text);
 std::string read_text_file(const std::string& path);
 

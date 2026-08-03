@@ -33,6 +33,7 @@
 #include "system_status_widget.hpp"  // C2-02
 #include "tray.hpp"                  // E11-01：SystemTray / TrayMenu / TrayMenuItem
 #include "tray_win32.hpp"            // W1-02：Win32TrayBackend
+#include "ui_state.hpp"              // H1-04：UI 開關狀態持久化
 #include "widget_controls.hpp"       // H1-02：選單與命令的共用裝配
 #include "widget_painter.hpp"        // H1-01 繪製橋接
 #include "win32_backend.hpp"         // W1-01
@@ -41,7 +42,13 @@ using ds::command::CommandBus;
 using ds::format::Value;
 using ds::host::build_widget_tray_menu;
 using ds::host::default_positions_path;
+using ds::host::default_ui_state_path;
+using ds::host::parse_ui_state;
 using ds::host::PositionPersistence;
+using ds::host::read_text_file;
+using ds::host::serialize_ui_state;
+using ds::host::WidgetUiState;
+using ds::host::write_text_file;
 using ds::kernel::DraggableSurface;
 using ds::host::paint_widget;
 using ds::host::register_widget_controls;
@@ -163,10 +170,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     if (!hwnd) return 1;
 
     // --- 1.5) 拖曳與位置記憶（W1-03 + H1-03）---
-    // 後端預設不可拖（保守），由 host 明確開啟——「這是一個可以被使用者搬動的桌面元件」
-    // 是 host 層的產品決策，不是平台預設。
-    backend.set_draggable(surface_id, true);
-
+    // 可拖曳性稍後由 H1-04 的「鎖定位置」狀態決定（見下方 UI 狀態還原）——
+    // 後端預設不可拖是平台層的保守設定，「這個 widget 能不能被搬動」是 host 層的產品決策。
     DraggableSurface draggable{backend};
     PositionPersistence positions{backend, draggable, default_positions_path()};
     // 還原上次的位置。沒有記錄（第一次執行）或檔案壞掉時什麼都不做，
@@ -199,6 +204,31 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     // 選單與命令處理器來自 H1-02 的共用裝配（`host/tray/`），不在此就地寫一份——
     // 同一份邏輯有兩份的話，被測到的那份與實際跑的那份就會慢慢分岔。
     WidgetControlState controls;
+
+    // 還原上次的 UI 開關狀態。沒有檔案（第一次執行）或檔案壞掉時沿用預設值——
+    // 不是錯誤，不需回報。**一個每次啟動都自己解鎖的「鎖定」等於沒有鎖。**
+    const std::string ui_path = default_ui_state_path();
+    WidgetUiState ui;
+    if (parse_ui_state(read_text_file(ui_path), ui)) {
+        controls.topmost = ui.topmost;
+        controls.passthrough = ui.passthrough;
+        controls.locked = ui.locked;
+    }
+    // 把還原後的狀態真的套到後端上——否則選單顯示的與實際行為會不一致。
+    backend.set_surface_layer(surface_id,
+                              controls.topmost ? SurfaceLayer::Topmost : SurfaceLayer::Normal);
+    backend.set_input_policy(surface_id, controls.passthrough ? InputPolicy::PassThrough
+                                                              : InputPolicy::Accepting);
+    backend.set_draggable(surface_id, !controls.locked);
+
+    // 把目前開關狀態寫回檔案。任何一次切換後都呼叫——與位置持久化同理，
+    // 這支程式沒有「正常關閉」以外的收尾機會。
+    const auto save_ui_state = [&] {
+        if (ui_path.empty()) return;
+        write_text_file(ui_path, serialize_ui_state(
+            WidgetUiState{controls.topmost, controls.passthrough, controls.locked}));
+    };
+
     CommandBus bus;
     register_widget_controls(bus, backend, surface_id, controls);
 
@@ -213,6 +243,23 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
 
     const int limit = seconds_limit_from_command_line();
     const int max_frames = limit > 0 ? limit * 1000 / kFrameIntervalMs : 0;
+
+    // 等待下一幀期間**持續抽訊息**。
+    //
+    // 直接 `Sleep(kFrameIntervalMs)` 會讓視窗在那 250ms 內完全不回應：系統的拖曳移動迴圈
+    // 是在 `DispatchMessage` 裡跑的，抽訊息太稀疏會讓使用者的拖曳「按不下去」或一頓一頓。
+    // CHG-20260803-12 的操作驗收就是這樣間歇性失敗的——合成拖曳的整個動作落在兩次抽取之間。
+    //
+    // 取樣間隔必須是 250ms（`GetSystemTimes` 是差分式，見 K-002），但**抽訊息不需要跟著慢**。
+    // 兩者本來就是不同的節奏，之前只是恰好用同一個 Sleep 混在一起。
+    constexpr int kPumpStepMs = 15;
+    const auto pump_while_waiting = [&](int total_ms) {
+        for (int waited = 0; waited < total_ms; waited += kPumpStepMs) {
+            if (!backend.pump()) return false;
+            ::Sleep(kPumpStepMs);
+        }
+        return true;
+    };
 
     // --- 4) 主迴圈：抽訊息 → 更新指標 → refresh/render → 把 render_model 畫上去 ---
     for (int frame = 0; max_frames == 0 || frame < max_frames; ++frame) {
@@ -233,10 +280,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         if (tray_raw->poll_selection(chosen)) {
             tray.click(chosen);
             tray.sync_menu();  // Checkbox 勾選狀態已由 click() 更新，重推後端讓選單反映
+            save_ui_state();   // 切換當下就存，不等關閉
             if (controls.quit) break;
         }
 
-        ::Sleep(kFrameIntervalMs);               // 取樣間隔，見 real_cpu_percent
+        // 取樣間隔（見 real_cpu_percent），期間持續抽訊息以保持拖曳流暢。
+        if (!pump_while_waiting(kFrameIntervalMs)) break;
 
         const double cpu_pct = real_cpu_percent();
         const double ram_pct = real_ram_percent();
