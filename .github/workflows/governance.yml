@@ -27,7 +27,13 @@ jobs:
       - name: MSVC 全建 + ctest
         shell: bash
         run: |
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          # **不要釘死產生器版本。** 初版寫 -G "Visual Studio 17 2022"，在 windows-latest 上
+          # 直接 "could not find any instance of Visual Studio"——runner 映像的 VS 版本會隨時間更新，
+          # 釘死版本等於把閘門綁在某一版映像上。省略 -G 讓 CMake 挑該機器上實際存在的 VS；
+          # -A x64 仍要指定（不給的話 VS 產生器的預設平台不保證是 x64）。
+          cmake -S . -B build -A x64
+          # 把實際選到的產生器印出來：日後 runner 換版時，這行是第一個線索。
+          grep -E '^CMAKE_GENERATOR(_PLATFORM)?:' build/CMakeCache.txt
           cmake --build build --config Debug --parallel 4
           # 真空綠燈防線（同 ubuntu G3）：沒有任何註冊測試 = 紅燈
           N=$(ctest --test-dir build -C Debug -N 2>/dev/null | sed -n 's/.*Total Tests: //p')
