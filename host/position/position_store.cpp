@@ -71,7 +71,21 @@ std::string read_text_file(const std::string& path) {
     if (!in) return std::string();
     std::ostringstream ss;
     ss << in.rdbuf();
-    return ss.str();
+    std::string text = ss.str();
+
+    // 去掉 UTF-8 BOM（EF BB BF）。
+    //
+    // 為什麼需要：設定檔是使用者會拿記事本打開來改的東西，而許多 Windows 編輯器
+    // （含 PowerShell 5.1 的 `Set-Content -Encoding utf8`）預設會寫入 BOM。
+    // BOM 會讓 E7-01 的第一行變成 `﻿ormat_version:`，解析失敗 → 設定被**靜默**丟棄、
+    // 退回預設值。使用者只會看到「我的鎖定又自己解開了」，完全查不到原因。
+    // 這是 CHG-20260803-12 的操作驗收實際踩到的（同 K-001 / K-004 的字集家族問題）。
+    if (text.size() >= 3 && static_cast<unsigned char>(text[0]) == 0xEF &&
+        static_cast<unsigned char>(text[1]) == 0xBB &&
+        static_cast<unsigned char>(text[2]) == 0xBF) {
+        text.erase(0, 3);
+    }
+    return text;
 }
 
 // --- PositionPersistence -----------------------------------------------------

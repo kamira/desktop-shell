@@ -18,16 +18,18 @@
 
 namespace ds::host {
 
-// 三個控制項的目前狀態。與建立 surface 時的 profile 一致，由命令處理器更新。
+// 控制項的目前狀態。與建立 surface 時的 profile 一致，由命令處理器更新。
 struct WidgetControlState {
     bool topmost = true;       // 對應 SurfaceLayer::Topmost
     bool passthrough = false;  // 對應 InputPolicy::Accepting
+    bool locked = false;       // 鎖定位置 = 停用拖曳（W1-03 set_draggable 的反面）
     bool quit = false;         // 使用者選了「結束」
 };
 
 // 具名命令 id —— 選單項與處理器之間唯一的耦合點。
 inline constexpr const char* kCmdToggleTopmost = "widget.toggle_topmost";
 inline constexpr const char* kCmdTogglePassthrough = "widget.toggle_passthrough";
+inline constexpr const char* kCmdToggleLock = "widget.toggle_lock";
 inline constexpr const char* kCmdQuit = "app.quit";
 
 // 把三個 widget 控制命令註冊到匯流排。處理器捕獲 `backend` / `surface_id` / `state` 的參照，

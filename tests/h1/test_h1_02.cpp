@@ -66,22 +66,26 @@ private:
     ds::kernel::SurfaceId id_ = kSurface;
 };
 
-// 選單索引：[0] 最上層、[1] 點擊穿透、[2] 分隔線、[3] 結束
+// 選單索引：[0] 最上層、[1] 點擊穿透、[2] 鎖定位置、[3] 分隔線、[4] 結束
+// （[2] 由 CHG-20260803-12 新增，其後索引順移；`MenuShapeMatchesIndicesUsedByHost`
+//   會在這組常數與實際選單脫節時紅燈。）
 const std::vector<std::size_t> kTopmost{0};
 const std::vector<std::size_t> kPassthrough{1};
-const std::vector<std::size_t> kSeparator{2};
-const std::vector<std::size_t> kQuit{3};
+const std::vector<std::size_t> kLock{2};
+const std::vector<std::size_t> kSeparator{3};
+const std::vector<std::size_t> kQuit{4};
 
 }  // namespace
 
 TEST(WidgetControls, MenuShapeMatchesIndicesUsedByHost) {
     WidgetControlState s;
     auto menu = build_widget_tray_menu(s);
-    ASSERT_EQ(menu.size(), 4u);
-    EXPECT_TRUE(menu.items()[2].kind() == ds::host::TrayItemKind::Separator);
+    ASSERT_EQ(menu.size(), 5u);
+    EXPECT_TRUE(menu.items()[3].kind() == ds::host::TrayItemKind::Separator);
     EXPECT_EQ(menu.items()[0].command_id(), ds::host::kCmdToggleTopmost);
     EXPECT_EQ(menu.items()[1].command_id(), ds::host::kCmdTogglePassthrough);
-    EXPECT_EQ(menu.items()[3].command_id(), ds::host::kCmdQuit);
+    EXPECT_EQ(menu.items()[2].command_id(), ds::host::kCmdToggleLock);
+    EXPECT_EQ(menu.items()[4].command_id(), ds::host::kCmdQuit);
 }
 
 // 初始勾選狀態必須反映實際狀態，否則選單一打開就在說謊。
