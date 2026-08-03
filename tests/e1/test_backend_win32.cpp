@@ -237,6 +237,99 @@ TEST(Win32Backend, SetSurfaceLayerTogglesTopmostBothWays) {
     EXPECT_FALSE(b.set_surface_layer("surface.nope", SurfaceLayer::Topmost));
 }
 
+// --- W1-03 拖曳與位置 --------------------------------------------------------
+
+// 預設不可拖：桌面元件不該被意外拖走。這條若鬆掉，使用者滑一下就把 widget 甩出畫面。
+TEST(Win32Backend, SurfacesAreNotDraggableByDefault) {
+    Win32KernelBackend b;
+    ASSERT_TRUE(b.init());
+    ASSERT_TRUE(b.create_surface("surface.panel", topmost_panel()));
+    EXPECT_FALSE(b.is_draggable("surface.panel"));
+    EXPECT_TRUE(b.set_draggable("surface.panel", true));
+    EXPECT_TRUE(b.is_draggable("surface.panel"));
+    EXPECT_TRUE(b.set_draggable("surface.panel", false));
+    EXPECT_FALSE(b.is_draggable("surface.panel"));
+    EXPECT_FALSE(b.set_draggable("surface.nope", true));
+    EXPECT_FALSE(b.is_draggable("surface.nope"));
+}
+
+// 位置讀寫要對得上 Windows 的真實視窗位置，而不是後端自記的數字。
+TEST(Win32Backend, OriginRoundTripsThroughRealWindow) {
+    Win32KernelBackend b;
+    ASSERT_TRUE(b.init());
+    ASSERT_TRUE(b.create_surface("surface.panel", topmost_panel()));
+
+    ASSERT_TRUE(b.set_surface_origin("surface.panel", 240, 180));
+    int x = 0, y = 0;
+    ASSERT_TRUE(b.surface_origin("surface.panel", x, y));
+    EXPECT_EQ(x, 240);
+    EXPECT_EQ(y, 180);
+
+    // 直接問 Windows，確認不是後端在自說自話。
+    RECT r = {};
+    ASSERT_TRUE(::GetWindowRect(b.hwnd_for("surface.panel"), &r));
+    EXPECT_EQ(r.left, 240);
+    EXPECT_EQ(r.top, 180);
+}
+
+// 搬位置不得順手改掉圖層——否則「還原位置」會把最上層設定弄掉。
+TEST(Win32Backend, MovingSurfaceKeepsTopmost) {
+    Win32KernelBackend b;
+    ASSERT_TRUE(b.init());
+    ASSERT_TRUE(b.create_surface("surface.panel", topmost_panel()));
+    HWND hwnd = b.hwnd_for("surface.panel");
+    ASSERT_TRUE(has_ex_style(hwnd, WS_EX_TOPMOST));
+
+    ASSERT_TRUE(b.set_surface_origin("surface.panel", 300, 220));
+    EXPECT_TRUE(has_ex_style(hwnd, WS_EX_TOPMOST)) << "搬位置後最上層設定不得消失";
+}
+
+// 搬位置不得改變尺寸。
+TEST(Win32Backend, MovingSurfaceKeepsSize) {
+    Win32KernelBackend b;
+    ASSERT_TRUE(b.init());
+    ASSERT_TRUE(b.create_surface("surface.panel", topmost_panel()));
+    int w0 = 0, h0 = 0;
+    ASSERT_TRUE(b.surface_size("surface.panel", w0, h0));
+    ASSERT_GT(w0, 0);
+    ASSERT_GT(h0, 0);
+
+    ASSERT_TRUE(b.set_surface_origin("surface.panel", 120, 90));
+    int w1 = 0, h1 = 0;
+    ASSERT_TRUE(b.surface_size("surface.panel", w1, h1));
+    EXPECT_EQ(w1, w0);
+    EXPECT_EQ(h1, h0);
+}
+
+TEST(Win32Backend, WorkAreaIsPositive) {
+    Win32KernelBackend b;
+    int x = 0, y = 0, w = 0, h = 0;
+    ASSERT_TRUE(b.work_area(x, y, w, h));
+    EXPECT_GT(w, 0);
+    EXPECT_GT(h, 0);
+}
+
+// 沒有人拖曳時不得回報拖曳結束——否則 host 會憑空記住一個沒發生過的位置。
+TEST(Win32Backend, PollDragFinishedIsFalseWithoutDrag) {
+    Win32KernelBackend b;
+    ASSERT_TRUE(b.init());
+    ASSERT_TRUE(b.create_surface("surface.panel", topmost_panel()));
+    ASSERT_TRUE(b.set_draggable("surface.panel", true));
+    ds::kernel::SurfaceId id = "sentinel";
+    EXPECT_FALSE(b.poll_drag_finished(id));
+    EXPECT_EQ(id, "sentinel") << "回 false 時不得改寫 out 參數";
+}
+
+// 位置相關操作對未知 id 一律安全。
+TEST(Win32Backend, PositionApisAreSafeForUnknownId) {
+    Win32KernelBackend b;
+    ASSERT_TRUE(b.init());
+    int a = 0;
+    EXPECT_FALSE(b.surface_origin("surface.nope", a, a));
+    EXPECT_FALSE(b.set_surface_origin("surface.nope", 1, 1));
+    EXPECT_FALSE(b.surface_size("surface.nope", a, a));
+}
+
 // surface_profile 回報的是建立時的具名 profile。
 TEST(Win32Backend, SurfaceProfileRoundTrips) {
     Win32KernelBackend b;
