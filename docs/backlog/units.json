@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 183,
+  "units": 184,
   "by_priority": {
-   "P0": 64,
+   "P0": 65,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
    "medium": 19,
-   "low": 164
+   "low": 165
   },
-  "waves": 13,
+  "waves": 14,
   "by_platform": {
    "semantic-divergence": 32,
-   "neutral": 113,
+   "neutral": 114,
    "api-divergence": 38
   },
   "backend_followup": 63,
   "by_layer": {
-   "artifact": 28,
+   "artifact": 29,
    "engine": 64,
    "module": 58,
    "platform": 33
   },
   "by_stage": {
    "A": 117,
-   "B": 31,
+   "B": 32,
    "C": 12,
    "D": 23
   },
@@ -5463,6 +5463,34 @@
    "branch": "feat/h1_04",
    "acceptance": "托盤選單新增「鎖定位置」勾選項，勾選後 widget 拖不動（W1-03 set_draggable）；三個 UI 開關（最上層 / 穿透 / 鎖定）以 E7-01 宣告式格式持久化，關閉再開維持原狀態。驗收為**操作驗收**：鎖定後合成滑鼠拖曳不得移動視窗，解鎖後可移動。",
    "platform": "api-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "H1-05",
+   "title": "邊緣吸附",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "artifact",
+   "stage": "B",
+   "module": "H1",
+   "primitives": [],
+   "depends_on": [
+    "H1-03",
+    "W1-03"
+   ],
+   "wave": 13,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/**",
+    "tests/h1/test_h1_05*",
+    "docs/changes/CHG-*-h1_05.md"
+   ],
+   "branch": "feat/h1_05",
+   "acceptance": "拖曳結束時，元件的四條邊各自對工作區四條邊做門檻內吸附（純幾何、兩軸獨立）；先吸附再記憶，故還原的是吸附後位置。中央位置不得誤吸；門檻 <= 0 停用；工作區退化不得產生垃圾座標。驗收含負向案例（不該吸的時候絕不能吸）。",
+   "platform": "neutral",
    "phase": 2,
    "backend_followup": false
   }

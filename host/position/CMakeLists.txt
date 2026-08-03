@@ -9,4 +9,9 @@ if(WIN32)
   add_executable(test_h1_03 ${CMAKE_SOURCE_DIR}/tests/h1/test_h1_03.cpp)
   target_link_libraries(test_h1_03 PRIVATE h1_03_position GTest::gtest_main)
   add_test(NAME h1_03_position COMMAND test_h1_03)
+
+  # H1-05 邊緣吸附：純幾何，與位置換算同一個單元目錄（同樣不碰 Windows API）。
+  add_executable(test_h1_05 ${CMAKE_SOURCE_DIR}/tests/h1/test_h1_05.cpp)
+  target_link_libraries(test_h1_05 PRIVATE h1_03_position GTest::gtest_main)
+  add_test(NAME h1_05_edge_snap COMMAND test_h1_05)
 endif()
