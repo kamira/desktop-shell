@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -22,6 +23,36 @@ using ds::kernel::DragStatus;
 using ds::kernel::ResolvedPlacement;
 using ds::kernel::Size;
 using ds::kernel::SurfaceId;
+
+SnapResult snap_to_work_area_edges(int x, int y, int width, int height,
+                                   const WorkArea& area, int threshold) {
+    SnapResult out;
+    out.x = x;
+    out.y = y;
+    if (threshold <= 0 || area.width <= 0 || area.height <= 0) return out;
+
+    const int left = area.x;
+    const int top = area.y;
+    const int right = area.x + area.width;
+    const int bottom = area.y + area.height;
+
+    // 兩軸各自獨立判定。同一軸的兩端若同時在門檻內（視窗幾乎和工作區一樣寬），
+    // 取較近的一端——否則會出現「靠左卻被吸到右邊」這種違反直覺的跳動。
+    const int dist_left = std::abs(x - left);
+    const int dist_right = std::abs((x + width) - right);
+    if (dist_left <= threshold || dist_right <= threshold) {
+        out.x = (dist_left <= dist_right) ? left : right - width;
+        out.snapped_x = true;
+    }
+
+    const int dist_top = std::abs(y - top);
+    const int dist_bottom = std::abs((y + height) - bottom);
+    if (dist_top <= threshold || dist_bottom <= threshold) {
+        out.y = (dist_top <= dist_bottom) ? top : bottom - height;
+        out.snapped_y = true;
+    }
+    return out;
+}
 
 bool spec_from_pixels(int x, int y, const WorkArea& area, AnchorSpec& out) {
     if (area.width <= 0 || area.height <= 0) return false;

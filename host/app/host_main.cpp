@@ -43,6 +43,9 @@ using ds::format::Value;
 using ds::host::build_widget_tray_menu;
 using ds::host::default_positions_path;
 using ds::host::default_ui_state_path;
+using ds::host::kDefaultSnapThreshold;
+using ds::host::snap_to_work_area_edges;
+using ds::host::WorkArea;
 using ds::host::parse_ui_state;
 using ds::host::PositionPersistence;
 using ds::host::read_text_file;
@@ -266,11 +269,26 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         if (!backend.pump()) break;              // 收到結束請求
         if (controls.quit) break;                // 托盤選單的「結束」
 
-        // 使用者拖完 widget → 記住新位置並立刻寫回檔案。
+        // 使用者拖完 widget → 邊緣吸附 → 記住新位置並立刻寫回檔案。
+        //
+        // **順序不能反**：先吸附再記憶，記下來的才是吸附後的位置；
+        // 反過來的話下次還原會回到吸附前那個差一點點的座標，使用者會看到 widget
+        // 每次開機都從邊上「彈開」一點。
+        //
         // 立刻寫而不是等關閉時再寫：這支程式沒有「正常關閉」以外的收尾機會
         // （工作管理員結束、當機、登出都不會走到結尾），拖完就存才真的存得住。
         ds::kernel::SurfaceId moved;
         while (backend.poll_drag_finished(moved)) {
+            int wx = 0, wy = 0, ww = 0, wh = 0, ax = 0, ay = 0, aw = 0, ah = 0;
+            if (backend.surface_origin(moved, wx, wy) &&
+                backend.surface_size(moved, ww, wh) &&
+                backend.work_area(ax, ay, aw, ah)) {
+                const auto snapped = snap_to_work_area_edges(
+                    wx, wy, ww, wh, WorkArea{ax, ay, aw, ah}, kDefaultSnapThreshold);
+                if (snapped.x != wx || snapped.y != wy) {
+                    backend.set_surface_origin(moved, snapped.x, snapped.y);
+                }
+            }
             if (positions.remember_current(moved)) positions.flush();
         }
 

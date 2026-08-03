@@ -29,6 +29,28 @@ struct WorkArea {
     int height = 0;
 };
 
+// H1-05 邊緣吸附。
+//
+// 純幾何、不碰任何 Windows API——因此可以直接單元測試，不必先有視窗。
+// 吸附的判定對象是**元件的四條邊對工作區的四條邊**（不是左上角對左上角）：
+// 右邊緣靠近工作區右緣時，貼齊的是右緣，故 x 要算成 `area.right - width`。
+//
+// `threshold` 為吸附門檻（像素）。`<= 0` 代表停用吸附，原樣回傳。
+// 兩軸**各自獨立**判定：只有 x 在門檻內就只吸 x，角落則兩軸都吸。
+// 工作區退化（寬或高非正）時原樣回傳，不產生垃圾座標。
+struct SnapResult {
+    int x = 0;
+    int y = 0;
+    bool snapped_x = false;
+    bool snapped_y = false;
+};
+
+SnapResult snap_to_work_area_edges(int x, int y, int width, int height,
+                                   const WorkArea& area, int threshold);
+
+// 預設吸附門檻。夠大到好用、又不會在畫面中央誤觸發。
+inline constexpr int kDefaultSnapThreshold = 16;
+
 // 像素 → AnchorSpec。以 `TopLeft` 為錨點，位置整個表達成正規化偏移，可無損來回。
 //
 // 為什麼固定用 TopLeft 而不挑最近的錨點：挑錨點會讓「同一個位置」有多種表達，
