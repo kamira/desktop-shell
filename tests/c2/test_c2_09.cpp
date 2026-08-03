@@ -34,6 +34,7 @@ FixedFontMetrics mono() { return FixedFontMetrics(6.0, 14.0, 11.0); }
 // 便利 fixture：獨立的注入相依（每個測試各自一套，互不干擾）。
 struct Env {
     NullKernelBackend backend{alpha_capable_matrix()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = mono();
     CalendarTodoWidget widget{"widget.todo", backend, layers, metrics};
@@ -287,6 +288,7 @@ TEST(CalendarTodoWidget, SaveRoundTripsThroughLoad) {
     const std::string saved = env.widget.save();
 
     NullKernelBackend backend2{alpha_capable_matrix()};
+    backend2.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers2{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics2 = mono();
     CalendarTodoWidget widget2{"widget.todo.copy", backend2, layers2, metrics2};
@@ -312,6 +314,7 @@ TEST(CalendarTodoWidget, SaveRoundTripsEmptyWidget) {
     const std::string saved = env.widget.save();
 
     NullKernelBackend backend2{alpha_capable_matrix()};
+    backend2.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers2{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics2 = mono();
     CalendarTodoWidget widget2{"widget.todo.empty", backend2, layers2, metrics2};

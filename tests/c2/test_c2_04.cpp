@@ -35,6 +35,7 @@ const char* const kValidBody =
 // 本 widget 不直接測試 load_skin，只驗證 C1-01 基底已正確組裝）。
 struct Fixture {
     NullKernelBackend backend{CapabilityMatrix::defaults()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     std::shared_ptr<NullHttpTransport> transport = std::make_shared<NullHttpTransport>();
     FixedFontMetrics metrics{6.0, 14.0};
@@ -139,6 +140,7 @@ TEST(WeatherWidget, RefreshWithoutConfigureIsInvalid) {
 
 TEST(WeatherWidget, RefreshWithNullTransportFails) {
     NullKernelBackend backend{CapabilityMatrix::defaults()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics{6.0, 14.0};
     WeatherWidget widget{"widget.weather.h", backend, layers, nullptr, kEndpoint, metrics};

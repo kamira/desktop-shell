@@ -40,6 +40,7 @@ Value config_with_url(const std::string& url) {
 // 便利 fixture：能力可用（alpha_capable_matrix + 注入能力後端）。每個測試各自一套，互不干擾。
 struct CapableEnv {
     NullKernelBackend backend{alpha_capable_matrix()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     NullProcessLauncher launcher;
     MessageChannel channel;
@@ -51,6 +52,7 @@ struct CapableEnv {
 // 能力閘控降級測試（服務存在但 supported() == false）。
 struct IncapableEnv {
     NullKernelBackend backend{CapabilityMatrix::defaults()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     NullProcessLauncher launcher;
     MessageChannel channel;
@@ -61,6 +63,7 @@ struct IncapableEnv {
 // 完全未注入能力後端（surface_service == nullptr）—— 用於「無後端降級」測試。
 struct NoServiceEnv {
     NullKernelBackend backend{alpha_capable_matrix()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     NullProcessLauncher launcher;
     MessageChannel channel;
@@ -350,6 +353,7 @@ TEST(ToStringWebWidgetStatus, CoversAllValues) {
 
 TEST(WebWidgetDestruction, StopsRunningHostProcessOnDestroy) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     NullProcessLauncher launcher;
     MessageChannel channel;

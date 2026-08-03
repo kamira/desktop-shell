@@ -65,6 +65,7 @@ ResolvedPlacement rect_of(float x, float y, float w, float h) {
 
 NullKernelBackend make_backend(const std::vector<SurfaceId>& ids) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     for (const auto& id : ids) {
         backend.create_surface(id, SurfaceProfile{});
     }
@@ -387,6 +388,7 @@ TEST(NamedEdge, ScreenEdgeOfAxisResult) {
 
 TEST(Integration, SnapLivePositionDuringDragThenRemember) {
     NullKernelBackend backend = make_backend({"surface.pet"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     const Size container{1000.0f, 800.0f};
     const Size element{100.0f, 100.0f};
@@ -414,6 +416,7 @@ TEST(Integration, SnapLivePositionDuringDragThenRemember) {
 
 TEST(Integration, SnapToAnotherSurfaceLiveEdge) {
     NullKernelBackend backend = make_backend({"surface.a", "surface.dock"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     const Size container{2000.0f, 2000.0f};  // 判定距離 40
     const Size element{80.0f, 80.0f};
@@ -439,6 +442,7 @@ TEST(Integration, SnapToAnotherSurfaceLiveEdge) {
 
 TEST(Integration, SnapSurfaceUntrackedIsInvalid) {
     NullKernelBackend backend = make_backend({"surface.a"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     EdgeSnapping snapping;
     AnchorSpec out;

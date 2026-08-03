@@ -80,6 +80,7 @@ TEST(BalloonProfile, ConstructedHiddenWithSafeDefaults) {
 
 TEST(BalloonProfile, ShowBalloonAttachesContentAndTimer) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -103,6 +104,7 @@ TEST(BalloonProfile, ShowBalloonAttachesContentAndTimer) {
 
 TEST(BalloonProfile, AdvanceRevealsTextProgressively) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -142,6 +144,7 @@ TEST(BalloonProfile, AdvanceWhileHiddenIsNoOp) {
 
 TEST(BalloonProfile, AutoDismissesWhenTtlElapses) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -167,6 +170,7 @@ TEST(BalloonProfile, AutoDismissesWhenTtlElapses) {
 
 TEST(BalloonProfile, AdvancePastTtlInSingleCallStillDismisses) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -185,6 +189,7 @@ TEST(BalloonProfile, AdvancePastTtlInSingleCallStillDismisses) {
 
 TEST(BalloonProfile, ResolvePlacesAboveCharacterByDefault) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -208,6 +213,7 @@ TEST(BalloonProfile, ResolvePlacesAboveCharacterByDefault) {
 
 TEST(BalloonProfile, ResolveFollowsCharacterWhenPlacementChanges) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -233,6 +239,7 @@ TEST(BalloonProfile, ResolveFollowsCharacterWhenPlacementChanges) {
 
 TEST(BalloonProfile, CustomAnchorSpecOverridesDefault) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -256,6 +263,7 @@ TEST(BalloonProfile, CustomAnchorSpecOverridesDefault) {
 
 TEST(BalloonProfile, DismissEndsDisplayEarly) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -281,6 +289,7 @@ TEST(BalloonProfile, DismissWhenHiddenReturnsFalse) {
 
 TEST(BalloonProfile, DismissedThenReshowResetsProgress) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -303,6 +312,7 @@ TEST(BalloonProfile, DismissedThenReshowResetsProgress) {
 
 TEST(BalloonProfile, MultipleBalloonsAreIndependent) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile miku("portrait.miku", backend, layers);
     ASSERT_EQ(miku.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -339,6 +349,7 @@ TEST(BalloonProfile, MultipleBalloonsAreIndependent) {
 
 TEST(BalloonProfile, EmptyTextRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -356,6 +367,7 @@ TEST(BalloonProfile, EmptyTextRejected) {
 
 TEST(BalloonProfile, EmptyIdRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -367,6 +379,7 @@ TEST(BalloonProfile, EmptyIdRejected) {
 
 TEST(BalloonProfile, UnloadedCharacterRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);  // 未 load_portrait
 
@@ -378,6 +391,7 @@ TEST(BalloonProfile, UnloadedCharacterRejected) {
 
 TEST(BalloonProfile, ZeroTtlRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -389,6 +403,7 @@ TEST(BalloonProfile, ZeroTtlRejected) {
 
 TEST(BalloonProfile, AlreadyShowingRejectsSecondShow) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);
@@ -402,6 +417,7 @@ TEST(BalloonProfile, AlreadyShowingRejectsSecondShow) {
 
 TEST(BalloonProfile, SelfAttachRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     // 角色與氣球同名：E1-11 自附偵測應拒絕。
     PortraitProfile character("shared.id", backend, layers);
@@ -415,6 +431,7 @@ TEST(BalloonProfile, SelfAttachRejected) {
 
 TEST(BalloonProfile, InvalidAnchorSpecRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile character("portrait.miku", backend, layers);
     ASSERT_EQ(character.load_portrait(ds::format::Value::map({})), PortraitStatus::Ok);

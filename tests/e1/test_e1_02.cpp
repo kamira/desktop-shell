@@ -62,6 +62,7 @@ TEST(E1_02_PureFn, ToStringIsNamed) {
 // --- 預設策略：未設定即 Interactive ---
 TEST(E1_02_Default, UnsetSurfaceIsInteractive) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.panel");
     InputStrategyController ctl(backend);
 
@@ -73,6 +74,7 @@ TEST(E1_02_Default, UnsetSurfaceIsInteractive) {
 
 TEST(E1_02_Default, UnknownSurfaceQueryIsDefaultNotCrash) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     InputStrategyController ctl(backend);
     EXPECT_EQ(ctl.strategy("surface.ghost"), InputStrategy::Interactive);
     EXPECT_FALSE(ctl.has_strategy("surface.ghost"));
@@ -81,6 +83,7 @@ TEST(E1_02_Default, UnknownSurfaceQueryIsDefaultNotCrash) {
 // --- 設定：surface 須存在 ---
 TEST(E1_02_Set, RequiresExistingSurface) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     InputStrategyController ctl(backend);
     EXPECT_FALSE(ctl.set_strategy("surface.absent", InputStrategy::Interactive));
     EXPECT_FALSE(ctl.has_strategy("surface.absent"));
@@ -90,6 +93,7 @@ TEST(E1_02_Set, RequiresExistingSurface) {
 // --- 設定三態（無需能力）並下推至後端 K3 ---
 TEST(E1_02_Set, InteractiveClickThroughInertNoCapabilityNeeded) {
     NullKernelBackend backend;  // 預設矩陣：無 input.capture
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.a");
     InputStrategyController ctl(backend);
 
@@ -110,6 +114,7 @@ TEST(E1_02_Set, InteractiveClickThroughInertNoCapabilityNeeded) {
 // --- NFR-03：Capture 受能力閘控 ---
 TEST(E1_02_Gating, CaptureRejectedWhenCapabilityAbsent) {
     NullKernelBackend backend;  // 預設矩陣未宣告 input.capture → has() 保守 false
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.modal");
     InputStrategyController ctl(backend);
 
@@ -123,6 +128,7 @@ TEST(E1_02_Gating, CaptureRejectedWhenCapabilityAbsent) {
 
 TEST(E1_02_Gating, CaptureAllowedWhenCapabilityPresent) {
     NullKernelBackend backend(caps_with_capture());
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.modal");
     InputStrategyController ctl(backend);
 
@@ -139,6 +145,7 @@ TEST(E1_02_Gating, CaptureCapabilityIdIsNamed) {
 // --- 狀態轉換：保留堆疊位置 ---
 TEST(E1_02_Transition, UpdateKeepsPositionAndTrackCount) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.x");
     make_surface(backend, "surface.y");
     InputStrategyController ctl(backend);
@@ -157,6 +164,7 @@ TEST(E1_02_Transition, UpdateKeepsPositionAndTrackCount) {
 // --- forget：移除記錄 ---
 TEST(E1_02_Forget, RemovesRecordAndRevertsToDefault) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.z");
     InputStrategyController ctl(backend);
 
@@ -174,6 +182,7 @@ TEST(E1_02_Forget, RemovesRecordAndRevertsToDefault) {
 // --- 路由：Interactive 直接遞送 ---
 TEST(E1_02_Route, InteractiveDelivers) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.top");
     InputStrategyController ctl(backend);
     ASSERT_TRUE(ctl.set_strategy("surface.top", InputStrategy::Interactive));
@@ -191,6 +200,7 @@ TEST(E1_02_Route, InteractiveDelivers) {
 // --- 路由：ClickThrough 穿透到其下 ---
 TEST(E1_02_Route, ClickThroughPassesToSurfaceBelow) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.below");
     make_surface(backend, "surface.above");
     InputStrategyController ctl(backend);
@@ -210,6 +220,7 @@ TEST(E1_02_Route, ClickThroughPassesToSurfaceBelow) {
 // --- 路由：Inert 吞掉、不下傳 ---
 TEST(E1_02_Route, InertSwallowsAndDoesNotPassBelow) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.below");
     make_surface(backend, "surface.inert");
     InputStrategyController ctl(backend);
@@ -228,6 +239,7 @@ TEST(E1_02_Route, InertSwallowsAndDoesNotPassBelow) {
 // --- 路由：穿透落出堆疊底 → 無人接收 ---
 TEST(E1_02_Route, ClickThroughFallsOffBottom) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.only");
     InputStrategyController ctl(backend);
     ASSERT_TRUE(ctl.set_strategy("surface.only", InputStrategy::ClickThrough));
@@ -244,6 +256,7 @@ TEST(E1_02_Route, ClickThroughFallsOffBottom) {
 // --- 路由：未知 / 空 target → PassBelow、無遞送 ---
 TEST(E1_02_Route, UnknownTargetPassesBelowEmpty) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.known");
     InputStrategyController ctl(backend);
     ASSERT_TRUE(ctl.set_strategy("surface.known", InputStrategy::Interactive));
@@ -260,6 +273,7 @@ TEST(E1_02_Route, UnknownTargetPassesBelowEmpty) {
 // --- 路由：Capture 全域獨占、無視命中目標 ---
 TEST(E1_02_Route, CaptureOverridesTargetGlobally) {
     NullKernelBackend backend(caps_with_capture());
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.bg");
     make_surface(backend, "surface.modal");
     InputStrategyController ctl(backend);
@@ -283,6 +297,7 @@ TEST(E1_02_Route, CaptureOverridesTargetGlobally) {
 
 TEST(E1_02_Route, NoCaptureActiveByDefault) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.a");
     InputStrategyController ctl(backend);
     ASSERT_TRUE(ctl.set_strategy("surface.a", InputStrategy::Interactive));
@@ -292,6 +307,7 @@ TEST(E1_02_Route, NoCaptureActiveByDefault) {
 // --- 路由：多事件批次 ---
 TEST(E1_02_Route, MultipleEventsResolvedIndependently) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.low");
     make_surface(backend, "surface.mid");
     InputStrategyController ctl(backend);
@@ -313,6 +329,7 @@ TEST(E1_02_Route, MultipleEventsResolvedIndependently) {
 // --- K3 整合：poll_and_route 走後端 poll_input（null 永遠空）---
 TEST(E1_02_Integration, PollAndRouteUsesBackendPollInput) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     make_surface(backend, "surface.a");
     InputStrategyController ctl(backend);
     ASSERT_TRUE(ctl.set_strategy("surface.a", InputStrategy::Interactive));
@@ -326,6 +343,7 @@ TEST(E1_02_Integration, PollAndRouteUsesBackendPollInput) {
 // --- 經 KernelBackend* 基底多型使用（後端可替換）---
 TEST(E1_02_Integration, WorksThroughBaseInterface) {
     NullKernelBackend concrete;
+    concrete.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     KernelBackend& backend = concrete;
     ASSERT_TRUE(backend.create_surface("surface.p", SurfaceProfile{}));
     InputStrategyController ctl(backend);

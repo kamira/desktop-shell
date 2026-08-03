@@ -47,6 +47,7 @@ namespace {
 // 同 tests/c1/test_c1_03.cpp 慣例）。
 struct TestRig {
     NullKernelBackend backend{alpha_capable_matrix()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     CommandBus bus;
     SurfaceSwitcher surfaces;

@@ -87,6 +87,7 @@ Value make_definition(const std::string& layer, const std::string& alpha_mode, d
 
 TEST(PortraitProfile, ConstructedUnloadedWithDefaults) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
 
@@ -106,7 +107,9 @@ TEST(PortraitProfile, ConstructedUnloadedWithDefaults) {
 
 TEST(PortraitProfile, AlphaSupportedReflectsBackendCapability) {
     NullKernelBackend capable{alpha_capable_matrix()};
+    capable.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     NullKernelBackend incapable{CapabilityMatrix::defaults()};
+    incapable.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile a{"portrait.a", capable, layers};
     PortraitProfile b{"portrait.b", incapable, layers};
@@ -120,6 +123,7 @@ TEST(PortraitProfile, AlphaSupportedReflectsBackendCapability) {
 
 TEST(PortraitProfile, LoadPortraitAppliesDeclarativeConfigAndRealizes) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
 
@@ -153,6 +157,7 @@ TEST(PortraitProfile, LoadPortraitAppliesDeclarativeConfigAndRealizes) {
 
 TEST(PortraitProfile, LoadPortraitFromParsedTextDocument) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.dog", backend, layers};
 
@@ -182,6 +187,7 @@ TEST(PortraitProfile, LoadPortraitFromParsedTextDocument) {
 
 TEST(PortraitProfile, LoadPortraitEmptyMapUsesDefaults) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
 
@@ -192,6 +198,7 @@ TEST(PortraitProfile, LoadPortraitEmptyMapUsesDefaults) {
 
 TEST(PortraitProfile, LoadPortraitWithoutInitialExpressionDefaultsToFirst) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     Value def = Value::map({{"expressions",
@@ -213,6 +220,7 @@ TEST(PortraitProfile, LoadPortraitWithoutInitialExpressionDefaultsToFirst) {
 
 TEST(PortraitProfile, LoadPortraitUnsupportedWhenAlphaCapabilityUnavailable) {
     NullKernelBackend backend{CapabilityMatrix::defaults()};  // 無 per-pixel alpha
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
 
@@ -225,6 +233,7 @@ TEST(PortraitProfile, LoadPortraitUnsupportedWhenAlphaCapabilityUnavailable) {
 
 TEST(PortraitProfile, OpaqueAlphaModeApplied) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     Value def = Value::map({{"alpha", Value::map({{"mode", Value::string("opaque")}})}});
@@ -238,6 +247,7 @@ TEST(PortraitProfile, OpaqueAlphaModeApplied) {
 
 TEST(PortraitProfile, UnloadTearsDownBackendAndLayer) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
 
@@ -259,6 +269,7 @@ TEST(PortraitProfile, UnloadTearsDownBackendAndLayer) {
 
 TEST(PortraitProfile, MultiplePortraitsShareLayerStackWithoutInterference) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile miku{"portrait.miku", backend, layers};
     PortraitProfile rin{"portrait.rin", backend, layers};
@@ -283,6 +294,7 @@ TEST(PortraitProfile, MultiplePortraitsShareLayerStackWithoutInterference) {
 
 TEST(PortraitProfile, ResolveLiveProducesConcretePlacement) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -296,6 +308,7 @@ TEST(PortraitProfile, ResolveLiveProducesConcretePlacement) {
 
 TEST(PortraitProfile, ResolveLiveInvalidWhenNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ResolvedPlacement out;
@@ -305,6 +318,7 @@ TEST(PortraitProfile, ResolveLiveInvalidWhenNotLoaded) {
 
 TEST(PortraitProfile, PlaceUpdatesRememberedPosition) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -321,6 +335,7 @@ TEST(PortraitProfile, PlaceUpdatesRememberedPosition) {
 
 TEST(PortraitProfile, PlaceInvalidWhenNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     EXPECT_EQ(portrait.place(AnchorSpec{}), DragStatus::Invalid);
@@ -328,6 +343,7 @@ TEST(PortraitProfile, PlaceInvalidWhenNotLoaded) {
 
 TEST(PortraitProfile, DragCommitUpdatesMemory) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -351,6 +367,7 @@ TEST(PortraitProfile, DragCommitUpdatesMemory) {
 
 TEST(PortraitProfile, DragCancelRestoresMemory) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -366,6 +383,7 @@ TEST(PortraitProfile, DragCancelRestoresMemory) {
 
 TEST(PortraitProfile, DragOpsNotDraggingWhenNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     EXPECT_EQ(portrait.begin_drag(), DragStatus::Invalid);
@@ -376,6 +394,7 @@ TEST(PortraitProfile, DragOpsNotDraggingWhenNotLoaded) {
 
 TEST(PortraitProfile, CannotPlaceWhileDragging) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -385,6 +404,7 @@ TEST(PortraitProfile, CannotPlaceWhileDragging) {
 
 TEST(PortraitProfile, SaveAndLoadPositionRoundTrip) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile src{"portrait.miku", backend, layers};
     ASSERT_EQ(src.load_portrait(make_definition("overlay", "per-pixel", 1.0, "bottom-right",
@@ -396,6 +416,7 @@ TEST(PortraitProfile, SaveAndLoadPositionRoundTrip) {
     EXPECT_NE(saved.find("bottom-right"), std::string::npos);
 
     NullKernelBackend backend2{alpha_capable_matrix()};
+    backend2.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers2{CapabilityMatrix::defaults()};
     PortraitProfile dst{"portrait.miku", backend2, layers2};
     EXPECT_EQ(dst.load_position(saved), DragStatus::Ok);
@@ -408,6 +429,7 @@ TEST(PortraitProfile, SaveAndLoadPositionRoundTrip) {
 
 TEST(PortraitProfile, LoadPositionInvalidTextRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     EXPECT_EQ(portrait.load_position("not a valid document without version"), DragStatus::Invalid);
@@ -419,6 +441,7 @@ TEST(PortraitProfile, LoadPositionInvalidTextRejected) {
 
 TEST(PortraitProfile, AddAndSwitchExpressionProgrammatically) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -448,6 +471,7 @@ TEST(PortraitProfile, AddAndSwitchExpressionProgrammatically) {
 
 TEST(PortraitProfile, AddExpressionRejectsDuplicateEmptyOrSourceless) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -464,6 +488,7 @@ TEST(PortraitProfile, AddExpressionRejectsDuplicateEmptyOrSourceless) {
 
 TEST(PortraitProfile, ExpressionOpsFalseWhenNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     MemoryImageSource src("res://idle", ImageDimensions{10, 10});
@@ -476,6 +501,7 @@ TEST(PortraitProfile, ExpressionOpsFalseWhenNotLoaded) {
 
 TEST(PortraitProfile, RemoveCurrentExpressionClearsCurrent) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(make_definition("normal", "per-pixel", 1.0, "center", 0, 0)),
@@ -491,6 +517,7 @@ TEST(PortraitProfile, RemoveCurrentExpressionClearsCurrent) {
 
 TEST(PortraitProfile, SwitchExpressionUnknownNameRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -504,6 +531,7 @@ TEST(PortraitProfile, SwitchExpressionUnknownNameRejected) {
 
 TEST(PortraitProfile, RegionClickCarriesNamedRegionIdAndParams) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(make_definition("normal", "per-pixel", 1.0, "center", 0, 0)),
@@ -540,6 +568,7 @@ TEST(PortraitProfile, RegionClickCarriesNamedRegionIdAndParams) {
 
 TEST(PortraitProfile, RegionClickMissDispatchesWithoutRegionInfo) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(make_definition("normal", "per-pixel", 1.0, "center", 0, 0)),
@@ -561,6 +590,7 @@ TEST(PortraitProfile, RegionClickMissDispatchesWithoutRegionInfo) {
 
 TEST(PortraitProfile, RegionClickOutsideSurfaceIsNoHit) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(make_definition("normal", "per-pixel", 1.0, "center", 0, 0)),
@@ -572,6 +602,7 @@ TEST(PortraitProfile, RegionClickOutsideSurfaceIsNoHit) {
 
 TEST(PortraitProfile, SwitchExpressionRefreshesHitShapeBounds) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);  // 尚無表情 → 1x1 佔位形狀
@@ -591,6 +622,7 @@ TEST(PortraitProfile, SwitchExpressionRefreshesHitShapeBounds) {
 
 TEST(PortraitProfile, UnsubscribeRegionClickStopsDelivery) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(make_definition("normal", "per-pixel", 1.0, "center", 0, 0)),
@@ -614,6 +646,7 @@ TEST(PortraitProfile, UnsubscribeRegionClickStopsDelivery) {
 
 TEST(PortraitProfile, LoadPortraitRejectsNonMap) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     EXPECT_EQ(portrait.load_portrait(Value::string("nope")), PortraitStatus::Invalid);
@@ -623,6 +656,7 @@ TEST(PortraitProfile, LoadPortraitRejectsNonMap) {
 
 TEST(PortraitProfile, LoadPortraitRejectsInvalidNamedValues) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     // 無效圖層名
@@ -651,6 +685,7 @@ TEST(PortraitProfile, LoadPortraitRejectsInvalidNamedValues) {
 
 TEST(PortraitProfile, LoadPortraitRejectsMalformedExpressions) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
 
@@ -707,6 +742,7 @@ TEST(PortraitProfile, LoadPortraitRejectsMalformedExpressions) {
 
 TEST(PortraitProfile, LoadPortraitRejectsEmptyId) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"", backend, layers};
     EXPECT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Invalid);
@@ -714,6 +750,7 @@ TEST(PortraitProfile, LoadPortraitRejectsEmptyId) {
 
 TEST(PortraitProfile, LoadPortraitRejectsWhenAlreadyLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     PortraitProfile portrait{"portrait.miku", backend, layers};
     ASSERT_EQ(portrait.load_portrait(Value::map({})), PortraitStatus::Ok);
@@ -724,6 +761,7 @@ TEST(PortraitProfile, LoadPortraitRejectsWhenAlreadyLoaded) {
 
 TEST(PortraitProfile, DestructorUnloadsWhileLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     {
         PortraitProfile portrait{"portrait.miku", backend, layers};

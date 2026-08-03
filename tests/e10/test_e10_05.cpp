@@ -337,6 +337,7 @@ TEST(WidgetHostChannelCommunication, HostAndCallerShareSameChannelForDirectSendR
 
 TEST(WidgetHostSurfaceBridge, StartWithSurfaceIdCreatesAlphaSurfaceAndPublishesAttached) {
     NullKernelBackend backend(alpha_capable_matrix());
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService surface_service(backend);
     NullProcessLauncher launcher;
     MessageChannel channel;
@@ -366,6 +367,7 @@ TEST(WidgetHostSurfaceBridge, StartWithSurfaceIdCreatesAlphaSurfaceAndPublishesA
 
 TEST(WidgetHostSurfaceBridge, StopDestroysSurfaceAndPublishesDetached) {
     NullKernelBackend backend(alpha_capable_matrix());
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService surface_service(backend);
     NullProcessLauncher launcher;
     MessageChannel channel;
@@ -387,6 +389,7 @@ TEST(WidgetHostSurfaceBridge, StopDestroysSurfaceAndPublishesDetached) {
 
 TEST(WidgetHostSurfaceBridge, StartSurfaceUnsupportedReturnsStatusAndSpawnsNoProcess) {
     NullKernelBackend backend(alpha_incapable_matrix());  // 保守預設：per-pixel alpha 不可用
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService surface_service(backend);
     NullProcessLauncher launcher;
     MessageChannel channel;
@@ -414,6 +417,7 @@ TEST(WidgetHostSurfaceBridge, StartSurfaceRequestedButNoServiceInjectedReturnsIn
 
 TEST(WidgetHostSurfaceBridge, StartSurfaceIdConflictReturnsInvalidNoProcessSpawned) {
     NullKernelBackend backend(alpha_capable_matrix());
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService surface_service(backend);
     ASSERT_EQ(surface_service.create_alpha_surface("surface.taken", {}, {}),
               ds::kernel::AlphaStatus::Ok);

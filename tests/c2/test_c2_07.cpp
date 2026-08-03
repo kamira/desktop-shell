@@ -37,6 +37,7 @@ namespace {
 // 預設綁 NullMediaControlBackend 的 MediaControlActuator（兩者皆可於個別測試以其他值覆寫）。
 struct Fixture {
     NullKernelBackend backend{CapabilityMatrix::defaults()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     std::shared_ptr<MetricRegistry> registry = std::make_shared<MetricRegistry>();
     std::shared_ptr<MediaControlActuator> actuator = std::make_shared<MediaControlActuator>();
@@ -89,6 +90,7 @@ TEST(MediaControlWidget, ConstructedHasAssembledBaseAndNoMediaDefaults) {
 
 TEST(MediaControlWidget, RefreshWithNullRegistryDegradesToNoMedia) {
     NullKernelBackend backend{CapabilityMatrix::defaults()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     auto actuator = std::make_shared<MediaControlActuator>();
     MediaControlWidget widget{"widget.media.a", backend, layers, nullptr, actuator};

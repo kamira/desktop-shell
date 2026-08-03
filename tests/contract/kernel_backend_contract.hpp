@@ -111,23 +111,21 @@ TEST_P(KernelBackendContract, ShutdownBeforeInitIsSafe) {
     EXPECT_EQ(backend->surface_count(), 0u);
 }
 
-// --- 「未初始化不得建立 surface」**刻意不在共用契約裡**（見 K-007）-------------
+// --- 契約 5：surface 前置條件（未初始化不得建立）-----------------------------
 //
-// 舊契約（修復前）有這一條，但它測的是自帶 stub，所以從未被真實後端驗證過。
-// 契約接上真實後端後**第一次執行就抓到分歧**：
-//   - win32 後端：未 init 則 create_surface 回 false（真實後端必須先註冊視窗類別）
-//   - null 後端 ：未 init 也能建立成功
+// 真實後端在 `init()` 才註冊視窗類別 / 建立平台資源，因此未初始化的後端**不可能**
+// 開得出視窗——這是物理限制，不是實作偏好。
 //
-// 這不是小事：16 個既有單元的測試都在**未初始化的 null 後端上建 surface**，
-// 那些程式路徑在任何真實後端上都不可能成立。
-//
-// 為何不在本次一併對齊：那要改動承重單元 E1-24 的行為，並牽動 16 個單元的測試
-// （實測 151 個插入點）。那是獨立的方向決策，不該夾帶在「修契約鴻溝」這張 CHG 裡。
-//
-// 為了讓分歧**可見且被追蹤**而非默默消失，兩邊各有一條測試釘住現況：
-//   - `tests/e1/test_backend_win32.cpp` → `CreateSurfaceRequiresInit`
-//   - `tests/e1/test_backend_null.cpp`  → `CreateSurfaceCurrentlyDoesNotRequireInit`
-// 對齊之後，這兩條應被刪除、本段落改回一條共用契約。
+// 這一條有段歷史（K-003 → K-007 → CHG-20260803-11）：舊契約寫過它，但契約當時測的是
+// 自帶 stub，從未跑過真實後端，所以 null 後端一直沒有遵守。契約接上真實後端後
+// **第一次執行就抓到分歧**，追下去發現 **16 個既有單元的測試**都在未初始化的後端上建
+// surface——那些路徑在任何真實後端上都不可能成立。已於 CHG-20260803-11 全數對齊。
+TEST_P(KernelBackendContract, CreateSurfaceRequiresInitialized) {
+    EXPECT_FALSE(backend->is_initialized());
+    EXPECT_FALSE(backend->create_surface("surface.character", panel_profile()));
+    EXPECT_FALSE(backend->has_surface("surface.character"));
+    EXPECT_EQ(backend->surface_count(), 0u);
+}
 
 // --- 契約 6：surface 建立 / 銷毀往返 -----------------------------------------
 TEST_P(KernelBackendContract, SurfaceCreateDestroyRoundTrip) {

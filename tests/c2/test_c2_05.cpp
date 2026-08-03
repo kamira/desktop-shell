@@ -46,6 +46,7 @@ Value three_image_definition() {
 // 供每個測試各自建構獨立的 skin + widget（skin 不需 load_skin：widget 只取用其具名 id）。
 struct Fixture {
     NullKernelBackend backend{CapabilityMatrix::defaults()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.image", backend, layers};
     ImageWidget widget{skin};
