@@ -61,12 +61,10 @@ TEST(Win32Backend, ShutdownIsIdempotent) {
     EXPECT_EQ(b.surface_count(), 0u);
 }
 
-// 契約：未 init 不得建得出 surface（前置條件保守）。
-TEST(Win32Backend, CreateSurfaceRequiresInit) {
-    Win32KernelBackend b;
-    EXPECT_FALSE(b.create_surface("surface.panel", topmost_panel()));
-    EXPECT_EQ(b.surface_count(), 0u);
-}
+// 註：「未 init 不得建立 surface」原本在此有一條 win32 專屬測試，用來釘住 K-007 的
+// 後端分歧。CHG-20260803-11 已把 null 對齊到 win32 的嚴格版，該前置條件回到
+// `tests/contract/kernel_backend_contract.hpp` 的**共用契約**（兩個後端各跑一次），
+// 故此處的專屬測試移除——同一件事不需要兩個地方驗。
 
 // 契約：空 id 拒絕；重複 id 拒絕。
 TEST(Win32Backend, RejectsEmptyAndDuplicateId) {

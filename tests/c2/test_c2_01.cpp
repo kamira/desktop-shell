@@ -57,6 +57,7 @@ FixedFontMetrics wide_metrics() { return FixedFontMetrics{10.0, 20.0}; }
 
 TEST(ClockWidget, ConstructedUnconfiguredWithDefaults) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -82,6 +83,7 @@ TEST(ClockWidget, ConstructedUnconfiguredWithDefaults) {
 
 TEST(ClockWidget, ConfigureEmptyMapUsesDefaultsAndSamplesOnce) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -98,6 +100,7 @@ TEST(ClockWidget, ConfigureEmptyMapUsesDefaultsAndSamplesOnce) {
 
 TEST(ClockWidget, ConfigureAppliesFormatSecondsAlignWidth) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -122,6 +125,7 @@ TEST(ClockWidget, ConfigureAppliesFormatSecondsAlignWidth) {
 
 TEST(ClockWidget, ConfigureFromParsedTextDocument) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -146,6 +150,7 @@ TEST(ClockWidget, ConfigureFromParsedTextDocument) {
 
 TEST(ClockWidget, ConfigureWithoutTimeSourceLeavesDisplayEmptyButConfigured) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -161,6 +166,7 @@ TEST(ClockWidget, ConfigureWithoutTimeSourceLeavesDisplayEmptyButConfigured) {
 
 TEST(ClockWidget, ConfigureUnsupportedWhenBaseNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.unloaded", backend, layers};  // 未 load_skin
     auto source = std::make_shared<FixedTimeSource>(0);
@@ -178,6 +184,7 @@ TEST(ClockWidget, ConfigureUnsupportedWhenBaseNotLoaded) {
 
 TEST(ClockWidget, TickBeforeConfigureReturnsNotConfigured) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -191,6 +198,7 @@ TEST(ClockWidget, TickBeforeConfigureReturnsNotConfigured) {
 
 TEST(ClockWidget, TickResamplesInjectedTimeSource) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -209,6 +217,7 @@ TEST(ClockWidget, TickResamplesInjectedTimeSource) {
 
 TEST(ClockWidget, TickWithoutTimeSourceReturnsUnsupportedAndKeepsPriorDisplay) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -227,6 +236,7 @@ TEST(ClockWidget, TickWithoutTimeSourceReturnsUnsupportedAndKeepsPriorDisplay) {
 
 TEST(ClockWidget, DisplayText24HourWithSeconds) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -240,6 +250,7 @@ TEST(ClockWidget, DisplayText24HourWithSeconds) {
 
 TEST(ClockWidget, DisplayText24HourWithoutSeconds) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -254,6 +265,7 @@ TEST(ClockWidget, DisplayText24HourWithoutSeconds) {
 
 TEST(ClockWidget, DisplayText12HourAfternoonWithSeconds) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -267,6 +279,7 @@ TEST(ClockWidget, DisplayText12HourAfternoonWithSeconds) {
 
 TEST(ClockWidget, DisplayText12HourMidnightAndNoonBoundaries) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -293,6 +306,7 @@ TEST(ClockWidget, DisplayText12HourMidnightAndNoonBoundaries) {
 
 TEST(ClockWidget, LayoutResultBoundToBaseSurfaceId) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.for-clock", backend, layers};
     require_loaded(base);
@@ -312,6 +326,7 @@ TEST(ClockWidget, LayoutResultBoundToBaseSurfaceId) {
 
 TEST(ClockWidget, LayoutResultAppliesAlignmentWithinWidth) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -333,6 +348,7 @@ TEST(ClockWidget, LayoutResultAppliesAlignmentWithinWidth) {
 
 TEST(ClockWidget, LayoutResultEmptyWhenNoTimeSampled) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -352,6 +368,7 @@ TEST(ClockWidget, LayoutResultEmptyWhenNoTimeSampled) {
 
 TEST(ClockWidget, RefreshBeforeConfigureReturnsNotConfigured) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -364,6 +381,7 @@ TEST(ClockWidget, RefreshBeforeConfigureReturnsNotConfigured) {
 
 TEST(ClockWidget, RefreshRecomputesLayoutWithoutResamplingTime) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -385,6 +403,7 @@ TEST(ClockWidget, RefreshAfterAlignmentEffectivelyManualReapply) {
     // refresh() 本身不重新解讀樣式（樣式變更須經 configure）；此測試驗證 refresh 對「目前樣式 +
     // 目前 display_text」的重排版是冪等且正確的。
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -406,6 +425,7 @@ TEST(ClockWidget, RefreshAfterAlignmentEffectivelyManualReapply) {
 
 TEST(ClockWidget, ConfigureRejectsNonMapDefinition) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -419,6 +439,7 @@ TEST(ClockWidget, ConfigureRejectsNonMapDefinition) {
 
 TEST(ClockWidget, ConfigureRejectsUnknownFormatValue) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -433,6 +454,7 @@ TEST(ClockWidget, ConfigureRejectsUnknownFormatValue) {
 
 TEST(ClockWidget, ConfigureRejectsWrongTypeForFormat) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -446,6 +468,7 @@ TEST(ClockWidget, ConfigureRejectsWrongTypeForFormat) {
 
 TEST(ClockWidget, ConfigureRejectsWrongTypeForSeconds) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -459,6 +482,7 @@ TEST(ClockWidget, ConfigureRejectsWrongTypeForSeconds) {
 
 TEST(ClockWidget, ConfigureRejectsUnknownAlignValue) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -472,6 +496,7 @@ TEST(ClockWidget, ConfigureRejectsUnknownAlignValue) {
 
 TEST(ClockWidget, ConfigureRejectsNegativeWidth) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -485,6 +510,7 @@ TEST(ClockWidget, ConfigureRejectsNegativeWidth) {
 
 TEST(ClockWidget, ConfigureRejectsNonFiniteWidth) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -498,6 +524,7 @@ TEST(ClockWidget, ConfigureRejectsNonFiniteWidth) {
 
 TEST(ClockWidget, ConfigureRejectsEmptyId) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);
@@ -511,6 +538,7 @@ TEST(ClockWidget, ConfigureRejectsEmptyId) {
 
 TEST(ClockWidget, ConfigureInvalidDoesNotMutateExistingConfiguration) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile base{"base.clock", backend, layers};
     require_loaded(base);

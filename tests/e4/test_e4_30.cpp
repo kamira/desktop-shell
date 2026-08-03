@@ -37,6 +37,7 @@ NullKernelBackend make_capable_backend() {
 // --- 預設狀態 ---
 TEST(DimOverlay, DefaultsAreHalfDimHiddenBlackTopmost) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -55,6 +56,7 @@ TEST(DimOverlay, DefaultsAreHalfDimHiddenBlackTopmost) {
 // --- 設定調光強度：夾限 ---
 TEST(DimOverlay, SetIntensityClampsToUnitRange) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -72,6 +74,7 @@ TEST(DimOverlay, SetIntensityClampsToUnitRange) {
 // --- 設定調光強度：非有限值報錯不靜默 ---
 TEST(DimOverlay, SetIntensityRejectsNonFinite) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -85,6 +88,7 @@ TEST(DimOverlay, SetIntensityRejectsNonFinite) {
 // --- 設定顏色：夾限 + 非有限報錯 ---
 TEST(DimOverlay, SetColorClampsAndRejectsNonFinite) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -103,6 +107,7 @@ TEST(DimOverlay, SetColorClampsAndRejectsNonFinite) {
 // --- show / hide（capable）---
 TEST(DimOverlay, ShowCreatesSurfaceAndHideMarksInvisible) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers, "surface.dim");
@@ -121,6 +126,7 @@ TEST(DimOverlay, ShowCreatesSurfaceAndHideMarksInvisible) {
 // --- 置於具名頂層（E1-01 整合，NFR-02）---
 TEST(DimOverlay, ShowPlacesSurfaceOnNamedTopmostLayer) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers, "surface.dim");
@@ -140,6 +146,7 @@ TEST(DimOverlay, ShowPlacesSurfaceOnNamedTopmostLayer) {
 // --- set_intensity 顯示後同步到底層 alpha 不透明度 ---
 TEST(DimOverlay, IntensitySyncsToAlphaOpacityAfterShow) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers, "surface.dim");
@@ -160,6 +167,7 @@ TEST(DimOverlay, IntensitySyncsToAlphaOpacityAfterShow) {
 // --- fade_to：淡入方向、抵達目標、顯示 ---
 TEST(DimOverlay, FadeToRaisesIntensityAndShows) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -175,6 +183,7 @@ TEST(DimOverlay, FadeToRaisesIntensityAndShows) {
 // --- fade_to：淡出至 0 = 隱藏 ---
 TEST(DimOverlay, FadeToZeroFadesOutAndHides) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -191,6 +200,7 @@ TEST(DimOverlay, FadeToZeroFadesOutAndHides) {
 // --- fade_to：夾限 + 非有限報錯 ---
 TEST(DimOverlay, FadeToClampsAndRejectsNonFinite) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -206,6 +216,7 @@ TEST(DimOverlay, FadeToClampsAndRejectsNonFinite) {
 // --- 挖洞：新增 / 查詢 / 冪等 / 移除 ---
 TEST(DimOverlay, CutoutsAddQueryDedupRemove) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -227,6 +238,7 @@ TEST(DimOverlay, CutoutsAddQueryDedupRemove) {
 // --- 挖洞：空名報錯不靜默 ---
 TEST(DimOverlay, AddCutoutRejectsEmptyName) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -238,6 +250,7 @@ TEST(DimOverlay, AddCutoutRejectsEmptyName) {
 // --- NFR-03 降級：per-pixel alpha 不可用 → show / fade / cutout 皆 Unsupported ---
 TEST(DimOverlay, IncapableBackendDegradesGracefully) {
     NullKernelBackend backend;  // 預設保守矩陣：無 per-pixel alpha 能力
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers);
@@ -260,6 +273,7 @@ TEST(DimOverlay, IncapableBackendDegradesGracefully) {
 // --- NFR-03 回滾：圖層置頂被能力閘控拒絕 → 回滾已建立的 alpha surface ---
 TEST(DimOverlay, LayerRejectionRollsBackAlphaSurface) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     // 圖層堆疊缺 kernel.surface 能力 → assign 一律被拒（NFR-03）。
     LayerStack layers(CapabilityMatrix(std::vector<ds::kernel::CapabilityDecl>{}));
@@ -276,6 +290,7 @@ TEST(DimOverlay, LayerRejectionRollsBackAlphaSurface) {
 // --- render_model：宣告式渲染描述 ---
 TEST(DimOverlay, RenderModelReflectsState) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement dim(alpha, layers, "surface.dim");

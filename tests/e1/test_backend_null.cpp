@@ -105,25 +105,6 @@ TEST(NullKernelBackend, CustomCapabilityMatrixInjectable) {
     EXPECT_FALSE(b.has("kernel.surface"));  // 未宣告 -> 保守 false
 }
 
-// ⚠ 已知後端分歧（知識庫 K-007，CHG-20260803-10 發現）——**本測試釘住的是現況，不是理想**。
-//
-// null 後端未 init 也能建立 surface；**win32 後端不能**（真實後端必須先註冊視窗類別，
-// 見 tests/e1/test_backend_win32.cpp 的 `CreateSurfaceRequiresInit`）。
-//
-// 影響：16 個既有單元的測試都在未初始化的 null 後端上建 surface，
-// 那些程式路徑在任何真實後端上都不可能成立。
-//
-// 之所以先釘住現況而非直接對齊：對齊要改 E1-24 的行為並牽動 16 個單元的測試
-// （實測 151 個插入點），屬獨立的方向決策。對齊後**本測試應被刪除**，
-// 並把該前置條件放回 `tests/contract/kernel_backend_contract.hpp` 的共用契約。
-TEST(NullKernelBackend, CreateSurfaceCurrentlyDoesNotRequireInit) {
-    NullKernelBackend b;
-    ASSERT_FALSE(b.is_initialized());
-    EXPECT_TRUE(b.create_surface("surface.before_init", SurfaceProfile{}))
-        << "現況：null 後端未 init 也能建立。win32 在此回 false——這就是 K-007 的分歧。";
-    EXPECT_EQ(b.surface_count(), 1u);
-}
-
 // K1：建立 surface / 查詢存在 / 計數；空 id 與重複 id 皆拒絕。
 TEST(NullKernelBackend, CreateSurfaceAndDuplicateRejection) {
     NullKernelBackend b;
@@ -146,6 +127,7 @@ TEST(NullKernelBackend, CreateSurfaceAndDuplicateRejection) {
 // K1：四參數 profile 忠實保存並可查回。
 TEST(NullKernelBackend, SurfaceProfileStoredFaithfully) {
     NullKernelBackend b;
+    b.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     SurfaceProfile p;
     p.layer = SurfaceLayer::Overlay;
     p.input = InputPolicy::PassThrough;
@@ -167,6 +149,7 @@ TEST(NullKernelBackend, SurfaceProfileStoredFaithfully) {
 // K1：顯示 / 隱藏 surface 更新可見狀態；未知 id 回 false。
 TEST(NullKernelBackend, ShowHideSurface) {
     NullKernelBackend b;
+    b.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     b.create_surface("surface.a", SurfaceProfile{});
     EXPECT_FALSE(b.is_visible("surface.a"));  // 建立時預設不可見
 
@@ -185,6 +168,7 @@ TEST(NullKernelBackend, ShowHideSurface) {
 // K1：銷毀 surface；未知 id 回 false。
 TEST(NullKernelBackend, DestroySurface) {
     NullKernelBackend b;
+    b.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     b.create_surface("surface.a", SurfaceProfile{});
     b.create_surface("surface.b", SurfaceProfile{});
     EXPECT_EQ(b.surface_count(), 2u);
@@ -202,6 +186,7 @@ TEST(NullKernelBackend, DestroySurface) {
 // K2：begin/end frame no-op 計數；不可重入 begin；未 begin 之 end 拒絕。
 TEST(NullKernelBackend, PaintFrameLifecycle) {
     NullKernelBackend b;
+    b.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     b.create_surface("surface.a", SurfaceProfile{});
     EXPECT_EQ(b.completed_frames("surface.a"), 0u);
     EXPECT_FALSE(b.in_frame("surface.a"));
@@ -232,6 +217,7 @@ TEST(NullKernelBackend, PaintFrameLifecycle) {
 // K3：set_input_policy 更新 profile；未知 id 回 false。
 TEST(NullKernelBackend, SetInputPolicy) {
     NullKernelBackend b;
+    b.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     SurfaceProfile p;
     p.input = InputPolicy::Accepting;
     b.create_surface("surface.modal", p);
@@ -285,6 +271,7 @@ TEST(NullKernelBackend, UsableThroughBasePointer) {
 // 預設 profile 值合理（不指定即得中性的一般視窗參數）。
 TEST(NullKernelBackend, DefaultProfileIsSaneNeutral) {
     NullKernelBackend b;
+    b.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     b.create_surface("surface.default", SurfaceProfile{});
     const SurfaceProfile* p = b.surface_profile("surface.default");
     ASSERT_NE(p, nullptr);

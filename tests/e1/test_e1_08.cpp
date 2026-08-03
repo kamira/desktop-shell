@@ -41,6 +41,7 @@ constexpr float kEps = 1e-5f;
 // 建一個帶若干具名 surface 的 null 後端（拖曳前提為後端存在該 surface）。
 NullKernelBackend make_backend(const std::vector<SurfaceId>& ids) {
     NullKernelBackend backend;
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     for (const auto& id : ids) {
         backend.create_surface(id, SurfaceProfile{});
     }
@@ -83,6 +84,7 @@ TEST(AnchorName, RoundTripAllNineAndInvalid) {
 
 TEST(SetPosition, RequiresRealSurfaceAndValidSpec) {
     NullKernelBackend backend = make_backend({"surface.panel"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
 
     // 後端無此 surface → Invalid（只登錄真實存在的）。
@@ -120,6 +122,7 @@ TEST(SetPosition, RequiresRealSurfaceAndValidSpec) {
 
 TEST(DragCycle, EndCommitsAndRemembersNewPosition) {
     NullKernelBackend backend = make_backend({"surface.pet"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.pet", spec_of(Anchor::Center)), DragStatus::Ok);
 
@@ -155,6 +158,7 @@ TEST(DragCycle, EndCommitsAndRemembersNewPosition) {
 
 TEST(DragCycle, MultipleDragToUpdatesPending) {
     NullKernelBackend backend = make_backend({"surface.a"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.a", spec_of(Anchor::TopLeft)), DragStatus::Ok);
     ASSERT_EQ(drag.begin_drag("surface.a"), DragStatus::Ok);
@@ -173,6 +177,7 @@ TEST(DragCycle, MultipleDragToUpdatesPending) {
 
 TEST(DragCycle, CancelRevertsToPreDragPosition) {
     NullKernelBackend backend = make_backend({"surface.pet"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.pet", spec_of(Anchor::Center)), DragStatus::Ok);
     ASSERT_EQ(drag.begin_drag("surface.pet"), DragStatus::Ok);
@@ -193,6 +198,7 @@ TEST(DragCycle, CancelRevertsToPreDragPosition) {
 
 TEST(InvalidDrag, StructuredStatusesNotSilent) {
     NullKernelBackend backend = make_backend({"surface.panel"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
 
     // 未註冊 → begin_drag Invalid。
@@ -227,6 +233,7 @@ TEST(InvalidDrag, StructuredStatusesNotSilent) {
 
 TEST(InvalidDrag, BeginAfterBackendSurfaceGone) {
     NullKernelBackend backend = make_backend({"surface.temp"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.temp", spec_of(Anchor::Center)), DragStatus::Ok);
     // 後端銷毀該 surface 後，begin_drag 應以後端閘控回 Invalid。
@@ -240,6 +247,7 @@ TEST(InvalidDrag, BeginAfterBackendSurfaceGone) {
 
 TEST(MultiSurface, IndependentDragAndMemory) {
     NullKernelBackend backend = make_backend({"surface.a", "surface.b"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.a", spec_of(Anchor::TopLeft)), DragStatus::Ok);
     ASSERT_EQ(drag.set_position("surface.b", spec_of(Anchor::TopRight)), DragStatus::Ok);
@@ -278,6 +286,7 @@ TEST(MultiSurface, IndependentDragAndMemory) {
 
 TEST(Persistence, SerializeThenLoadRestoresPositions) {
     NullKernelBackend backend = make_backend({"surface.panel", "surface.clock"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.panel", spec_of(Anchor::BottomRight, -0.08f, -0.08f)),
               DragStatus::Ok);
@@ -294,6 +303,7 @@ TEST(Persistence, SerializeThenLoadRestoresPositions) {
 
     // 載入到一個全新的服務（模擬「下次啟動還原」）。
     NullKernelBackend backend2 = make_backend({"surface.panel", "surface.clock"});
+    backend2.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface restored(backend2);
     ASSERT_EQ(restored.load_positions(text), DragStatus::Ok);
     EXPECT_EQ(restored.tracked_count(), 2u);
@@ -310,6 +320,7 @@ TEST(Persistence, SerializeThenLoadRestoresPositions) {
 
 TEST(Persistence, DragThenPersistCapturesDraggedPosition) {
     NullKernelBackend backend = make_backend({"surface.pet"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.pet", spec_of(Anchor::Center)), DragStatus::Ok);
     ASSERT_EQ(drag.begin_drag("surface.pet"), DragStatus::Ok);
@@ -319,6 +330,7 @@ TEST(Persistence, DragThenPersistCapturesDraggedPosition) {
 
     const std::string text = drag.serialize_positions();
     NullKernelBackend backend2 = make_backend({"surface.pet"});
+    backend2.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface restored(backend2);
     ASSERT_EQ(restored.load_positions(text), DragStatus::Ok);
     EXPECT_EQ(static_cast<int>(restored.remembered_position("surface.pet")->anchor),
@@ -328,6 +340,7 @@ TEST(Persistence, DragThenPersistCapturesDraggedPosition) {
 
 TEST(Persistence, EmptySerializeRoundTrips) {
     NullKernelBackend backend = make_backend({});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     const std::string text = drag.serialize_positions();
     EXPECT_EQ(drag.load_positions(text), DragStatus::Ok);
@@ -336,6 +349,7 @@ TEST(Persistence, EmptySerializeRoundTrips) {
 
 TEST(Persistence, LoadRejectsInvalidAllOrNothing) {
     NullKernelBackend backend = make_backend({"surface.a"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     ASSERT_EQ(drag.set_position("surface.a", spec_of(Anchor::Center)), DragStatus::Ok);
 
@@ -379,6 +393,7 @@ TEST(Persistence, LoadRejectsInvalidAllOrNothing) {
 
 TEST(Nfr02, LivePositionResolvesRelativeAndScales) {
     NullKernelBackend backend = make_backend({"surface.panel"});
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     DraggableSurface drag(backend);
     // 置中錨點：resolve 後元件應置中，且比例隨容器縮放。
     ASSERT_EQ(drag.set_position("surface.panel", spec_of(Anchor::Center)), DragStatus::Ok);

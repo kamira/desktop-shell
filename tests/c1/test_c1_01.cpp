@@ -68,6 +68,7 @@ Value make_definition(const std::string& layer, const std::string& input,
 
 TEST(SkinProfile, ConstructedUnloadedWithDefaults) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
 
@@ -85,7 +86,9 @@ TEST(SkinProfile, ConstructedUnloadedWithDefaults) {
 
 TEST(SkinProfile, AlphaSupportedReflectsBackendCapability) {
     NullKernelBackend capable{alpha_capable_matrix()};
+    capable.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     NullKernelBackend incapable{CapabilityMatrix::defaults()};
+    incapable.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile a{"skin.a", capable, layers};
     SkinProfile b{"skin.b", incapable, layers};
@@ -99,6 +102,7 @@ TEST(SkinProfile, AlphaSupportedReflectsBackendCapability) {
 
 TEST(SkinProfile, LoadSkinAppliesDeclarativeConfigAndRealizes) {
     NullKernelBackend backend{full_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
 
@@ -129,6 +133,7 @@ TEST(SkinProfile, LoadSkinAppliesDeclarativeConfigAndRealizes) {
 
 TEST(SkinProfile, LoadSkinFromParsedTextDocument) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.dog", backend, layers};
 
@@ -160,6 +165,7 @@ TEST(SkinProfile, LoadSkinFromParsedTextDocument) {
 
 TEST(SkinProfile, LoadSkinEmptyMapUsesDefaults) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
 
@@ -175,6 +181,7 @@ TEST(SkinProfile, LoadSkinEmptyMapUsesDefaults) {
 
 TEST(SkinProfile, LoadSkinUnsupportedWhenAlphaCapabilityUnavailable) {
     NullKernelBackend backend{CapabilityMatrix::defaults()};  // 無 per-pixel alpha
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
 
@@ -186,6 +193,7 @@ TEST(SkinProfile, LoadSkinUnsupportedWhenAlphaCapabilityUnavailable) {
 
 TEST(SkinProfile, OpaqueAlphaModeApplied) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     Value def = Value::map({{"alpha", Value::map({{"mode", Value::string("opaque")}})}});
@@ -199,6 +207,7 @@ TEST(SkinProfile, OpaqueAlphaModeApplied) {
 
 TEST(SkinProfile, CaptureStrategyRealizesWhenCapabilityAvailable) {
     NullKernelBackend backend{full_matrix()};  // 含 input.capture
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     Value def = Value::map({{"input", Value::string("capture")}});
@@ -210,6 +219,7 @@ TEST(SkinProfile, CaptureStrategyRealizesWhenCapabilityAvailable) {
 TEST(SkinProfile, CaptureStrategyUnsupportedRollsBack) {
     // alpha 可用但無 input.capture 能力 → set_strategy 失敗 → 全回滾（NFR-03 組裝一致性）。
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     Value def = Value::map({{"input", Value::string("capture")}});
@@ -221,6 +231,7 @@ TEST(SkinProfile, CaptureStrategyUnsupportedRollsBack) {
 
 TEST(SkinProfile, InputStrategyMappingsAssembleE1_02) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile inert{"skin.inert", backend, layers};
     EXPECT_EQ(inert.load_skin(Value::map({{"input", Value::string("inert")}})), SkinStatus::Ok);
@@ -235,6 +246,7 @@ TEST(SkinProfile, InputStrategyMappingsAssembleE1_02) {
 
 TEST(SkinProfile, UnloadTearsDownBackendAndLayer) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
 
@@ -251,6 +263,7 @@ TEST(SkinProfile, UnloadTearsDownBackendAndLayer) {
 
 TEST(SkinProfile, MultipleSkinsShareLayerStackWithoutInterference) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile cat{"skin.cat", backend, layers};
     SkinProfile dog{"skin.dog", backend, layers};
@@ -273,6 +286,7 @@ TEST(SkinProfile, MultipleSkinsShareLayerStackWithoutInterference) {
 
 TEST(SkinProfile, ResolveLiveProducesConcretePlacement) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     // center anchor、無偏移；container 100x100、element 20x20 → 置中 (40,40)。
@@ -288,6 +302,7 @@ TEST(SkinProfile, ResolveLiveProducesConcretePlacement) {
 
 TEST(SkinProfile, ResolveLiveInvalidWhenNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     ResolvedPlacement out;
@@ -301,6 +316,7 @@ TEST(SkinProfile, ResolveLiveInvalidWhenNotLoaded) {
 
 TEST(SkinProfile, PlaceUpdatesRememberedPosition) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     ASSERT_EQ(skin.load_skin(Value::map({})), SkinStatus::Ok);
@@ -317,6 +333,7 @@ TEST(SkinProfile, PlaceUpdatesRememberedPosition) {
 
 TEST(SkinProfile, PlaceInvalidWhenNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     EXPECT_EQ(skin.place(AnchorSpec{}), DragStatus::Invalid);
@@ -328,6 +345,7 @@ TEST(SkinProfile, PlaceInvalidWhenNotLoaded) {
 
 TEST(SkinProfile, DragCommitUpdatesMemory) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     ASSERT_EQ(skin.load_skin(Value::map({})), SkinStatus::Ok);
@@ -352,6 +370,7 @@ TEST(SkinProfile, DragCommitUpdatesMemory) {
 
 TEST(SkinProfile, DragCancelRestoresMemory) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     ASSERT_EQ(skin.load_skin(Value::map({})), SkinStatus::Ok);
@@ -367,6 +386,7 @@ TEST(SkinProfile, DragCancelRestoresMemory) {
 
 TEST(SkinProfile, DragOpsNotDraggingWhenNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     EXPECT_EQ(skin.begin_drag(), DragStatus::Invalid);
@@ -377,6 +397,7 @@ TEST(SkinProfile, DragOpsNotDraggingWhenNotLoaded) {
 
 TEST(SkinProfile, CannotPlaceWhileDragging) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     ASSERT_EQ(skin.load_skin(Value::map({})), SkinStatus::Ok);
@@ -390,6 +411,7 @@ TEST(SkinProfile, CannotPlaceWhileDragging) {
 
 TEST(SkinProfile, SaveAndLoadPositionRoundTrip) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile src{"skin.cat", backend, layers};
     ASSERT_EQ(src.load_skin(make_definition("overlay", "interactive", "per-pixel", 1.0,
@@ -402,6 +424,7 @@ TEST(SkinProfile, SaveAndLoadPositionRoundTrip) {
 
     // 還原到另一個新 profile（純資料回填，可在 load_skin 前先做）。
     NullKernelBackend backend2{alpha_capable_matrix()};
+    backend2.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers2{CapabilityMatrix::defaults()};
     SkinProfile dst{"skin.cat", backend2, layers2};
     EXPECT_EQ(dst.load_position(saved), DragStatus::Ok);
@@ -414,6 +437,7 @@ TEST(SkinProfile, SaveAndLoadPositionRoundTrip) {
 
 TEST(SkinProfile, LoadPositionInvalidTextRejected) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     EXPECT_EQ(skin.load_position("not a valid document without version"), DragStatus::Invalid);
@@ -425,6 +449,7 @@ TEST(SkinProfile, LoadPositionInvalidTextRejected) {
 
 TEST(SkinProfile, LoadSkinRejectsNonMap) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     EXPECT_EQ(skin.load_skin(Value::string("nope")), SkinStatus::Invalid);
@@ -434,6 +459,7 @@ TEST(SkinProfile, LoadSkinRejectsNonMap) {
 
 TEST(SkinProfile, LoadSkinRejectsInvalidNamedValues) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     // 無效圖層名
@@ -460,6 +486,7 @@ TEST(SkinProfile, LoadSkinRejectsInvalidNamedValues) {
 
 TEST(SkinProfile, LoadSkinRejectsEmptyId) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"", backend, layers};
     EXPECT_EQ(skin.load_skin(Value::map({})), SkinStatus::Invalid);
@@ -467,6 +494,7 @@ TEST(SkinProfile, LoadSkinRejectsEmptyId) {
 
 TEST(SkinProfile, LoadSkinRejectsWhenAlreadyLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     SkinProfile skin{"skin.cat", backend, layers};
     ASSERT_EQ(skin.load_skin(Value::map({})), SkinStatus::Ok);
@@ -478,6 +506,7 @@ TEST(SkinProfile, LoadSkinRejectsWhenAlreadyLoaded) {
 
 TEST(SkinProfile, DestructorUnloadsWhileLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     {
         SkinProfile skin{"skin.cat", backend, layers};

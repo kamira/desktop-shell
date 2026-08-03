@@ -40,6 +40,7 @@ constexpr const char* kSurfaceId = "surface.window";
 // 一個具備 per-pixel alpha 能力、已建立好 kSurfaceId alpha surface 的後端 + 服務。
 struct Fixture {
     NullKernelBackend backend{alpha_capable_matrix()};
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     AlphaSurfaceService alpha_service{backend};
 
     Fixture() {

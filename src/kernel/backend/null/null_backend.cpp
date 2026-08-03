@@ -48,8 +48,14 @@ void NullKernelBackend::shutdown() {
 // --- K1 surface kernel ---
 bool NullKernelBackend::create_surface(const SurfaceId& id,
                                        const SurfaceProfile& profile) {
-    if (id.empty() || find(id) != nullptr) {
-        return false;  // 保守：空 id 或重複 id 一律拒絕
+    // 前置條件：後端須已 init()。
+    //
+    // CHG-20260803-11（對齊 K-007）：此檢查原本不存在——null 後端允許未初始化就建立 surface，
+    // 而 win32 後端不允許（真實後端必須先註冊視窗類別，是物理限制）。分歧自相位 1 存在，
+    // 因為舊契約測的是它自己的 stub，從未跑過真實後端（K-003）。
+    // 對齊方向取 **win32 的嚴格版**：未初始化的後端不該能開出視窗。
+    if (!initialized_ || id.empty() || find(id) != nullptr) {
+        return false;  // 保守：未初始化、空 id、重複 id 一律拒絕
     }
     SurfaceRecord rec;
     rec.profile = profile;

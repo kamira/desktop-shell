@@ -122,7 +122,14 @@ public:
     virtual bool has(const CapabilityId& id) const = 0;
 
     // --- K1 surface kernel（視窗）---
-    // 以具名 id + 四參數 profile 建立一個 surface。id 為空、或 id 已存在則回 false（保守）。
+    // 以具名 id + 四參數 profile 建立一個 surface。
+    //
+    // **前置條件：後端須已 `init()`**。未初始化的後端不該能開出視窗——真實後端在
+    // `init()` 才註冊視窗類別 / 建立平台資源，這是物理限制而非實作偏好。
+    // 未初始化、id 為空、或 id 已存在則回 false（保守）。
+    //
+    // （此前置條件於 CHG-20260803-11 寫明並對齊：原本只有 win32 遵守，null 不遵守，
+    //   而舊契約從未跑過真實後端，故分歧長期未被發現——見知識庫 K-003 / K-007。）
     virtual bool create_surface(const SurfaceId& id, const SurfaceProfile& profile) = 0;
     // 銷毀具名 surface；回傳是否確有銷毀（未知 id 回 false，不崩潰）。
     virtual bool destroy_surface(const SurfaceId& id) = 0;

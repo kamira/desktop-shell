@@ -46,6 +46,7 @@ std::shared_ptr<NullPixelSampleSource> makeFakeSource() {
 // 測試固定件：capable 後端 + alpha service + layer stack + dim overlay，供 ColorPickerApp 借用。
 struct PickerFixture {
     NullKernelBackend backend = make_capable_backend();
+    bool backend_initialized_ = backend.init();  // CHG-20260803-11：成員依宣告順序初始化，故此行在其後成員建構前完成（K-007 對齊）
     AlphaSurfaceService alpha{backend};
     LayerStack layers;
     DimOverlayElement magnifier{alpha, layers, "surface.color_picker"};
@@ -216,6 +217,7 @@ TEST(ColorPicker, DismissMagnifierWithoutPriorMagnifyIsSafe) {
 // ===========================================================================
 TEST(ColorPicker, MagnifyDegradesGracefullyWhenAlphaUnsupported) {
     NullKernelBackend backend;  // 預設保守矩陣：無 per-pixel alpha 能力
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayElement magnifier(alpha, layers);

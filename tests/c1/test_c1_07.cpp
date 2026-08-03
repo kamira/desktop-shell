@@ -36,6 +36,7 @@ NullKernelBackend make_capable_backend() {
 
 TEST(DimOverlayProfile, ConstructedInactiveWithFocusDefaults) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -54,6 +55,7 @@ TEST(DimOverlayProfile, ConstructedInactiveWithFocusDefaults) {
 
 TEST(DimOverlayProfile, ConstructedAppliesNightShiftWarmTintColor) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::NightShift, alpha, layers, "surface.dim.night");
@@ -81,6 +83,7 @@ TEST(DimOverlayProfile, DefaultPresetTableCoversAllKinds) {
 
 TEST(DimOverlayProfile, ActivateNoArgUsesKindDefaultIntensity) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::PopupBackdrop, alpha, layers, "surface.dim.popup");
@@ -93,6 +96,7 @@ TEST(DimOverlayProfile, ActivateNoArgUsesKindDefaultIntensity) {
 
 TEST(DimOverlayProfile, ActivateWithExplicitIntensityOverridesPreset) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -108,6 +112,7 @@ TEST(DimOverlayProfile, ActivateWithExplicitIntensityOverridesPreset) {
 
 TEST(DimOverlayProfile, DeactivateFadesToZeroAndBecomesInactive) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -127,6 +132,7 @@ TEST(DimOverlayProfile, DeactivateFadesToZeroAndBecomesInactive) {
 
 TEST(DimOverlayProfile, FadeMovesIntensityAndTracksActiveState) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -146,6 +152,7 @@ TEST(DimOverlayProfile, FadeMovesIntensityAndTracksActiveState) {
 
 TEST(DimOverlayProfile, ActivatePlacesOverlayOnNamedTopmostLayer) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -168,6 +175,7 @@ TEST(DimOverlayProfile, ActivatePlacesOverlayOnNamedTopmostLayer) {
 
 TEST(DimOverlayProfile, CutoutAddQueryRemoveThroughProfile) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -192,6 +200,7 @@ TEST(DimOverlayProfile, CutoutAddQueryRemoveThroughProfile) {
 
 TEST(DimOverlayProfile, IncapableBackendDegradesGracefully) {
     NullKernelBackend backend;  // 預設保守矩陣：無 per-pixel alpha 能力
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -212,6 +221,7 @@ TEST(DimOverlayProfile, IncapableBackendDegradesGracefully) {
 
 TEST(DimOverlayProfile, RenderModelReflectsProfileState) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::PopupBackdrop, alpha, layers, "surface.dim.popup");
@@ -231,6 +241,7 @@ TEST(DimOverlayProfile, RenderModelReflectsProfileState) {
 
 TEST(DimOverlayProfile, ActivateRejectsNonFiniteIntensity) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -244,6 +255,7 @@ TEST(DimOverlayProfile, ActivateRejectsNonFiniteIntensity) {
 
 TEST(DimOverlayProfile, FadeRejectsNonFiniteTarget) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");
@@ -256,6 +268,7 @@ TEST(DimOverlayProfile, FadeRejectsNonFiniteTarget) {
 
 TEST(DimOverlayProfile, AddCutoutRejectsEmptyName) {
     NullKernelBackend backend = make_capable_backend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService alpha(backend);
     LayerStack layers;
     DimOverlayProfile profile(DimProfileKind::Focus, alpha, layers, "surface.dim.focus");

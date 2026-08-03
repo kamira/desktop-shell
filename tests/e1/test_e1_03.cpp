@@ -87,6 +87,7 @@ TEST(AlphaCapability, DowngradePathWhenUnsupported) {
 // 建立成功：後端實體 surface 與服務 alpha 記錄一致（記憶體模擬）。
 TEST(AlphaSurface, CreateRegistersBackendAndAlphaState) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
 
     AlphaProfile ap;
@@ -112,6 +113,7 @@ TEST(AlphaSurface, CreateRegistersBackendAndAlphaState) {
 // 預設 AlphaProfile：per-pixel、完全不透明。
 TEST(AlphaSurface, DefaultProfileIsPerPixelOpaque) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
     ASSERT_EQ(svc.create_alpha_surface("surface.panel", SurfaceProfile{}),
               AlphaStatus::Ok);
@@ -124,6 +126,7 @@ TEST(AlphaSurface, DefaultProfileIsPerPixelOpaque) {
 // 空 id 拒絕；重複建立拒絕（保守），且不污染既有狀態。
 TEST(AlphaSurface, RejectsEmptyAndDuplicateId) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
 
     EXPECT_EQ(svc.create_alpha_surface("", SurfaceProfile{}), AlphaStatus::Invalid);
@@ -141,6 +144,7 @@ TEST(AlphaSurface, RejectsEmptyAndDuplicateId) {
 // 後端已存在同名 surface（非經本服務建立）→ 後端 create_surface 失敗 → Invalid，且不留半份狀態。
 TEST(AlphaSurface, BackendConflictYieldsInvalidNoPartialState) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     ASSERT_TRUE(backend.create_surface("surface.dup", SurfaceProfile{}));
     AlphaSurfaceService svc(backend);
 
@@ -158,6 +162,7 @@ TEST(AlphaSurface, BackendConflictYieldsInvalidNoPartialState) {
 // set_mode / set_opacity / set_alpha 更新記憶體狀態並可查詢。
 TEST(AlphaSetGet, UpdatesAndQueries) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
     ASSERT_EQ(svc.create_alpha_surface("surface.pet", SurfaceProfile{}),
               AlphaStatus::Ok);
@@ -181,6 +186,7 @@ TEST(AlphaSetGet, UpdatesAndQueries) {
 // opacity clamp 至 [0,1]：越界值飽和、非有限值（NaN/Inf）拒絕。
 TEST(AlphaSetGet, OpacityClampAndFiniteGuard) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
     ASSERT_EQ(svc.create_alpha_surface("surface.pet", SurfaceProfile{}),
               AlphaStatus::Ok);
@@ -208,6 +214,7 @@ TEST(AlphaSetGet, OpacityClampAndFiniteGuard) {
 // 未知 id 的設定 / 查詢：Invalid / nullptr / false，永不崩潰。
 TEST(AlphaSetGet, UnknownIdIsStructured) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
     EXPECT_EQ(svc.set_opacity("surface.ghost", 0.5f), AlphaStatus::Invalid);
     EXPECT_EQ(svc.set_mode("surface.ghost", AlphaMode::Opaque), AlphaStatus::Invalid);
@@ -223,6 +230,7 @@ TEST(AlphaSetGet, UnknownIdIsStructured) {
 // 銷毀同步釋放服務記錄與後端實體 surface；未知 id 回 Invalid（不崩潰）。
 TEST(AlphaLifecycle, DestroyReleasesBothLayers) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
     ASSERT_EQ(svc.create_alpha_surface("surface.pet", SurfaceProfile{}),
               AlphaStatus::Ok);
@@ -240,6 +248,7 @@ TEST(AlphaLifecycle, DestroyReleasesBothLayers) {
 // 多個具名 alpha surface 共存，各自獨立（NFR-02：純具名指涉，無數字 index / 座標）。
 TEST(AlphaLifecycle, MultipleNamedSurfacesCoexist) {
     NullKernelBackend backend = MakeCapableBackend();
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     AlphaSurfaceService svc(backend);
     ASSERT_EQ(svc.create_alpha_surface("surface.pet", SurfaceProfile{}),
               AlphaStatus::Ok);
@@ -260,6 +269,7 @@ TEST(AlphaLifecycle, MultipleNamedSurfacesCoexist) {
 // 經抽象 KernelBackend 基底指標操作亦成立（呼叫端與具體後端解耦）。
 TEST(AlphaLifecycle, WorksThroughAbstractBackend) {
     NullKernelBackend concrete = MakeCapableBackend();
+    concrete.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     ds::kernel::KernelBackend& backend = concrete;
     AlphaSurfaceService svc(backend);
     EXPECT_TRUE(svc.supported());

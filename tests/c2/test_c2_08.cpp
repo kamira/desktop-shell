@@ -39,6 +39,7 @@ FixedFontMetrics MakeMetrics() { return FixedFontMetrics(10.0, 20.0); }
 
 TEST(NoteWidget, ConstructedWithIdAndEmptyUnloadedDefaults) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -56,6 +57,7 @@ TEST(NoteWidget, ConstructedWithIdAndEmptyUnloadedDefaults) {
 
 TEST(NoteWidget, LoadBaseAssemblesLayerAndPositionWhenCapable) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -76,6 +78,7 @@ TEST(NoteWidget, LoadBaseAssemblesLayerAndPositionWhenCapable) {
 
 TEST(NoteWidget, LoadBaseUnsupportedWhenAlphaCapabilityUnavailable) {
     NullKernelBackend backend{CapabilityMatrix::defaults()};  // 無 per-pixel alpha
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -91,6 +94,7 @@ TEST(NoteWidget, LoadBaseUnsupportedWhenAlphaCapabilityUnavailable) {
 
 TEST(NoteWidget, PlaceAndDragDelegateToBase) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -115,6 +119,7 @@ TEST(NoteWidget, PlaceAndDragDelegateToBase) {
 
 TEST(NoteWidget, PlaceInvalidWhenBaseNotLoaded) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -129,6 +134,7 @@ TEST(NoteWidget, PlaceInvalidWhenBaseNotLoaded) {
 
 TEST(NoteWidget, SetTextAndInsertEditContent) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -143,6 +149,7 @@ TEST(NoteWidget, SetTextAndInsertEditContent) {
 
 TEST(NoteWidget, BackspaceAndEraseForwardEditContent) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -161,6 +168,7 @@ TEST(NoteWidget, BackspaceAndEraseForwardEditContent) {
 
 TEST(NoteWidget, SetTextInvalidUtf8Throws) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -175,6 +183,7 @@ TEST(NoteWidget, SetTextInvalidUtf8Throws) {
 
 TEST(NoteWidget, RenderModelProducesLayoutMatchingContent) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -190,6 +199,7 @@ TEST(NoteWidget, RenderModelProducesLayoutMatchingContent) {
 
 TEST(NoteWidget, RenderModelEmptyNoteHasNoLines) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -205,6 +215,7 @@ TEST(NoteWidget, RenderModelEmptyNoteHasNoLines) {
 
 TEST(NoteWidget, SaveThenLoadRoundTripsSimpleText) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget src{"note.todo", backend, layers, metrics};
@@ -221,6 +232,7 @@ TEST(NoteWidget, SaveThenLoadRoundTripsSimpleText) {
 
 TEST(NoteWidget, SaveThenLoadRoundTripsEmptyNote) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget src{"note.todo", backend, layers, metrics};  // 內容預設為空
@@ -235,6 +247,7 @@ TEST(NoteWidget, SaveThenLoadRoundTripsEmptyNote) {
 
 TEST(NoteWidget, SaveThenLoadRoundTripsMultilineNote) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget src{"note.todo", backend, layers, metrics};
@@ -249,6 +262,7 @@ TEST(NoteWidget, SaveThenLoadRoundTripsMultilineNote) {
 
 TEST(NoteWidget, SaveThenLoadRoundTripsTextNeedingEscaping) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget src{"note.todo", backend, layers, metrics};
@@ -267,6 +281,7 @@ TEST(NoteWidget, SaveThenLoadRoundTripsTextNeedingEscaping) {
 
 TEST(NoteWidget, LoadUnparsableTextRejectedContentUnchanged) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -278,6 +293,7 @@ TEST(NoteWidget, LoadUnparsableTextRejectedContentUnchanged) {
 
 TEST(NoteWidget, LoadTextFieldWrongTypeRejectedContentUnchanged) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
@@ -292,6 +308,7 @@ TEST(NoteWidget, LoadTextFieldWrongTypeRejectedContentUnchanged) {
 
 TEST(NoteWidget, LoadMissingTextFieldYieldsEmptyNote) {
     NullKernelBackend backend{alpha_capable_matrix()};
+    backend.init();  // CHG-20260803-11：create_surface 的前置條件（K-007 對齊）
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics metrics = MakeMetrics();
     NoteWidget note{"note.todo", backend, layers, metrics};
