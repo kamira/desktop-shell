@@ -55,6 +55,7 @@ void Win32KernelBackend::shutdown() {
     }
     surfaces_.clear();
     pending_.clear();
+    drag_finished_.clear();
     initialized_ = false;
 }
 
@@ -83,6 +84,26 @@ LRESULT CALLBACK Win32KernelBackend::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LP
         ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 
     if (self) {
+        // W1-03 拖曳：把整個視窗本體當成標題列。DefWindowProc 收到 HTCAPTION 的
+        // WM_NCLBUTTONDOWN 就會自行進入系統的移動迴圈——不必自己算滑鼠位移，
+        // 也因此自動獲得吸附、多螢幕、DPI 等系統行為。
+        //
+        // 只在 draggable 時攔截：桌面元件預設不可拖，避免被意外拖走。
+        // 點擊穿透（WS_EX_TRANSPARENT）時視窗根本收不到滑鼠訊息，故不需另外判斷。
+        if (msg == WM_NCHITTEST) {
+            const LRESULT hit = ::DefWindowProcW(hwnd, msg, wp, lp);
+            if (hit == HTCLIENT && self->is_draggable(self->id_for_hwnd(hwnd))) {
+                return HTCAPTION;
+            }
+            return hit;
+        }
+        if (msg == WM_EXITSIZEMOVE) {
+            // 系統移動迴圈結束 = 使用者放開了滑鼠。回報具名目標，由 host 決定要不要記住。
+            SurfaceId id = self->id_for_hwnd(hwnd);
+            if (!id.empty()) self->drag_finished_.push_back(id);
+            return 0;
+        }
+
         InputEventType type{};
         if (input_type_for(msg, type)) {
             InputEvent ev;
@@ -254,6 +275,65 @@ std::vector<InputEvent> Win32KernelBackend::poll_input() {
 HWND Win32KernelBackend::hwnd_for(const SurfaceId& id) const {
     const SurfaceRecord* rec = find(id);
     return rec ? rec->hwnd : nullptr;
+}
+
+// --- W1-03 拖曳與位置 ---------------------------------------------------------
+
+bool Win32KernelBackend::set_draggable(const SurfaceId& id, bool draggable) {
+    SurfaceRecord* rec = find(id);
+    if (!rec) return false;
+    rec->draggable = draggable;
+    return true;
+}
+
+bool Win32KernelBackend::is_draggable(const SurfaceId& id) const {
+    const SurfaceRecord* rec = find(id);
+    return rec && rec->draggable;
+}
+
+bool Win32KernelBackend::surface_origin(const SurfaceId& id, int& x, int& y) const {
+    const SurfaceRecord* rec = find(id);
+    if (!rec || !rec->hwnd) return false;
+    RECT r = {};
+    if (!::GetWindowRect(rec->hwnd, &r)) return false;
+    x = r.left;
+    y = r.top;
+    return true;
+}
+
+bool Win32KernelBackend::set_surface_origin(const SurfaceId& id, int x, int y) {
+    const SurfaceRecord* rec = find(id);
+    if (!rec || !rec->hwnd) return false;
+    // SWP_NOZORDER：搬位置不得順手改變圖層——否則還原位置會把最上層設定弄掉。
+    return ::SetWindowPos(rec->hwnd, nullptr, x, y, 0, 0,
+                          SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE) != FALSE;
+}
+
+bool Win32KernelBackend::surface_size(const SurfaceId& id, int& width, int& height) const {
+    const SurfaceRecord* rec = find(id);
+    if (!rec || !rec->hwnd) return false;
+    RECT r = {};
+    if (!::GetWindowRect(rec->hwnd, &r)) return false;
+    width = r.right - r.left;
+    height = r.bottom - r.top;
+    return true;
+}
+
+bool Win32KernelBackend::work_area(int& x, int& y, int& width, int& height) const {
+    RECT r = {};
+    if (!::SystemParametersInfoW(SPI_GETWORKAREA, 0, &r, 0)) return false;
+    x = r.left;
+    y = r.top;
+    width = r.right - r.left;
+    height = r.bottom - r.top;
+    return width > 0 && height > 0;
+}
+
+bool Win32KernelBackend::poll_drag_finished(SurfaceId& out_id) {
+    if (drag_finished_.empty()) return false;
+    out_id = drag_finished_.front();
+    drag_finished_.erase(drag_finished_.begin());
+    return true;
 }
 
 bool Win32KernelBackend::set_surface_layer(const SurfaceId& id, SurfaceLayer layer) {

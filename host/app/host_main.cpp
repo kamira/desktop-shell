@@ -27,7 +27,9 @@
 
 #include "command_bus.hpp"           // E6-01：CommandBus / CommandArgs / CommandResult
 #include "document.hpp"              // E7-01：ds::format::Value
+#include "draggable_surface.hpp"     // E1-08：拖曳狀態機 + 位置記憶
 #include "metric.hpp"                // E2-01
+#include "position_store.hpp"        // H1-03：拖曳裝配 + 位置持久化
 #include "system_status_widget.hpp"  // C2-02
 #include "tray.hpp"                  // E11-01：SystemTray / TrayMenu / TrayMenuItem
 #include "tray_win32.hpp"            // W1-02：Win32TrayBackend
@@ -38,6 +40,9 @@
 using ds::command::CommandBus;
 using ds::format::Value;
 using ds::host::build_widget_tray_menu;
+using ds::host::default_positions_path;
+using ds::host::PositionPersistence;
+using ds::kernel::DraggableSurface;
 using ds::host::paint_widget;
 using ds::host::register_widget_controls;
 using ds::host::SystemTray;
@@ -157,6 +162,17 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     HWND hwnd = backend.hwnd_for(surface_id);
     if (!hwnd) return 1;
 
+    // --- 1.5) 拖曳與位置記憶（W1-03 + H1-03）---
+    // 後端預設不可拖（保守），由 host 明確開啟——「這是一個可以被使用者搬動的桌面元件」
+    // 是 host 層的產品決策，不是平台預設。
+    backend.set_draggable(surface_id, true);
+
+    DraggableSurface draggable{backend};
+    PositionPersistence positions{backend, draggable, default_positions_path()};
+    // 還原上次的位置。沒有記錄（第一次執行）或檔案壞掉時什麼都不做，
+    // widget 就留在後端選的預設幾何——不是錯誤，不需回報。
+    positions.restore(surface_id);
+
     // --- 2) 組裝 widget（同一組擴充點，不改 src/）---
     LayerStack layers{CapabilityMatrix::defaults()};
     FixedFontMetrics font{6.0, 14.0};
@@ -203,6 +219,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         if (!backend.pump()) break;              // 收到結束請求
         if (controls.quit) break;                // 托盤選單的「結束」
 
+        // 使用者拖完 widget → 記住新位置並立刻寫回檔案。
+        // 立刻寫而不是等關閉時再寫：這支程式沒有「正常關閉」以外的收尾機會
+        // （工作管理員結束、當機、登出都不會走到結尾），拖完就存才真的存得住。
+        ds::kernel::SurfaceId moved;
+        while (backend.poll_drag_finished(moved)) {
+            if (positions.remember_current(moved)) positions.flush();
+        }
+
         // 使用者在托盤選單選了東西 → 交給 E11-01 解釋語意並分派命令。
         // host 完全不知道那一項是什麼意思，只負責轉交——語意留在選單模型裡。
         std::vector<std::size_t> chosen;
@@ -247,6 +271,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         backend.end_frame(surface_id);
     }
 
+    positions.flush();  // 收尾再存一次（拖曳當下已存過，這裡只是保險）
     tray.hide();  // 移除匣圖示，否則行程結束後會留一個死圖示直到滑鼠掃過
     ::DeleteObject(hfont);
     backend.shutdown();

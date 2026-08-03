@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 180,
+  "units": 182,
   "by_priority": {
-   "P0": 61,
+   "P0": 63,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
-   "medium": 18,
-   "low": 162
+   "medium": 19,
+   "low": 163
   },
-  "waves": 11,
+  "waves": 12,
   "by_platform": {
-   "semantic-divergence": 31,
+   "semantic-divergence": 32,
    "neutral": 113,
-   "api-divergence": 36
+   "api-divergence": 37
   },
   "backend_followup": 63,
   "by_layer": {
-   "artifact": 26,
+   "artifact": 27,
    "engine": 64,
    "module": 58,
-   "platform": 32
+   "platform": 33
   },
   "by_stage": {
    "A": 117,
-   "B": 28,
+   "B": 30,
    "C": 12,
    "D": 23
   },
@@ -5369,6 +5369,67 @@
    ],
    "branch": "feat/h1_02",
    "acceptance": "以 E11-01 TrayMenu 組出選單（最上層切換 / 點擊穿透切換 / 結束），每項綁一個 E6-01 命令；命令處理器呼叫 W1-01 後端既有方法（apply_layer / set_input_policy）。驗收為**操作驗收**：托盤圖示出現、右鍵開得出原生選單、三個項目實際生效（截圖 + 狀態查驗）。",
+   "platform": "api-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "W1-03",
+   "title": "win32 視窗拖曳 + 位置讀寫",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "platform",
+   "stage": "B",
+   "module": "W1",
+   "primitives": [
+    "K1",
+    "K3"
+   ],
+   "depends_on": [
+    "W1-01",
+    "E1-08"
+   ],
+   "wave": 11,
+   "load_bearing": 1,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "src/kernel/backend/win32/**",
+    "tests/e1/test_backend_win32*",
+    "docs/changes/CHG-*-w1_03.md"
+   ],
+   "branch": "feat/w1_03",
+   "acceptance": "WM_NCHITTEST 回 HTCAPTION 讓整個視窗本體可拖曳；WM_ENTERSIZEMOVE / WM_EXITSIZEMOVE 回報拖曳生命週期；提供 win32 專屬的位置 / 尺寸 / 工作區讀寫與 set_draggable 閘控。點擊穿透開啟時不得可拖（WS_EX_TRANSPARENT 收不到滑鼠訊息）。tests/e1 自有 gtest 全綠。",
+   "platform": "semantic-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "H1-03",
+   "title": "host 拖曳裝配 + 位置持久化",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "artifact",
+   "stage": "B",
+   "module": "H1",
+   "primitives": [],
+   "depends_on": [
+    "W1-03",
+    "H1-01",
+    "E1-08",
+    "E7-12"
+   ],
+   "wave": 11,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/**",
+    "tests/h1/test_h1_03*",
+    "docs/changes/CHG-*-h1_03.md"
+   ],
+   "branch": "feat/h1_03",
+   "acceptance": "以 E1-08 DraggableSurface 承接拖曳狀態機與位置記憶；像素 ↔ AnchorSpec 雙向換算（正規化分數，解析度無關）；開機自檔案還原、拖曳結束提交、關閉時序列化寫回。驗收為**操作驗收**：拖動 widget 後關閉再開，位置仍在原處（截圖 + 座標比對）。",
    "platform": "api-divergence",
    "phase": 2,
    "backend_followup": false

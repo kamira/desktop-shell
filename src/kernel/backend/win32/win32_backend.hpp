@@ -101,6 +101,31 @@ public:
     // 放這裡而不是讓 host 直接呼叫 SetWindowPos，是因為「具名圖層 → win32 z-order」
     // 的對映屬於後端職責；散到 host 去就變成兩處各自維護同一張對照表。
     bool set_surface_layer(const SurfaceId& id, SurfaceLayer layer);
+
+    // --- W1-03 拖曳與位置（同為 win32 專屬擴充，不屬於契約）---
+    //
+    // 為什麼位置相關 API 只能是擴充：`KernelBackend` 硬性禁止絕對座標（NFR-02），
+    // 因此契約層永遠不會有 `set_position(x, y)`。位置在系統中的正規表達是 E1-08 的
+    // `AnchorSpec`（具名錨點 + 容器尺寸的正規化分數），像素只在**佈局邊界**出現——
+    // 而這裡就是那個邊界：平台實作內部。host 負責 AnchorSpec ↔ 像素的換算。
+
+    // 開關某 surface 的可拖曳性。停用時 WM_NCHITTEST 不再回報 HTCAPTION，視窗拖不動。
+    // 新建的 surface 預設**不可拖**（保守：沒人要求就不要讓桌面元件被意外拖走）。
+    bool set_draggable(const SurfaceId& id, bool draggable);
+    bool is_draggable(const SurfaceId& id) const;
+
+    // 讀 / 寫視窗左上角的螢幕座標（像素）。未知 id 回 false。
+    bool surface_origin(const SurfaceId& id, int& x, int& y) const;
+    bool set_surface_origin(const SurfaceId& id, int x, int y);
+    // 讀視窗外框尺寸（像素）。未知 id 回 false。
+    bool surface_size(const SurfaceId& id, int& width, int& height) const;
+
+    // 目前工作區（扣掉工作列）的尺寸，供 host 換算 AnchorSpec 的容器尺寸。
+    bool work_area(int& x, int& y, int& width, int& height) const;
+
+    // 取走「使用者剛結束一次拖曳」的通知。有則回 true 並填入該 surface 的具名 id。
+    // 契約沒有拖曳事件（相位 1 無真實視窗拖曳），故以擴充提供。
+    bool poll_drag_finished(SurfaceId& out_id);
     // 抽送一輪視窗訊息並回報是否收到結束請求（WM_CLOSE / WM_QUIT）。
     // poll_input() 內部也會抽訊息；host 若只想推進訊息迴圈而不取事件可用本方法。
     bool pump();
@@ -112,6 +137,7 @@ private:
         HWND hwnd = nullptr;
         SurfaceProfile profile;
         bool in_frame = false;
+        bool draggable = false;  // W1-03：預設不可拖（保守）
         std::size_t completed_frames = 0;
     };
 
@@ -129,6 +155,7 @@ private:
     // 具名鍵配對記錄，順序即建立順序（永不以數字 index 對外暴露，NFR-02）。
     std::vector<std::pair<SurfaceId, SurfaceRecord>> surfaces_;
     std::vector<InputEvent> pending_;  // wnd_proc 收集、poll_input 取走
+    std::vector<SurfaceId> drag_finished_;  // W1-03：WM_EXITSIZEMOVE 收集、poll_drag_finished 取走
     bool initialized_ = false;
     bool class_registered_ = false;
     bool quit_requested_ = false;

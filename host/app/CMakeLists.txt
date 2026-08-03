@@ -8,6 +8,7 @@ if(WIN32)
       w1_01          # W1-01 win32 kernel 後端
       w1_02          # W1-02 win32 系統匣後端
       h1_02_controls # H1-02 選單與命令裝配（與 test_h1_02 共用同一份）
+      h1_03_position # H1-03 拖曳裝配 + 位置持久化
       h1_01_paint    # H1-01 GDI 繪製橋接
       c2_02          # C2-02 系統狀態 widget
       e2_01          # E2-01 指標介面
