@@ -84,6 +84,23 @@ public:
     bool poll_selection(std::vector<std::size_t>& out_path);
     // 目前匣圖示是否已加入系統匣（供測試與診斷）。
     bool icon_added() const noexcept { return icon_added_; }
+    // 目前圖示是否真的從 .ico 檔載入（false = 用了程式繪製的後備圖示）。
+    // 供測試與診斷區分兩條路徑——否則「圖示看起來怪怪的」查不出是哪一種。
+    bool icon_from_file() const noexcept { return icon_from_file_; }
+    // 目前的原生圖示控制碼（供測試比對「後備圖示 ≠ 系統通用圖示」）。
+    HICON native_icon() const noexcept { return icon_; }
+
+    // W1-04：具名圖示 → 實際 .ico 檔路徑。
+    //
+    // 具名 id 去掉開頭的 `icon.` 之後即為套件內邏輯路徑，與 E9 套件格式的
+    // `asset: icons/tray.png` 慣例一致：`icon.tray` → `<base>/icons/tray.ico`。
+    //
+    // base 目錄的解析順序：
+    //   1. 環境變數 `DESKTOP_SHELL_ASSETS`（覆寫，供測試與自訂部署）
+    //   2. `<執行檔所在目錄>/assets`
+    // 回傳空字串代表無法決定路徑（例如 id 為空）。**不檢查檔案是否存在**——
+    // 那是呼叫端的事，分開才能分別測試「路徑算對」與「檔案讀得到」。
+    static std::wstring icon_path_for(const std::string& named_icon);
 
 private:
     static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
@@ -91,8 +108,17 @@ private:
     void popup_menu_at_cursor();
     void refresh_icon_data(DWORD action);
 
+    // 換掉目前圖示並管理其所有權。`owned` 為 true 者於替換 / 解構時須 DestroyIcon；
+    // 系統共用圖示（LoadIcon(IDI_APPLICATION)）**不得**銷毀，故必須分開記。
+    void adopt_icon(HICON icon, bool owned, bool from_file);
+    // 程式繪製的後備圖示（找不到 .ico 檔時用）。失敗回 nullptr。
+    static HICON draw_fallback_icon();
+
     HWND message_window_ = nullptr;
     NOTIFYICONDATAW nid_ = {};
+    HICON icon_ = nullptr;
+    bool icon_owned_ = false;
+    bool icon_from_file_ = false;
     bool icon_added_ = false;
     std::string tooltip_;
     std::string icon_name_;
