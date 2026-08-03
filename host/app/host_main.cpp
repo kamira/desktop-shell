@@ -18,6 +18,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <ole2.h>  // W1-06：OleInitialize（MSAA 的 LresultFromObject 需要）
 
 #include <cmath>
 #include <cstdlib>  // _wtoi
@@ -158,6 +159,12 @@ int seconds_limit_from_command_line() {
 }  // namespace
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
+    // W1-06：MSAA 的 `LresultFromObject` 要求行程已初始化 OLE。
+    // **漏掉這一行，自繪選單的無障礙會安靜失效**——單元測試照樣綠（測試行程自己有初始化），
+    // 但真實 app 裡螢幕閱讀器什麼都讀不到。測試環境與生產環境的差異就藏在這種地方。
+    const HRESULT ole = ::OleInitialize(nullptr);
+    const bool ole_ok = SUCCEEDED(ole);
+
     // --- 1) 真實平台後端 + 一個最上層、不搶焦點的常駐 surface ---
     Win32KernelBackend backend{CapabilityMatrix::defaults()};
     if (!backend.init()) return 1;
@@ -364,6 +371,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     }
 
     positions.flush();  // 收尾再存一次（拖曳當下已存過，這裡只是保險）
+    if (ole_ok) ::OleUninitialize();
     tray.hide();  // 移除匣圖示，否則行程結束後會留一個死圖示直到滑鼠掃過
     ::DeleteObject(hfont);
     backend.shutdown();

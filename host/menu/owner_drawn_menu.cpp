@@ -179,9 +179,11 @@ OwnerDrawnMenu::OwnerDrawnMenu() : renderer_(metrics_, "surface.menu.root") {
     font_ = ::CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                           OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                           DEFAULT_PITCH, L"Segoe UI");
+    accessible_ = new MenuAccessible(window_);  // W1-06：補回原生選單免費提供的無障礙
 }
 
 OwnerDrawnMenu::~OwnerDrawnMenu() {
+    if (accessible_) accessible_->Release();
     if (font_) ::DeleteObject(font_);
     if (window_) {
         ::SetWindowLongPtrW(window_, GWLP_USERDATA, 0);
@@ -190,7 +192,36 @@ OwnerDrawnMenu::~OwnerDrawnMenu() {
 }
 
 bool OwnerDrawnMenu::set_menu(const TrayMenu& menu) {
-    return renderer_.set_menu(tray_menu_to_items(menu)).ok();
+    if (!renderer_.set_menu(tray_menu_to_items(menu)).ok()) return false;
+    refresh_accessibility(/*focus_changed=*/false);
+    return true;
+}
+
+void OwnerDrawnMenu::refresh_accessibility(bool focus_changed) {
+    if (!accessible_) return;
+    const MenuRenderModel m = renderer_.render_model();
+    if (m.panels.empty()) {
+        accessible_->set_rows({});
+        return;
+    }
+    RECT wr = {};
+    if (window_) ::GetWindowRect(window_, &wr);
+    accessible_->set_rows(
+        build_accessible_rows(renderer_.model(), m.panels.front(), POINT{wr.left, wr.top}));
+
+    if (!focus_changed || !window_) return;
+    // 主動通知焦點變更。不發的話螢幕閱讀器只有在使用者手動查詢時才知道選到哪一項，
+    // 等於沒有朗讀——鍵盤使用者會完全不知道游標在哪。
+    const std::vector<std::size_t>& cursor = renderer_.current();
+    if (cursor.empty()) return;
+    const auto& rows = m.panels.front().rows;
+    for (std::size_t i = 0; i < rows.size(); ++i) {
+        if (rows[i].path == cursor) {
+            ::NotifyWinEvent(EVENT_OBJECT_FOCUS, window_, OBJID_CLIENT,
+                             static_cast<LONG>(i) + 1);
+            return;
+        }
+    }
 }
 
 bool OwnerDrawnMenu::row_at(int y, std::vector<std::size_t>& out_path) const {
@@ -234,6 +265,15 @@ LRESULT CALLBACK OwnerDrawnMenu::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM
     if (!self) return ::DefWindowProcW(hwnd, msg, wp, lp);
 
     switch (msg) {
+        case WM_GETOBJECT: {
+            // 輔助工具（螢幕閱讀器）向視窗索取無障礙物件。只回應 OBJID_CLIENT；
+            // 其餘（OBJID_WINDOW 等）交給 DefWindowProc 的系統預設實作。
+            if (static_cast<DWORD>(lp) == static_cast<DWORD>(OBJID_CLIENT) && self->accessible_) {
+                return ::LresultFromObject(IID_IAccessible, wp,
+                                           static_cast<IAccessible*>(self->accessible_));
+            }
+            break;
+        }
         case WM_PAINT: {
             PAINTSTRUCT ps;
             ::BeginPaint(hwnd, &ps);
@@ -245,7 +285,10 @@ LRESULT CALLBACK OwnerDrawnMenu::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM
             std::vector<std::size_t> path;
             if (self->row_at(GET_Y_LPARAM(lp), path)) {
                 // hover 失敗（分隔線 / 停用項）不改游標——由 E11-02 決定，這裡不自行判斷。
-                if (self->renderer_.hover(path).ok()) ::InvalidateRect(hwnd, nullptr, FALSE);
+                if (self->renderer_.hover(path).ok()) {
+                    self->refresh_accessibility(/*focus_changed=*/true);
+                    ::InvalidateRect(hwnd, nullptr, FALSE);
+                }
             }
             return 0;
         }
@@ -265,8 +308,16 @@ LRESULT CALLBACK OwnerDrawnMenu::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM
         case WM_KEYDOWN: {
             switch (wp) {
                 case VK_ESCAPE: self->done_ = true; return 0;
-                case VK_DOWN:   self->renderer_.move_next(); ::InvalidateRect(hwnd, nullptr, FALSE); return 0;
-                case VK_UP:     self->renderer_.move_prev(); ::InvalidateRect(hwnd, nullptr, FALSE); return 0;
+                case VK_DOWN:
+                    self->renderer_.move_next();
+                    self->refresh_accessibility(/*focus_changed=*/true);
+                    ::InvalidateRect(hwnd, nullptr, FALSE);
+                    return 0;
+                case VK_UP:
+                    self->renderer_.move_prev();
+                    self->refresh_accessibility(/*focus_changed=*/true);
+                    ::InvalidateRect(hwnd, nullptr, FALSE);
+                    return 0;
                 case VK_RETURN: {
                     const MenuNavResult r = self->renderer_.activate();
                     if (r.status == MenuNavStatus::Selected) {
@@ -305,6 +356,8 @@ bool OwnerDrawnMenu::popup_at(POINT cursor, std::vector<std::size_t>& out_path) 
     chosen_.clear();
 
     ::SetWindowPos(window_, HWND_TOPMOST, at.x, at.y, w, h, SWP_SHOWWINDOW);
+    // 視窗定位後才知道螢幕座標，無障礙的 accLocation / accHitTest 依賴它。
+    refresh_accessibility(/*focus_changed=*/false);
     ::SetForegroundWindow(window_);
     ::SetFocus(window_);
     ::InvalidateRect(window_, nullptr, TRUE);

@@ -29,9 +29,10 @@
 #include <string>
 #include <vector>
 
-#include "item_tree.hpp"     // E7-13（上游）：ds::format::Item
-#include "menu_renderer.hpp"  // E11-02（上游）：CustomMenuRenderer / MenuRenderModel
-#include "tray.hpp"           // E11-01（上游）：TrayMenu / TrayMenuItem
+#include "item_tree.hpp"       // E7-13（上游）：ds::format::Item
+#include "menu_accessible.hpp"  // W1-06：MSAA / IAccessible
+#include "menu_renderer.hpp"    // E11-02（上游）：CustomMenuRenderer / MenuRenderModel
+#include "tray.hpp"             // E11-01（上游）：TrayMenu / TrayMenuItem
 
 namespace ds::host {
 
@@ -68,8 +69,7 @@ void paint_menu_panel(HDC hdc, const RECT& bounds,
                       const MenuModel& model,
                       const MenuTheme& theme);
 
-// 依索引路徑取節點；路徑無效回 nullptr。
-const MenuNode* node_at(const MenuModel& model, const std::vector<std::size_t>& path);
+// `node_at()` 宣告在 menu_accessible.hpp（本檔已 include 之），定義在本單元的 .cpp。
 
 // 依游標位置與面板尺寸決定彈出視窗的螢幕座標。
 //
@@ -100,10 +100,15 @@ public:
     // 目前渲染描述（供測試檢視排版結果）。
     MenuRenderModel render_model() const { return renderer_.render_model(); }
     const MenuModel& model() const noexcept { return renderer_.model(); }
+    // 原生視窗控制碼（供無障礙測試走真實的 WM_GETOBJECT 路徑）。
+    HWND native_window() const noexcept { return window_; }
 
 private:
     static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
     void paint();
+    // 依目前模型與游標更新無障礙列快照；`focus_changed` 為 true 時另發
+    // EVENT_OBJECT_FOCUS，讓螢幕閱讀器主動朗讀新選中的項目。
+    void refresh_accessibility(bool focus_changed);
     // 由視窗座標反查列索引路徑；未命中回 false。
     bool row_at(int y, std::vector<std::size_t>& out_path) const;
 
@@ -111,6 +116,7 @@ private:
     CustomMenuRenderer renderer_;
     HWND window_ = nullptr;
     HFONT font_ = nullptr;
+    MenuAccessible* accessible_ = nullptr;  // COM 引用計數自持；解構時 Release
     bool done_ = false;
     bool accepted_ = false;
     std::vector<std::size_t> chosen_;
