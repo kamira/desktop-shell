@@ -9,8 +9,55 @@ permissions:
   pull-requests: write
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # G3w Windows 建置閘門（CHG-20260803-08）
+  #
+  # 為什麼需要它：相位 2 起，W1-01 / W1-02 / H1-01 / H1-02 的 CMakeLists 皆以 if(WIN32)
+  # 包住——ubuntu 的 G3 **完全看不到它們**。在本閘門上線之前，main 上約 1200 行 win32
+  # 程式碼的正確性只有開發機的手動證據，任何人改壞都不會紅（CHG-20260803-04/-05/-06 皆已明載）。
+  #
+  # gate job 以 needs 相依於本 job：Windows 建置紅燈 → gate 被跳過 → 自動合併的指令
+  # 根本不會執行（fail-closed）。代價是兩個 job 序列化，PR 多等約十餘分鐘。
+  # ---------------------------------------------------------------------------
+  gate_windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: MSVC 全建 + ctest
+        shell: bash
+        run: |
+          # **不要釘死產生器版本。** 初版寫 -G "Visual Studio 17 2022"，在 windows-latest 上
+          # 直接 "could not find any instance of Visual Studio"——runner 映像的 VS 版本會隨時間更新，
+          # 釘死版本等於把閘門綁在某一版映像上。省略 -G 讓 CMake 挑該機器上實際存在的 VS；
+          # -A x64 仍要指定（不給的話 VS 產生器的預設平台不保證是 x64）。
+          cmake -S . -B build -A x64
+          # 把實際選到的產生器印出來：日後 runner 換版時，這行是第一個線索。
+          grep -E '^CMAKE_GENERATOR(_PLATFORM)?:' build/CMakeCache.txt
+          cmake --build build --config Debug --parallel 4
+          # 真空綠燈防線（同 ubuntu G3）：沒有任何註冊測試 = 紅燈
+          N=$(ctest --test-dir build -C Debug -N 2>/dev/null | sed -n 's/.*Total Tests: //p')
+          [ "${N:-0}" -gt 0 ] || { echo "::error::repo 沒有任何 CTest 測試，綠燈無意義"; exit 1; }
+          ctest --test-dir build -C Debug --output-on-failure
+
+      # 第二道真空綠燈防線，專防本閘門自己失效：
+      # 若 if(WIN32) 的條件納入被改壞（GLOB 深度不對、target 名改了、守衛寫錯），
+      # Windows 專屬單元會被靜默排除，而上一步仍會拿 176 個平台中立測試印出綠燈——
+      # 那正是「看起來有守、其實沒守」的假綠燈。逐一點名確認它們真的在測試清單裡。
+      - name: 確認 Windows 專屬單元真的有被建進來
+        shell: bash
+        run: |
+          LIST=$(ctest --test-dir build -C Debug -N)
+          for t in backend_win32 tray_win32 h1_01_paint h1_02_controls; do
+            echo "$LIST" | grep -q "$t" \
+              || { echo "::error::Windows 專屬測試 $t 不在測試清單中——if(WIN32) 條件納入可能壞了"; exit 1; }
+          done
+          echo "Windows 專屬單元均已納入建置"
+
   gate:
-    runs-on: ubuntu-latest  # 八道閘門只有 G3 需要實際跑測試，其餘為純文字/邏輯檢查，不需要 Windows
+    # 守住 Windows 建置：紅燈時本 job 直接被跳過，合併指令不會執行。
+    needs: gate_windows
+    runs-on: ubuntu-latest  # 本 job 的 G3 在 ubuntu 建，守的是「平台中立性」；MSVC 由 gate_windows 負責
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
