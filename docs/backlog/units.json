@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 184,
+  "units": 185,
   "by_priority": {
-   "P0": 65,
+   "P0": 66,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
    "medium": 19,
-   "low": 165
+   "low": 166
   },
-  "waves": 14,
+  "waves": 15,
   "by_platform": {
    "semantic-divergence": 32,
    "neutral": 114,
-   "api-divergence": 38
+   "api-divergence": 39
   },
   "backend_followup": 63,
   "by_layer": {
    "artifact": 29,
    "engine": 64,
    "module": 58,
-   "platform": 33
+   "platform": 34
   },
   "by_stage": {
    "A": 117,
-   "B": 32,
+   "B": 33,
    "C": 12,
    "D": 23
   },
@@ -5491,6 +5491,35 @@
    "branch": "feat/h1_05",
    "acceptance": "拖曳結束時，元件的四條邊各自對工作區四條邊做門檻內吸附（純幾何、兩軸獨立）；先吸附再記憶，故還原的是吸附後位置。中央位置不得誤吸；門檻 <= 0 停用；工作區退化不得產生垃圾座標。驗收含負向案例（不該吸的時候絕不能吸）。",
    "platform": "neutral",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "W1-04",
+   "title": "系統匣真實圖示資源",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "platform",
+   "stage": "B",
+   "module": "W1",
+   "primitives": [],
+   "depends_on": [
+    "W1-02",
+    "E11-01"
+   ],
+   "wave": 14,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "src/host/win32/**",
+    "assets/icons/**",
+    "tests/e11/test_tray_icon*",
+    "docs/changes/CHG-*-w1_04.md"
+   ],
+   "branch": "feat/w1_04",
+   "acceptance": "具名圖示 id 解析為 `<base>/icons/<name>.ico`（與 E9 的 asset: icons/tray.png 慣例對齊）；真的從 .ico 檔載入；檔案不存在時退回**程式繪製**的後備圖示而非 Windows 通用圖示（否則資源沒部署與功能沒做長得一樣）；圖示所有權正確（自建的要 DestroyIcon、系統共用的不得銷毀）。",
+   "platform": "api-divergence",
    "phase": 2,
    "backend_followup": false
   }

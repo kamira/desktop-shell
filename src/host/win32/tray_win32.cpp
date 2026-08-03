@@ -1,6 +1,9 @@
 // W1-02 win32 系統匣後端 — 實作
 #include "tray_win32.hpp"
 
+#include <cstdint>
+#include <cstdlib>
+
 namespace ds::host {
 namespace {
 
@@ -106,11 +109,14 @@ Win32TrayBackend::Win32TrayBackend() {
     nid_.uID = kTrayIconId;
     nid_.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid_.uCallbackMessage = kTrayCallbackMessage;
-    nid_.hIcon = default_tray_icon();
+    // 建構時先放系統圖示（不擁有）；set_icon() 會換成真實資源或後備圖示。
+    adopt_icon(default_tray_icon(), /*owned=*/false, /*from_file=*/false);
 }
 
 Win32TrayBackend::~Win32TrayBackend() {
     hide();
+    if (icon_ && icon_owned_) ::DestroyIcon(icon_);  // 自己建的圖示要收，系統共用的不能收
+    icon_ = nullptr;
     destroy_built_menu(built_);
     if (message_window_) {
         ::SetWindowLongPtrW(message_window_, GWLP_USERDATA, 0);
@@ -121,11 +127,112 @@ Win32TrayBackend::~Win32TrayBackend() {
 
 // --- TrayBackend 契約 --------------------------------------------------------
 
+std::wstring Win32TrayBackend::icon_path_for(const std::string& named_icon) {
+    if (named_icon.empty()) return std::wstring();
+
+    // 去掉開頭的 `icon.`：`icon.tray` → `tray`，與 E9 的 `asset: icons/tray.png` 慣例對齊。
+    std::string leaf = named_icon;
+    const std::string prefix = "icon.";
+    if (leaf.rfind(prefix, 0) == 0) leaf = leaf.substr(prefix.size());
+    if (leaf.empty()) return std::wstring();
+
+    // base：環境變數優先（供測試與自訂部署），否則取執行檔所在目錄下的 assets/。
+    std::wstring base;
+    if (const wchar_t* env = ::_wgetenv(L"DESKTOP_SHELL_ASSETS")) {
+        if (*env != L'\0') base = env;
+    }
+    if (base.empty()) {
+        wchar_t exe[MAX_PATH] = {};
+        const DWORD n = ::GetModuleFileNameW(nullptr, exe, MAX_PATH);
+        if (n == 0 || n >= MAX_PATH) return std::wstring();
+        std::wstring path(exe, n);
+        const std::size_t slash = path.find_last_of(L"\\/");
+        if (slash == std::wstring::npos) return std::wstring();
+        base = path.substr(0, slash) + L"\\assets";
+    }
+    return base + L"\\icons\\" + widen(leaf) + L".ico";
+}
+
+HICON Win32TrayBackend::draw_fallback_icon() {
+    // 找不到 .ico 檔時的後備：程式繪製一個與 widget 同色系的小圖。
+    //
+    // **刻意不退回 Windows 通用圖示**：那會讓「資源沒部署好」看起來像「功能還沒做」，
+    // 使用者與維護者都查不出差別。後備圖示長得像自己，才看得出是資源沒找到。
+    constexpr int kSize = 32;
+    HDC screen = ::GetDC(nullptr);
+    if (!screen) return nullptr;
+
+    BITMAPINFO bi = {};
+    bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
+    bi.bmiHeader.biWidth = kSize;
+    bi.bmiHeader.biHeight = -kSize;  // top-down
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
+
+    void* bits = nullptr;
+    HBITMAP color = ::CreateDIBSection(screen, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    ::ReleaseDC(nullptr, screen);
+    if (!color || !bits) {
+        if (color) ::DeleteObject(color);
+        return nullptr;
+    }
+
+    auto* px = static_cast<std::uint32_t*>(bits);
+    constexpr std::uint32_t kBg = 0xFF1A1418;    // ARGB：深底
+    constexpr std::uint32_t kFill = 0xFF58B0FF;  // 亮藍（同 widget 量表）
+    for (int y = 0; y < kSize; ++y) {
+        for (int x = 0; x < kSize; ++x) {
+            std::uint32_t c = kBg;
+            // 三條長條，與 assets/icons/tray.ico 的構圖一致
+            for (int i = 0; i < 3; ++i) {
+                const int top = 8 + i * 8;
+                if (y >= top && y < top + 4 && x >= 6 && x < 6 + 8 + i * 4) c = kFill;
+            }
+            px[y * kSize + x] = c;
+        }
+    }
+
+    HBITMAP mask = ::CreateBitmap(kSize, kSize, 1, 1, nullptr);
+    ICONINFO ii = {};
+    ii.fIcon = TRUE;
+    ii.hbmColor = color;
+    ii.hbmMask = mask;
+    HICON icon = ::CreateIconIndirect(&ii);
+    ::DeleteObject(color);
+    if (mask) ::DeleteObject(mask);
+    return icon;
+}
+
+void Win32TrayBackend::adopt_icon(HICON icon, bool owned, bool from_file) {
+    if (icon_ && icon_owned_) ::DestroyIcon(icon_);  // 系統共用圖示不得銷毀，故看 owned
+    icon_ = icon;
+    icon_owned_ = owned;
+    icon_from_file_ = from_file;
+    nid_.hIcon = icon_;
+}
+
 void Win32TrayBackend::set_icon(const std::string& icon) {
     icon_name_ = icon;
-    // 具名圖示 → 實際圖示資源的對照尚未建立（需要圖示資源與 E9 套件格式）。
-    // 目前一律用系統預設圖示，但**如實保存具名值**——接上資源後這裡是唯一要改的地方。
-    nid_.hIcon = default_tray_icon();
+
+    const std::wstring path = icon_path_for(icon_name_);
+    if (!path.empty()) {
+        // LR_LOADFROMFILE + LR_DEFAULTSIZE：讓 Windows 從多尺寸 .ico 挑系統匣該用的那個。
+        HICON from_file = static_cast<HICON>(::LoadImageW(
+            nullptr, path.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE));
+        if (from_file) {
+            adopt_icon(from_file, /*owned=*/true, /*from_file=*/true);
+            if (icon_added_) refresh_icon_data(NIM_MODIFY);
+            return;
+        }
+    }
+
+    if (HICON fallback = draw_fallback_icon()) {
+        adopt_icon(fallback, /*owned=*/true, /*from_file=*/false);
+    } else {
+        // 連後備都畫不出來（GDI 資源耗盡等）才用系統圖示——不擁有，不得銷毀。
+        adopt_icon(default_tray_icon(), /*owned=*/false, /*from_file=*/false);
+    }
     if (icon_added_) refresh_icon_data(NIM_MODIFY);
 }
 

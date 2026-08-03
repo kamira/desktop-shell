@@ -15,4 +15,12 @@ if(WIN32)
   add_executable(test_tray_win32 ${CMAKE_SOURCE_DIR}/tests/e11/test_tray_win32.cpp)
   target_link_libraries(test_tray_win32 PRIVATE w1_02 GTest::gtest_main)
   add_test(NAME tray_win32 COMMAND test_tray_win32)
+
+  # W1-04 真實圖示資源
+  add_executable(test_tray_icon ${CMAKE_SOURCE_DIR}/tests/e11/test_tray_icon.cpp)
+  target_link_libraries(test_tray_icon PRIVATE w1_02 GTest::gtest_main)
+  # 測試需要知道 repo 內的 assets/ 位置，才能驗「真的從檔案載入」這條路徑。
+  target_compile_definitions(test_tray_icon PRIVATE
+      DS_REPO_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets")
+  add_test(NAME tray_icon COMMAND test_tray_icon)
 endif()
