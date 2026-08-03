@@ -91,10 +91,31 @@ def allowed_backends(ph):
     return set(ph["allowed_backends"])
 
 
+# 平台專屬目錄的具名慣例。相位閘門原本只看 src/kernel/backend/*，
+# 但相位 2 的 W1-02 系統匣後端落在 src/host/win32/——**完全不在閘門涵蓋範圍內**
+# （CHG-20260803-06 §閘門涵蓋缺口）。平台碼不會只長在 kernel 底下，
+# 故改為掃描 src/ 之下**任何**以平台命名的目錄。
+PLATFORM_DIR_NAMES = ("win32", "cocoa", "wlroots", "x11", "wayland", "macos", "linux", "android")
+
+
 def found_backends(root):
-    """回傳 src/kernel/backend/ 下實際存在的後端目錄名集合。"""
-    return {os.path.basename(p) for p in glob.glob(os.path.join(root, "src/kernel/backend/*"))
-            if os.path.isdir(p)}
+    """回傳 src/ 之下實際存在的平台目錄名集合。
+
+    兩個來源：
+      1. `src/kernel/backend/*` —— kernel 後端家族（含 `null`，既有行為）。
+      2. `src/**/<平台名>/` —— 任何以平台命名的目錄（如 `src/host/win32/`）。
+         沒有這一項的話，只要把平台碼放在 kernel/backend 之外就能繞過相位閘門。
+    """
+    found = {os.path.basename(p)
+             for p in glob.glob(os.path.join(root, "src/kernel/backend/*"))
+             if os.path.isdir(p)}
+
+    src_root = os.path.join(root, "src")
+    for dirpath, dirnames, _ in os.walk(src_root):
+        for d in dirnames:
+            if d.lower() in PLATFORM_DIR_NAMES:
+                found.add(d.lower())
+    return found
 
 
 def check(root):
@@ -114,6 +135,7 @@ def check(root):
     if bad:
         print(f"::error::相位 {phase} 只允許後端 {sorted(allowed)}，"
               f"但發現 {sorted(bad)}")
+        print("::error::（掃描範圍：src/kernel/backend/* 與 src/ 之下任何以平台命名的目錄）")
         print("::error::若確實要進入下一相位，請先更新 docs/backlog/phase.json 並開 CHG 記錄該決策")
         return 1
 
