@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 186,
+  "units": 187,
   "by_priority": {
-   "P0": 67,
+   "P0": 68,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
    "medium": 19,
-   "low": 167
+   "low": 168
   },
-  "waves": 16,
+  "waves": 17,
   "by_platform": {
    "semantic-divergence": 33,
    "neutral": 114,
-   "api-divergence": 39
+   "api-divergence": 40
   },
   "backend_followup": 63,
   "by_layer": {
    "artifact": 29,
    "engine": 64,
    "module": 58,
-   "platform": 35
+   "platform": 36
   },
   "by_stage": {
    "A": 117,
-   "B": 34,
+   "B": 35,
    "C": 12,
    "D": 23
   },
@@ -5551,6 +5551,35 @@
    "branch": "feat/w1_05",
    "acceptance": "以 E11-02 CustomMenuRenderer 的渲染描述自繪彈出選單（GDI），不呼叫 TrackPopupMenu；E11-01 TrayMenu → E7-13 Item 森林的轉換正確（含分隔線的合成唯一 id、checked 僅 checkbox 可帶）；邊緣翻轉（右/下放不下往反向長、面板過大時夾入工作區）；繪製結果以記憶體 DIB 驗證（分隔線有畫、未巡覽時無高亮）。**已知退步：無無障礙支援（螢幕閱讀器讀不到），原生 HMENU 免費提供。**",
    "platform": "semantic-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "W1-06",
+   "title": "自繪選單無障礙支援（MSAA）",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "platform",
+   "stage": "B",
+   "module": "W1",
+   "primitives": [],
+   "depends_on": [
+    "W1-05",
+    "E11-02"
+   ],
+   "wave": 16,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/menu/**",
+    "host/app/**",
+    "tests/e11/test_menu_accessible*",
+    "docs/changes/CHG-*-w1_06.md"
+   ],
+   "branch": "feat/w1_06",
+   "acceptance": "自繪選單視窗回應 WM_GETOBJECT 交出 IAccessible；角色 MENUPOPUP / MENUITEM / SEPARATOR；名稱為選單項標籤（分隔線無名稱）；狀態帶 CHECKED / UNAVAILABLE / FOCUSED；巡覽時發 EVENT_OBJECT_FOCUS。驗收**走真實 AccessibleObjectFromWindow 路徑**（螢幕閱讀器走的同一條），不戳內部狀態。補回 W1-05 相對原生 HMENU 的功能退步。",
+   "platform": "api-divergence",
    "phase": 2,
    "backend_followup": false
   }
