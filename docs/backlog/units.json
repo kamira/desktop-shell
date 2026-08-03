@@ -5,19 +5,19 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 185,
+  "units": 186,
   "by_priority": {
-   "P0": 66,
+   "P0": 67,
    "P1": 66,
    "P2": 50
   },
   "by_risk": {
    "medium": 19,
-   "low": 166
+   "low": 167
   },
-  "waves": 15,
+  "waves": 16,
   "by_platform": {
-   "semantic-divergence": 32,
+   "semantic-divergence": 33,
    "neutral": 114,
    "api-divergence": 39
   },
@@ -26,11 +26,11 @@
    "artifact": 29,
    "engine": 64,
    "module": 58,
-   "platform": 34
+   "platform": 35
   },
   "by_stage": {
    "A": 117,
-   "B": 33,
+   "B": 34,
    "C": 12,
    "D": 23
   },
@@ -5520,6 +5520,37 @@
    "branch": "feat/w1_04",
    "acceptance": "具名圖示 id 解析為 `<base>/icons/<name>.ico`（與 E9 的 asset: icons/tray.png 慣例對齊）；真的從 .ico 檔載入；檔案不存在時退回**程式繪製**的後備圖示而非 Windows 通用圖示（否則資源沒部署與功能沒做長得一樣）；圖示所有權正確（自建的要 DestroyIcon、系統共用的不得銷毀）。",
    "platform": "api-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "W1-05",
+   "title": "win32 自繪選單呈現",
+   "priority": "P0",
+   "group": "桌面 runtime",
+   "layer": "platform",
+   "stage": "B",
+   "module": "W1",
+   "primitives": [],
+   "depends_on": [
+    "E11-02",
+    "E11-01",
+    "E7-13",
+    "W1-02"
+   ],
+   "wave": 15,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/menu/**",
+    "src/host/win32/**",
+    "tests/e11/test_owner_drawn_menu*",
+    "docs/changes/CHG-*-w1_05.md"
+   ],
+   "branch": "feat/w1_05",
+   "acceptance": "以 E11-02 CustomMenuRenderer 的渲染描述自繪彈出選單（GDI），不呼叫 TrackPopupMenu；E11-01 TrayMenu → E7-13 Item 森林的轉換正確（含分隔線的合成唯一 id、checked 僅 checkbox 可帶）；邊緣翻轉（右/下放不下往反向長、面板過大時夾入工作區）；繪製結果以記憶體 DIB 驗證（分隔線有畫、未巡覽時無高亮）。**已知退步：無無障礙支援（螢幕閱讀器讀不到），原生 HMENU 免費提供。**",
+   "platform": "semantic-divergence",
    "phase": 2,
    "backend_followup": false
   }

@@ -10,6 +10,7 @@ if(WIN32)
       h1_02_controls # H1-02 選單與命令裝配（與 test_h1_02 共用同一份）
       h1_03_position # H1-03 拖曳裝配 + 位置持久化
       h1_04_ui_state # H1-04 UI 開關狀態持久化
+      w1_05_menu     # W1-05 自繪選單呈現
       h1_01_paint    # H1-01 GDI 繪製橋接
       c2_02          # C2-02 系統狀態 widget
       e2_01          # E2-01 指標介面
