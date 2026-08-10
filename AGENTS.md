@@ -71,7 +71,8 @@ agent-hierarchy 深度上限：人類 → I1 → I1.n（2 層），**不得再�
 > G8 次之：它守的是這個 workflow 自己，本檔若已可被注入，後面每一道閘門的判定都不再可信。
 >
 > **新增 Python 測試不必改任何設定**：放進 `tests/` 底下任何位置、檔名 `test_*.py`，
-> G0 就會收到（它自己走檔案樹，不用 `unittest discover`——那一行會跑 0 個測試然後回綠）。
+> G0 就會收到。它自己走檔案樹，不用 `unittest discover`——後者只遞迴進有
+> `__init__.py` 的套件，對本 repo 的 `tests/` **一個測試都收不到**。
 > G7 排在耗時的 G3 建置之前（純文字檢查，紅燈時省下十餘分鐘）。
 > 刻意擱置的 WIP 寫 `Paused — <理由>` 即可通過 G7——擋它只會逼人把 Proposed 謊報成 Accepted。
 >

@@ -89,10 +89,11 @@ jobs:
       # （G1b backend_guard、G7 status_check、G8 workflow_lint）。先證明裁判本身
       # 的邏輯是對的，再讓它去判這個 PR。
       #
-      # 為什麼不是一行 `unittest discover -s tests`：那一行會**跑 0 個測試然後回綠**
+      # 為什麼不是一行 `unittest discover -s tests`：那一行**一個測試都收不到**
       # （discover 只遞迴進有 __init__.py 的套件，本 repo 的 tests/ 子目錄都不是）。
-      # 那正是本檔已防兩次的真空綠燈。run_python_tests.py 自己走檔案樹，
-      # 並在「0 個檔」或「0 個測試」時紅燈。
+      # 它在 Python ≤3.11 還會安靜回 0，3.12 起才改回 exit 5——本機 3.11 / CI 3.12，
+      # 兩種行為都已釘進 tests/gates/test_run_python_tests.py。
+      # run_python_tests.py 自己走檔案樹，並在「0 個檔」或「0 個測試」時紅燈。
       #
       # 在此之前 CI 從未跑過任何 Python 測試：tests/e1/test_backend_guard.py 的
       # 14 個測試沒有 CMakeLists 進不了 CTest，也沒有任何 pytest 呼叫——
