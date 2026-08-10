@@ -1,8 +1,8 @@
 # handshake — autopilot（進場握手 live ack）
 
-branch/role/scope: `chore/chg-20260810-07`（worktree，自 `559c0af` 重開，避開 K-005）/ I1 / RW: `docs/**`
-doing: `CHG-20260810-07` 補做 HANDOFF §0-B 操作驗收 —— 5/6 完成，已自驗（未改任何程式碼）
-next: commit → push → PR → 閘門綠燈後 infra AUTO 自動合併
+branch/role/scope: `chore/chg-20260810-08`（worktree，自 `9eaface` 重開，避開 K-005）/ I1 / RW: `docs/**`
+doing: `CHG-20260810-08` widget 組件組合 + 就地編輯的需求分析與結構設計 —— **停在 confirm 停點**
+next: 等使用者 go / no-go。放行後才把 6 個新單元寫進 `units.json` 並開始派工
 last-updated: 2026-08-10 08:36 (UTC+0)
 
 ## 本輪已完成
@@ -15,7 +15,8 @@ last-updated: 2026-08-10 08:36 (UTC+0)
 | `CHG-20260810-04` | 修 G2 命令注入 + G8 workflow_lint | 合併於 `5d172a7` (#211) |
 | `CHG-20260810-05` | tests/e1 接進 CI（G0）+ 五支腳本補釘編碼 | 合併於 `9fab7bc` (#212) |
 | `CHG-20260810-06` | 補 halt_gate / plan / scope_check 測試 | 合併於 `559c0af` (#213) |
-| `CHG-20260810-07` | 補做 §0-B 操作驗收（5/6） | Accepted，待 PR |
+| `CHG-20260810-07` | 補做 §0-B 操作驗收（5/6） | 合併於 `9eaface` (#214) |
+| `CHG-20260810-08` | widget 組件組合 + 就地編輯（設計） | **Paused，停在 confirm 停點** |
 
 `origin/main` 現況：未收尾 CHG **0 筆**；CI 閘門 **十一道**（G0 → G8 → G1 → G1b
 → G1c → G2 → G7 → G3 → G4 → G5 → G6）。
