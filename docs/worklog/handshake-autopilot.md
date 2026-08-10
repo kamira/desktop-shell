@@ -1,9 +1,35 @@
 # handshake — autopilot（進場握手 live ack）
 
-branch/role/scope: `claude/ai-sdlc-autopilot-handshake-47f9f2`（worktree）/ I1 lead implementer / RW: 尚未鎖定任何 `write_scope`
-doing: `CHG-20260810-01`（docs-only）補齊 5 筆已合併 CHG 的 Status —— 5 檔已改完、已自驗
-next: commit → push → PR（內文帶 CHG-20260810-01）→ 閘門綠燈後 squash merge
+branch/role/scope: `docs/chg-20260810-02`（worktree，自 `ef897b8` 重開，避開 K-005）/ I1 / RW: `docs/**`
+doing: `CHG-20260810-02` 批次收尾 98 筆 Status 漂移 —— 98 檔已改完、已自驗（未收尾歸 0）
+next: commit → push → PR → 閘門綠燈後 squash merge
 last-updated: 2026-08-10 08:36 (UTC+0)
+
+## ⚠ hook 的未收尾清單是截斷過的（2026-08-10 發現）
+
+`session_start.py` L76 印的是 **`pending[:5]`**——只有前 5 筆，且按檔名排序。
+所以「5 筆未收尾」從來不是總數，是**第一頁**。以 hook 自身的判定邏輯掃 `origin/main`：
+
+- CHG 總數 224、**未收尾 98 筆**（修掉 5 筆前是 103）
+- 下一個 session 的 hook 會顯示：`e10_03, e10_04, e10_05, e11_02, e12_01`
+
+**全部 98 筆都只是紀錄漂移，沒有任何一筆是真的缺驗收**——已逐筆查證：
+
+| 分類 | 筆數 | 依據 |
+|---|---|---|
+| medium 風險 | 13 | **13 筆全部都有對應 ACC**（E1-01/02/03/04/08/09、E1-25、E2-01/02、E4-02、E5-12、E6-01、E7-01） |
+| low 風險 | 85 | 依 Guideline §7，low 只需 CHG 內 inline 自驗，本就不需 ACC |
+| 非單元 / 查無 | 0 | — |
+
+漂移的三種寫法：沒有 `## Status` 段、`Proposed — self-verified`、
+`Proposed — 待 V1 驗收`（32 筆用了這句，但其中 30 筆是 low，根本不需要 V1）。
+
+**已由 `CHG-20260810-02` 批次收尾**：98 筆全部補上 Status（附合併 commit + PR），
+重掃結果 `CHG 總數=224 未收尾=0`。fail-closed 略過 0 筆。
+
+**根因未除**：合併發生在 PR 端、CHG 文件在合併前就凍結，仍然沒有任何一步會回頭改
+Status。本次只清存量；下一批單元合併後同樣會再長出來。要根治得動
+`.github/workflows/` 或 `scripts/`（合併後自動回寫），屬另一張 CHG 的範圍。
 
 ## 讀取順序與結果
 
