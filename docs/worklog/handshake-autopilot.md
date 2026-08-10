@@ -1,7 +1,7 @@
 # handshake — autopilot（進場握手 live ack）
 
-branch/role/scope: `chore/chg-20260810-06`（worktree，自 `9fab7bc` 重開，避開 K-005）/ I1 / RW: `docs/** scripts/** tests/**`
-doing: `CHG-20260810-06` 補 halt_gate / plan / scope_check 測試 —— 已實作 + 自驗（111 測試過、5 個突變全抓到）
+branch/role/scope: `chore/chg-20260810-07`（worktree，自 `559c0af` 重開，避開 K-005）/ I1 / RW: `docs/**`
+doing: `CHG-20260810-07` 補做 HANDOFF §0-B 操作驗收 —— 5/6 完成，已自驗（未改任何程式碼）
 next: commit → push → PR → 閘門綠燈後 infra AUTO 自動合併
 last-updated: 2026-08-10 08:36 (UTC+0)
 
@@ -14,7 +14,8 @@ last-updated: 2026-08-10 08:36 (UTC+0)
 | `CHG-20260810-03` | 根治：新增 G7 合併前 Status 閘門 | 合併於 `b6147f0` (#210) |
 | `CHG-20260810-04` | 修 G2 命令注入 + G8 workflow_lint | 合併於 `5d172a7` (#211) |
 | `CHG-20260810-05` | tests/e1 接進 CI（G0）+ 五支腳本補釘編碼 | 合併於 `9fab7bc` (#212) |
-| `CHG-20260810-06` | 補 halt_gate / plan / scope_check 測試 | Accepted，待 PR |
+| `CHG-20260810-06` | 補 halt_gate / plan / scope_check 測試 | 合併於 `559c0af` (#213) |
+| `CHG-20260810-07` | 補做 §0-B 操作驗收（5/6） | Accepted，待 PR |
 
 `origin/main` 現況：未收尾 CHG **0 筆**；CI 閘門 **十一道**（G0 → G8 → G1 → G1b
 → G1c → G2 → G7 → G3 → G4 → G5 → G6）。
@@ -72,16 +73,34 @@ PowerShell 讀 UTF-8 的 CHG 出 mojibake、Python 印 CJK 多次 `UnicodeEncode
 的 **reader thread** 裡拋出——不傳播到呼叫端，只留下 `returncode=0` + `stdout=None`。
 看起來像「指令沒有輸出」，不像「解碼失敗」。**看到成功但沒有輸出，先懷疑解碼。**
 
-## 仍未收尾的（非本輪範圍）
+## 操作驗收：6 項 → 只剩 1 項（`CHG-20260810-07`）
 
-`docs/backlog/HANDOFF.md` §0-B 的 **6 項操作驗收**（自繪選單外觀 / 滑鼠與 Esc 互動 /
-彈出位置與邊緣翻轉 / NVDA 朗讀 / 托盤圖示 / 合成拖曳不穩）。
+使用者授權後裝了 CMake 4.4.2 + VS Build Tools 17.14.37 + Windows SDK 10.0.26100
+（winget 不會自己提權，要 `Start-Process -Verb RunAs` 把 UAC 彈到使用者桌面才過得去）。
+MSVC 全建 **0 error 0 warning**、ctest **187/187**，5 項操作驗收全過。
 
-**阻礙不是防毒。** 這台（haruharu）只有 Windows Defender，沒有 HANDOFF 記載的
-PC-cillin——但**也沒有任何 C++ 工具鏈**：`cmake`／`cl`／`msbuild`／`g++` 全無，
-`C:\Program Files\Microsoft Visual Studio` 不存在。HANDOFF 的「本機環境」
-（CMake 4.4.1 + MSVC 19.44）寫的是另一台機器。
+**剩下第 4 項：NVDA / Narrator 實際朗讀** —— 需要有人用耳朵聽，沒有自動化能替代。
 
-CI 有完整 MSVC，C++ 建置與 187 個 ctest 一直都真的在跑；缺的只有**實機 GUI 操作**
-這一段。要在這台做，得先裝 CMake + VS Build Tools（動系統狀態，需使用者決定）。
-NVDA / Narrator 那一項無論如何都需要有人用耳朵聽。
+**第 6 項別誤讀**：`WM_NCHITTEST` 證明的是「可不可拖」，合成拖曳 10/10 證明的是
+「這台機器上穩」。**兩者都不是「查明原機器為何不穩」。** 原機器裝 PC-cillin，
+防毒掛鉤輸入是合理懷疑，但本次沒有任何證據支持，故不寫成結論。
+
+## 這一輪學到的：判定條件比它要判定的東西寬，就會一直說沒問題
+
+同一族的坑在本輪出現五次，全部是「檢查本身失效，但看起來像通過」：
+
+| 現象 | 真相 |
+|---|---|
+| `\| tail` 之後 exit code 變 0 | 建置其實秒退（`cmake: command not found`） |
+| `gh pr checks --watch` 回 0 | 是被網路砍斷，不是檢查完成 |
+| `unittest discover` 回 OK | 跑了 0 個測試 |
+| PowerShell `-match 'DONE'` | 不分大小寫，被 `Configuring done` 命中 |
+| 選單 rect 讀到 10x10 | 佈局還沒完成就量，三張 hover 截圖全廢 |
+
+最後一項最值得記：那次點選**仍然成功**（座標湊巧落在正確的列），
+如果我沒去看尺寸數字，會把一個沒驗到的東西記成通過。
+
+## 其他未收尾
+
+`HANDOFF` §0-C 的技術債未動：多螢幕吸附未驗、自繪選單子選單未展開、
+無障礙未實作 `accSelect` / `accDoDefaultAction`、圖示無主題分版、吸附門檻寫死。
