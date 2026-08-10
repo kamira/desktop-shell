@@ -82,10 +82,25 @@ jobs:
             echo "risk=low" >> "$GITHUB_OUTPUT"
           fi
 
+      # ---------------------------------------------------------------------
+      # G8 workflow 注入閘門（CHG-20260810-04）
+      #
+      # 擋：`run:` 區塊直接內插不可信的 ${{ }}。${{ }} 是在 shell 看到腳本之前就展開成
+      # 字面文字的，所以內插 PR 內文 = 把內文貼進腳本，反引號與 $(...) 會被執行。
+      # 2026-08-10 PR #210 的內文真的被當成指令跑過（K-008）。
+      #
+      # 放在最前面：它守的是這個 workflow 自己，若本檔已被改成可注入，
+      # 後面每一道閘門的判定都不再可信——先確認裁判沒被買通，再開始比賽。
+      # ---------------------------------------------------------------------
+      - name: G8 workflow_lint
+        run: python scripts/workflow_lint.py
+
       # G1 鎖定範圍（把「不得擴權」變成機器強制）——僅工作單元；infra 變更本就跨範圍，不適用。
       - name: G1 scope_check
         if: steps.unit.outputs.is_unit == 'true'
-        run: python scripts/scope_check.py --unit ${{ steps.unit.outputs.id }} --base origin/${{ github.base_ref }}
+        env:
+          BASE_REF: ${{ github.base_ref }}   # git 分支名可含 $ 與反引號，不得內插進 run:
+        run: python scripts/scope_check.py --unit ${{ steps.unit.outputs.id }} --base "origin/$BASE_REF"
 
       # G1b 相位閘門：當前相位不得出現未允許的平台後端
       - name: G1b backend_guard
@@ -96,10 +111,18 @@ jobs:
         run: python scripts/stage_check.py
 
       # G2 PR 必須連結 CHG
+      #
+      # PR 內文**必須經 env: 傳入**，不得直接 ${{ }} 內插進 run:（CHG-20260810-04）。
+      # ${{ }} 是在 shell 看到腳本之前展開成字面文字的，所以內插等於把 PR 內文貼進
+      # 腳本裡——內文的反引號與 $(...) 會被當成指令執行。這在 2026-08-10 真的發生過
+      # （PR #210 的內文把 markdown 行內程式碼當指令跑了，見 knowledge K-008）。
+      # G8 workflow_lint 現在會擋住這種寫法復發。
       - name: G2 CHG linked
         shell: bash
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          echo "${{ github.event.pull_request.body }}" | grep -qE 'CHG-[0-9]{8}-' \
+          printf '%s' "$PR_BODY" | grep -qE 'CHG-[0-9]{8}-' \
             || { echo "::error::PR 內文缺少 CHG- 參照"; exit 1; }
 
       # ---------------------------------------------------------------------
@@ -121,12 +144,14 @@ jobs:
         shell: bash
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           # 先跑閘門自己的測試。閘門壞掉與閘門放行在 exit code 上無法區分，
           # 所以在用它判定任何 PR 之前，先證明它的紅燈確實會亮。
-          python tests/gates/test_status_check.py
+          # discover 而非逐檔點名：新增一支閘門測試不該還要記得回來改這裡。
+          python -m unittest discover -s tests/gates -p 'test_*.py' -v
           printf '%s' "$PR_BODY" > /tmp/pr_body.txt
-          python scripts/status_check.py --base origin/${{ github.base_ref }} \
+          python scripts/status_check.py --base "origin/$BASE_REF" \
             --pr-body-file /tmp/pr_body.txt
 
       # G3 測試綠燈（無測試 = 紅燈，不是綠燈）
@@ -147,8 +172,10 @@ jobs:
       # 新增程式碼頂層目錄時，務必同步擴充此處，否則該批單元會靜默脫離結構同步閘門。
       - name: G4 structure sync
         shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          D=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          D=$(git diff --name-only "origin/$BASE_REF...HEAD")
           echo "$D" | grep -qE '^(src|engine|modules)/' && ! echo "$D" | grep -q '^docs/structure/' \
             && { echo "::error::改了 src/、engine/ 或 modules/ 但沒更新 docs/structure/"; exit 1; } || true
 
@@ -184,8 +211,10 @@ jobs:
         run: |
           gh pr edit ${{ github.event.pull_request.number }} --add-label "halt:awaiting-human"
           gh pr comment ${{ github.event.pull_request.number }} --body \
-            "停點契約判定 **HALT**（risk=${{ steps.unit.outputs.risk }}）。所有 CI 閘門已綠，等待人工核准後手動合併。"
-        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+            "停點契約判定 **HALT**（risk=$RISK）。所有 CI 閘門已綠，等待人工核准後手動合併。"
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          RISK: ${{ steps.unit.outputs.risk }}
 
       # infra/bootstrap 分支：前述 repo 級閘（含 G3 建置）全綠即自動合併（無 halt 契約，屬 low 自主）。
       - name: 自動合併（infra AUTO）
