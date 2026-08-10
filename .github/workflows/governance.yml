@@ -102,6 +102,33 @@ jobs:
           echo "${{ github.event.pull_request.body }}" | grep -qE 'CHG-[0-9]{8}-' \
             || { echo "::error::PR 內文缺少 CHG- 參照"; exit 1; }
 
+      # ---------------------------------------------------------------------
+      # G7 Status 收尾閘門（CHG-20260810-03）
+      #
+      # 為什麼需要它：合併發生在 PR 端，而 CHG 文件在合併前就凍結在功能分支上——
+      # 這條流程沒有任何一步會回頭改 Status。2026-08-10 掃出 103 筆已合併卻仍停在
+      # Proposed（或根本沒有 ## Status 段）的變更。Status 是進場握手判斷「有沒有
+      # 半途而廢的階段」的唯一依據，而提醒 hook 只印前 5 筆：兩者相乘，警告永遠不會
+      # 歸零，於是被當成背景雜訊。CHG-20260810-01/-02 清了存量，本閘門防它再長出來。
+      #
+      # 為什麼是合併「前」擋下而不是合併「後」自動回寫：is_unit=false 的 infra 分支
+      # 不跑 G5，對那些 PR「合併了」不等於「驗收過」。讓 CI 自動蓋 Accepted 會是一個
+      # 恆為真的判定——本檔已防兩次的真空綠燈。本閘門只讀不寫，判定仍由人做。
+      #
+      # 位置刻意放在 G3 之前：純文字檢查，紅燈時省下十餘分鐘的建置。
+      # ---------------------------------------------------------------------
+      - name: G7 status_check（閘門自我測試 + CHG 收尾判定）
+        shell: bash
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # 先跑閘門自己的測試。閘門壞掉與閘門放行在 exit code 上無法區分，
+          # 所以在用它判定任何 PR 之前，先證明它的紅燈確實會亮。
+          python tests/gates/test_status_check.py
+          printf '%s' "$PR_BODY" > /tmp/pr_body.txt
+          python scripts/status_check.py --base origin/${{ github.base_ref }} \
+            --pr-body-file /tmp/pr_body.txt
+
       # G3 測試綠燈（無測試 = 紅燈，不是綠燈）
       - name: G3 tests（C++ / CMake + CTest）
         run: |
