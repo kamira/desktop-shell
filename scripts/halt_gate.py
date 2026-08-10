@@ -16,6 +16,13 @@ exit 0 = AUTO（可自動合併）｜exit 10 = HALT（停下等人核准）
 """
 import argparse, json, os, sys
 
+# K-001 / K-004 同族：釘住輸出編碼，不依賴主控台/locale 的 ambient 編碼。
+# 非 UTF-8 主控台（Windows cp1252 / cp950）印 CJK 會 UnicodeEncodeError，
+# 而閘門「當掉」與閘門「擋下」在 exit code 上無法區分（CHG-20260810-05）。
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POLICY_F = os.environ.get("AI_SDLC_HALT_POLICY",
                           os.path.join(ROOT, "assets/halt_policy.json"))

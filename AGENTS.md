@@ -49,10 +49,11 @@ agent-hierarchy 深度上限：人類 → I1 → I1.n（2 層），**不得再�
 - 需要超出鎖定範圍 → **停下回報，不得自行擴權**
 - 錯誤要記錄「錯誤 + 根因 + 解法」進 `docs/knowledge/errors.md`；機密只記位置不記值
 
-## 5. 十道 CI 閘門（PR 一開就自動跑）
+## 5. 十一道 CI 閘門（PR 一開就自動跑）
 
 | 閘門 | 擋什麼 |
 |---|---|
+| **G0** `run_python_tests` | `tests/` 底下任一 Python 測試沒綠；**掃到 0 個檔或 0 個測試也算紅**（真空綠燈防線） |
 | **G8** `workflow_lint` | workflow 的 `run:` 直接內插不可信的 `${{ }}`（命令注入，見 knowledge K-008） |
 | **G1** `scope_check` | 變更超出該單元的 `write_scope` |
 | **G1b** `backend_guard` | 出現當前相位不允許的平台後端 |
@@ -64,8 +65,13 @@ agent-hierarchy 深度上限：人類 → I1 → I1.n（2 層），**不得再�
 | **G5** ACC + identity | medium 以上缺 ACC，或驗收者與實作者同一人 |
 | **G6** halt gate | 停點契約：AUTO → 自動 squash merge；HALT → 貼 `halt:awaiting-human` 等人核准 |
 
-> **執行順序**：G8 → G1 → G1b → G1c → G2 → G7 → G3 → G4 → G5 → G6。
-> G8 最先：它守的是這個 workflow 自己，本檔若已可被注入，後面每一道閘門的判定都不再可信。
+> **執行順序**：G0 → G8 → G1 → G1b → G1c → G2 → G7 → G3 → G4 → G5 → G6。
+> G0 最先：`tests/` 底下的 Python 測試守的就是 `scripts/` 底下這些閘門——
+> 先證明裁判的邏輯是對的，再讓它去判 PR。
+> G8 次之：它守的是這個 workflow 自己，本檔若已可被注入，後面每一道閘門的判定都不再可信。
+>
+> **新增 Python 測試不必改任何設定**：放進 `tests/` 底下任何位置、檔名 `test_*.py`，
+> G0 就會收到（它自己走檔案樹，不用 `unittest discover`——那一行會跑 0 個測試然後回綠）。
 > G7 排在耗時的 G3 建置之前（純文字檢查，紅燈時省下十餘分鐘）。
 > 刻意擱置的 WIP 寫 `Paused — <理由>` 即可通過 G7——擋它只會逼人把 Proposed 謊報成 Accepted。
 >

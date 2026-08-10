@@ -1,8 +1,8 @@
 # handshake — autopilot（進場握手 live ack）
 
-branch/role/scope: `chore/chg-20260810-04`（worktree，自 `b6147f0` 重開，避開 K-005）/ I1 / RW: `docs/** scripts/** tests/gates/** .github/**`
-doing: `CHG-20260810-04` 修 G2 命令注入 + 新增 G8 workflow_lint —— 已實作 + 自驗（30 測試過）
-next: commit → push → PR（本 PR 會是第一個跑 G8 的 PR）→ 閘門綠燈後 infra AUTO 自動合併
+branch/role/scope: `chore/chg-20260810-05`（worktree，自 `5d172a7` 重開，避開 K-005）/ I1 / RW: `docs/** scripts/** tests/** .github/**`
+doing: `CHG-20260810-05` 把 tests/e1 接進 CI（新增 G0）+ 五支腳本補釘編碼 —— 已實作 + 自驗（52 測試過）
+next: commit → push → PR（本 PR 會是第一個跑 G0 的 PR）→ 閘門綠燈後 infra AUTO 自動合併
 last-updated: 2026-08-10 08:36 (UTC+0)
 
 ## 本輪已完成
@@ -12,10 +12,11 @@ last-updated: 2026-08-10 08:36 (UTC+0)
 | `CHG-20260810-01` | 補齊 hook 標出的 5 筆 Status | 合併於 `ef897b8` (#208) |
 | `CHG-20260810-02` | 批次收尾其餘 98 筆 | 合併於 `3446ab8` (#209) |
 | `CHG-20260810-03` | 根治：新增 G7 合併前 Status 閘門 | 合併於 `b6147f0` (#210) |
-| `CHG-20260810-04` | 修 G2 命令注入 + G8 workflow_lint | Accepted，待 PR |
+| `CHG-20260810-04` | 修 G2 命令注入 + G8 workflow_lint | 合併於 `5d172a7` (#211) |
+| `CHG-20260810-05` | tests/e1 接進 CI（G0）+ 五支腳本補釘編碼 | Accepted，待 PR |
 
-`origin/main` 現況：未收尾 CHG **0 筆**；CI 閘門 **十道**（G8 → G1 → G1b → G1c → G2
-→ G7 → G3 → G4 → G5 → G6）。
+`origin/main` 現況：未收尾 CHG **0 筆**；CI 閘門 **十一道**（G0 → G8 → G1 → G1b
+→ G1c → G2 → G7 → G3 → G4 → G5 → G6）。
 
 ## 讀取順序與結果（2026-08-10 進場）
 
@@ -46,20 +47,26 @@ last-updated: 2026-08-10 08:36 (UTC+0)
 實際 103 筆。逐筆查證後確認**無一缺驗收**：13 筆 medium 全部有 ACC，其餘 low 依
 Guideline §7 免 ACC。已由 `-01`/`-02` 清完，`-03` 的 G7 防它再長出來。
 
-### 3. CI 從來沒跑過任何 Python 測試
+### 3. CI 從來沒跑過任何 Python 測試（已由 `-05` 關上）
 
 `tests/e1/test_backend_guard.py`（14 測試，守相位閘門）沒有 `CMakeLists.txt`，
 CTest 收不到；`governance.yml` 也沒有 pytest。守閘門的測試自己沒人守。
-`-03` 讓 `tests/gates/` 進 CI，`-04` 再改成 `unittest discover` 自動納入新測試。
-**`tests/e1/` 那條缺口未變**——它在 Windows 本機因 K-001/K-004 同族編碼問題紅燈，
-修它要動 E1-26 範圍，另開 CHG。
 
-## K-001 / K-004 在本輪出現五次
+`-05` 新增 **G0 `run_python_tests.py`**，掃 `tests/` 底下全部 `test_*.py`（52 個測試）。
+**沒有用 `unittest discover`**：實測那一行對本 repo 會「跑 0 個測試然後回綠」
+（discover 只遞迴進有 `__init__.py` 的套件，`tests/` 的子目錄都不是）——
+那正是 G3 已防兩次的真空綠燈。已把這個理由釘成一條測試。
 
-PowerShell 讀 UTF-8 的 CHG 出 mojibake、Python 印 CJK 三次 `UnicodeEncodeError`。
-在這台機器上，**任何會輸出 CJK 的腳本都要先釘 `sys.stdout.reconfigure(encoding="utf-8")`**。
-`session_start.py` 自己有釘（L12-14），複刻它的腳本漏掉就會假裝偵測器壞了。
-新增的 `status_check.py` / `workflow_lint.py` 及其測試都已釘。
+## K-001 / K-004 在本輪出現六次，並長出第三代 K-009
+
+PowerShell 讀 UTF-8 的 CHG 出 mojibake、Python 印 CJK 多次 `UnicodeEncodeError`。
+**任何會輸出 CJK 的腳本都要先釘 `sys.stdout.reconfigure(encoding="utf-8")`**——
+`scripts/` 七支現在全部釘好了。
+
+**但釘寫入端只解決一半（K-009）**：讀取端的 `subprocess.run(..., text=True)` 不指定
+`encoding`，父行程會用 cp1252 解碼子行程的 UTF-8，`UnicodeDecodeError` 在 subprocess
+的 **reader thread** 裡拋出——不傳播到呼叫端，只留下 `returncode=0` + `stdout=None`。
+看起來像「指令沒有輸出」，不像「解碼失敗」。**看到成功但沒有輸出，先懷疑解碼。**
 
 ## 仍未收尾的（非本輪範圍）
 
