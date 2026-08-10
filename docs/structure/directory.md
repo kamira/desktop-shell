@@ -53,7 +53,7 @@ content/              artifact 層：profiles（C1）、widgets（C2）、C3 內
 apps/                 artifact 層：獨立應用型產出物（C4）
 
 docs/                 治理文件（changes / acceptance / structure / knowledge / worklog / backlog）
-scripts/              治理工具（plan / scope_check / backend_guard / stage_check / status_check / halt_gate）
+scripts/              治理工具（plan / scope_check / backend_guard / stage_check / status_check / workflow_lint / halt_gate）
 ```
 
 > `src/` 現在**只剩對系統的操作**：29 項語意分歧（kernel 23 / 全域 events 3 / host 3）

