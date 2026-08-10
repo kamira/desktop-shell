@@ -25,6 +25,26 @@ COMMON = ["docs/worklog/**", "docs/knowledge/errors.md", "docs/changes/**",
           "docs/acceptance/**", "docs/structure/**"]
 
 
+def in_scope(path, allow):
+    """單一路徑是否落在允許清單內。
+
+    `p.replace("/**", "/*")` 這個回退看起來多餘（fnmatch 的 `*` 本來就跨 `/`），
+    保留是因為它讓 `a/**` 這種寫法在 fnmatch 之外的直覺讀法下也成立——
+    改掉的風險大於留著的成本，且已由測試釘住現行行為。
+    """
+    return any(fnmatch.fnmatch(path, p) or fnmatch.fnmatch(path, p.replace("/**", "/*"))
+               for p in allow)
+
+
+def out_of_scope(files, allow):
+    """回傳越權的檔案清單。抽成純函式是為了可被測試——
+
+    原本這段內嵌在 main() 裡，而 main() 需要 argparse + 真實 git repo 才跑得起來，
+    等於「這道閘門的判定邏輯無法在測試裡單獨驗證」（CHG-20260810-06）。
+    """
+    return [f for f in files if not in_scope(f, allow)]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--unit", required=True)
@@ -34,11 +54,13 @@ def main():
         print(f"::error::未知工作單元 {a.unit}（不在 units.json）"); sys.exit(2)
 
     allow = U[a.unit]["write_scope"] + COMMON
+    # encoding 必須明示（K-009）：不指定時父行程用 locale 編碼解碼 git 的輸出，
+    # 遇到非 ASCII 檔名會在 subprocess 的 reader thread 拋 UnicodeDecodeError——
+    # 那個例外不傳播，只讓 stdout 變成 None，看起來像「git 沒有輸出」。
     files = subprocess.run(["git", "diff", "--name-only", f"{a.base}...HEAD"],
-                           capture_output=True, text=True, check=True).stdout.split()
-    bad = [f for f in files
-           if not any(fnmatch.fnmatch(f, p) or fnmatch.fnmatch(f, p.replace("/**", "/*"))
-                      for p in allow)]
+                           capture_output=True, text=True, check=True,
+                           encoding="utf-8", errors="replace").stdout.split()
+    bad = out_of_scope(files, allow)
     if bad:
         print(f"::error::{a.unit} 越權寫入 {len(bad)} 個檔案（鎖定範圍：{allow}）")
         for f in bad:

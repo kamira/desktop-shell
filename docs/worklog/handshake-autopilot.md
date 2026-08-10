@@ -1,8 +1,8 @@
 # handshake — autopilot（進場握手 live ack）
 
-branch/role/scope: `chore/chg-20260810-05`（worktree，自 `5d172a7` 重開，避開 K-005）/ I1 / RW: `docs/** scripts/** tests/** .github/**`
-doing: `CHG-20260810-05` 把 tests/e1 接進 CI（新增 G0）+ 五支腳本補釘編碼 —— 已實作 + 自驗（52 測試過）
-next: commit → push → PR（本 PR 會是第一個跑 G0 的 PR）→ 閘門綠燈後 infra AUTO 自動合併
+branch/role/scope: `chore/chg-20260810-06`（worktree，自 `9fab7bc` 重開，避開 K-005）/ I1 / RW: `docs/** scripts/** tests/**`
+doing: `CHG-20260810-06` 補 halt_gate / plan / scope_check 測試 —— 已實作 + 自驗（111 測試過、5 個突變全抓到）
+next: commit → push → PR → 閘門綠燈後 infra AUTO 自動合併
 last-updated: 2026-08-10 08:36 (UTC+0)
 
 ## 本輪已完成
@@ -13,7 +13,8 @@ last-updated: 2026-08-10 08:36 (UTC+0)
 | `CHG-20260810-02` | 批次收尾其餘 98 筆 | 合併於 `3446ab8` (#209) |
 | `CHG-20260810-03` | 根治：新增 G7 合併前 Status 閘門 | 合併於 `b6147f0` (#210) |
 | `CHG-20260810-04` | 修 G2 命令注入 + G8 workflow_lint | 合併於 `5d172a7` (#211) |
-| `CHG-20260810-05` | tests/e1 接進 CI（G0）+ 五支腳本補釘編碼 | Accepted，待 PR |
+| `CHG-20260810-05` | tests/e1 接進 CI（G0）+ 五支腳本補釘編碼 | 合併於 `9fab7bc` (#212) |
+| `CHG-20260810-06` | 補 halt_gate / plan / scope_check 測試 | Accepted，待 PR |
 
 `origin/main` 現況：未收尾 CHG **0 筆**；CI 閘門 **十一道**（G0 → G8 → G1 → G1b
 → G1c → G2 → G7 → G3 → G4 → G5 → G6）。
@@ -73,6 +74,14 @@ PowerShell 讀 UTF-8 的 CHG 出 mojibake、Python 印 CJK 多次 `UnicodeEncode
 
 ## 仍未收尾的（非本輪範圍）
 
-`docs/backlog/HANDOFF.md` §0-B：本機防毒封鎖 `desktop_shell_host.exe`，
-**6 項操作驗收只有單元測試、沒有實機證據**（自繪選單外觀 / 滑鼠與 Esc 互動 /
-彈出位置與邊緣翻轉 / NVDA 朗讀 / 托盤圖示 / 合成拖曳不穩）。轉移到無防毒環境後第一件事。
+`docs/backlog/HANDOFF.md` §0-B 的 **6 項操作驗收**（自繪選單外觀 / 滑鼠與 Esc 互動 /
+彈出位置與邊緣翻轉 / NVDA 朗讀 / 托盤圖示 / 合成拖曳不穩）。
+
+**阻礙不是防毒。** 這台（haruharu）只有 Windows Defender，沒有 HANDOFF 記載的
+PC-cillin——但**也沒有任何 C++ 工具鏈**：`cmake`／`cl`／`msbuild`／`g++` 全無，
+`C:\Program Files\Microsoft Visual Studio` 不存在。HANDOFF 的「本機環境」
+（CMake 4.4.1 + MSVC 19.44）寫的是另一台機器。
+
+CI 有完整 MSVC，C++ 建置與 187 個 ctest 一直都真的在跑；缺的只有**實機 GUI 操作**
+這一段。要在這台做，得先裝 CMake + VS Build Tools（動系統狀態，需使用者決定）。
+NVDA / Narrator 那一項無論如何都需要有人用耳朵聽。
