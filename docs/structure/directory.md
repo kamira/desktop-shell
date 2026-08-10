@@ -45,6 +45,7 @@ modules/              module 層（58 項）—— 掛在擴充點上的提供�
 
 tests/
 ├── contract/         跨後端契約測試（不得含平台分支，由 backend_guard 強制）
+├── gates/            治理閘門自身的測試（Python，由 CI 直接跑，不經 CTest）
 ├── e1/ … e12/        依 units.json 的 `module` 欄位分，**不隨分層搬移**
 └── c1/ … c4/         對應 artifact 層
 
@@ -52,7 +53,7 @@ content/              artifact 層：profiles（C1）、widgets（C2）、C3 內
 apps/                 artifact 層：獨立應用型產出物（C4）
 
 docs/                 治理文件（changes / acceptance / structure / knowledge / worklog / backlog）
-scripts/              治理工具（plan / scope_check / backend_guard / halt_gate）
+scripts/              治理工具（plan / scope_check / backend_guard / stage_check / status_check / halt_gate）
 ```
 
 > `src/` 現在**只剩對系統的操作**：29 項語意分歧（kernel 23 / 全域 events 3 / host 3）

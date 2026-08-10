@@ -49,7 +49,7 @@ agent-hierarchy 深度上限：人類 → I1 → I1.n（2 層），**不得再�
 - 需要超出鎖定範圍 → **停下回報，不得自行擴權**
 - 錯誤要記錄「錯誤 + 根因 + 解法」進 `docs/knowledge/errors.md`；機密只記位置不記值
 
-## 5. 八道 CI 閘門（PR 一開就自動跑）
+## 5. 九道 CI 閘門（PR 一開就自動跑）
 
 | 閘門 | 擋什麼 |
 |---|---|
@@ -57,10 +57,14 @@ agent-hierarchy 深度上限：人類 → I1 → I1.n（2 層），**不得再�
 | **G1b** `backend_guard` | 出現當前相位不允許的平台後端 |
 | **G1c** `stage_check` | 較早階段依賴較晚階段（NFR-08） |
 | **G2** CHG linked | PR 內文缺少 CHG 參照 |
+| **G7** `status_check` | 本 PR 牽涉的 CHG 尚未收尾（Status 不是 `Accepted`／`Paused`，或根本沒有 `## Status` 段） |
 | **G3** tests | 測試沒綠；**repo 沒有任何測試也算紅**（真空綠燈防線） |
 | **G4** structure sync | 動了 `src/` 卻沒更新 `docs/structure/` |
 | **G5** ACC + identity | medium 以上缺 ACC，或驗收者與實作者同一人 |
 | **G6** halt gate | 停點契約：AUTO → 自動 squash merge；HALT → 貼 `halt:awaiting-human` 等人核准 |
+
+> G7 執行順序在 G2 之後、G3 之前（純文字檢查先跑，紅燈時省下十餘分鐘建置）。
+> 刻意擱置的 WIP 寫 `Paused — <理由>` 即可通過——擋它只會逼人把 Proposed 謊報成 Accepted。
 
 ## 6. 治理文件位置
 
