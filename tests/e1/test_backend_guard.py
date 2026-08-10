@@ -184,9 +184,16 @@ class TestRealRepoRegression(unittest.TestCase):
         # 既有 workflow 呼叫方式：python scripts/backend_guard.py（無參數、無環境覆寫）。
         env = dict(os.environ)
         env.pop("BACKEND_GUARD_ROOT", None)
+        # encoding 必須明示。釘住子行程的**輸出**編碼只解決一半：
+        # `text=True` 不帶 encoding 時，**父行程**用 locale 編碼解碼
+        # （Windows cp1252），讀到 UTF-8 的 CJK 就在 subprocess 的 reader thread
+        # 裡拋 UnicodeDecodeError——而那個例外在別的執行緒，父行程只看到
+        # returncode=0、stdout=None，看起來像「指令沒有輸出」而不是「解碼失敗」。
+        # 見 knowledge K-001 / K-004（CHG-20260810-05 補記讀取端）。
         proc = subprocess.run(
             [sys.executable, GUARD_PATH],
             cwd=REPO_ROOT, env=env, capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
         )
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("backend_guard OK", proc.stdout)

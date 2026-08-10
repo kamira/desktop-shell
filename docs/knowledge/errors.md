@@ -4,6 +4,86 @@
 
 ---
 
+## K-009 — 釘住寫入端編碼只解決一半；讀取端沒釘，例外會跑到別的執行緒去
+
+- 日期：2026-08-10 | 來源：`CHG-20260810-05`
+- 狀態：**已修復**（五支閘門腳本補釘輸出端；`test_backend_guard.py` 補釘讀取端）
+- 家族：[[K-001]] / [[K-004]] 的第三代
+
+### 錯誤
+
+把 `tests/e1/test_backend_guard.py` 接進 CI 之前先在本機跑，14 個測試紅 1 個：
+
+```
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 19-20
+  File "scripts/backend_guard.py", line 173, in check
+    print(f"backend_guard OK — 相位 {phase}，後端 ...")
+```
+
+依 [[K-001]] 的解法補上 `sys.stdout.reconfigure(encoding="utf-8")`，子行程不再當掉。
+**但同一個測試還是紅的**，換成另一個症狀：
+
+```
+TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'
+    self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+```
+
+`returncode == 0`（子行程明明成功了），`stdout` 卻是 `None`。
+
+### 根因
+
+`subprocess.run(..., capture_output=True, text=True)` **沒指定 `encoding`**，
+父行程就用 locale 編碼（Windows cp1252）去解碼子行程的 UTF-8 輸出：
+
+```
+Exception in thread Thread-1 (_readerthread):
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x8d in position 26
+```
+
+關鍵在**那個例外是在 subprocess 的 reader thread 裡拋的**。它不會傳播到
+`subprocess.run()` 的呼叫端——`run()` 正常回傳，`returncode` 是 0，只有 `stdout`
+悄悄變成 `None`。呼叫端看到的現象是「這個指令沒有輸出」，不是「解碼失敗」。
+
+所以這一族的陷阱有**兩端**，而修好寫入端會讓讀取端的問題**換一張臉出現**：
+
+| | 症狀 | 誤讀成 |
+|---|---|---|
+| 寫入端沒釘 | `UnicodeEncodeError`，行程當掉 | 「腳本有 bug」 |
+| 讀取端沒釘 | 靜默 `stdout=None`、`returncode=0` | 「指令沒有輸出」 |
+
+### 解法
+
+**兩端都要明示 UTF-8。**
+
+寫入端（每支會輸出 CJK 的腳本，開頭）：
+
+```python
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+```
+
+讀取端（每個讀這些腳本輸出的 `subprocess` 呼叫）：
+
+```python
+subprocess.run(..., capture_output=True, text=True,
+               encoding="utf-8", errors="replace")
+```
+
+本次補齊的寫入端：`backend_guard.py`、`halt_gate.py`、`plan.py`、
+`scope_check.py`、`stage_check.py`（`status_check.py` / `workflow_lint.py` 原本就有）。
+
+### 教訓
+
+1. **`text=True` 不等於「用 UTF-8」**，它只是「回字串而不是 bytes」，
+   編碼仍取自 locale。要 UTF-8 就得寫出來。
+2. **在別的執行緒拋出的例外不會讓你的程式碼變紅**，只會讓某個值變成 `None`。
+   看到「成功但沒有輸出」，先懷疑解碼。
+3. 這條在 Linux CI 上永遠不會出現（預設 UTF-8）。**只在開發機咬人**——
+   於是很容易被當成「我這台的問題」而不是缺陷。
+
+---
+
 ## K-008 — PR 內文被 CI 當成指令執行：`${{ }}` 內插進 `run:` 就是命令注入
 
 - 日期：2026-08-10 | 來源：`CHG-20260810-04`（發現於 `CHG-20260810-03` 的 PR #210 CI log）

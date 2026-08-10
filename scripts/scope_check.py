@@ -7,6 +7,13 @@
 """
 import argparse, fnmatch, json, os, subprocess, sys
 
+# K-001 / K-004 同族：釘住輸出編碼，不依賴主控台/locale 的 ambient 編碼。
+# 非 UTF-8 主控台（Windows cp1252 / cp950）印 CJK 會 UnicodeEncodeError，
+# 而閘門「當掉」與閘門「擋下」在 exit code 上無法區分（CHG-20260810-05）。
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 U = {u["id"]: u for u in json.load(
     open(os.path.join(ROOT, "docs/backlog/units.json"), encoding="utf-8"))["units"]}

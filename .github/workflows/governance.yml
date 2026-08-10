@@ -83,6 +83,26 @@ jobs:
           fi
 
       # ---------------------------------------------------------------------
+      # G0 Python 測試（CHG-20260810-05）
+      #
+      # 為什麼在最前面：`tests/` 底下的 Python 測試守的是 `scripts/` 底下的閘門
+      # （G1b backend_guard、G7 status_check、G8 workflow_lint）。先證明裁判本身
+      # 的邏輯是對的，再讓它去判這個 PR。
+      #
+      # 為什麼不是一行 `unittest discover -s tests`：那一行**一個測試都收不到**
+      # （discover 只遞迴進有 __init__.py 的套件，本 repo 的 tests/ 子目錄都不是）。
+      # 它在 Python ≤3.11 還會安靜回 0，3.12 起才改回 exit 5——本機 3.11 / CI 3.12，
+      # 兩種行為都已釘進 tests/gates/test_run_python_tests.py。
+      # run_python_tests.py 自己走檔案樹，並在「0 個檔」或「0 個測試」時紅燈。
+      #
+      # 在此之前 CI 從未跑過任何 Python 測試：tests/e1/test_backend_guard.py 的
+      # 14 個測試沒有 CMakeLists 進不了 CTest，也沒有任何 pytest 呼叫——
+      # 守閘門的測試自己沒人守。
+      # ---------------------------------------------------------------------
+      - name: G0 gate self-tests（tests/ 底下全部 Python 測試）
+        run: python scripts/run_python_tests.py
+
+      # ---------------------------------------------------------------------
       # G8 workflow 注入閘門（CHG-20260810-04）
       #
       # 擋：`run:` 區塊直接內插不可信的 ${{ }}。${{ }} 是在 shell 看到腳本之前就展開成
@@ -140,16 +160,13 @@ jobs:
       #
       # 位置刻意放在 G3 之前：純文字檢查，紅燈時省下十餘分鐘的建置。
       # ---------------------------------------------------------------------
-      - name: G7 status_check（閘門自我測試 + CHG 收尾判定）
+      - name: G7 status_check（CHG 收尾判定；自我測試已由 G0 跑過）
         shell: bash
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
           BASE_REF: ${{ github.base_ref }}
         run: |
-          # 先跑閘門自己的測試。閘門壞掉與閘門放行在 exit code 上無法區分，
-          # 所以在用它判定任何 PR 之前，先證明它的紅燈確實會亮。
-          # discover 而非逐檔點名：新增一支閘門測試不該還要記得回來改這裡。
-          python -m unittest discover -s tests/gates -p 'test_*.py' -v
+          # 本閘門自己的測試已由 G0 在最前面跑過（含紅燈可達性），此處不重複。
           printf '%s' "$PR_BODY" > /tmp/pr_body.txt
           python scripts/status_check.py --base "origin/$BASE_REF" \
             --pr-body-file /tmp/pr_body.txt
