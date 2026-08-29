@@ -98,6 +98,12 @@ jobs:
           "@
           $u32 = Add-Type -MemberDefinition $sig -Name U32 -Namespace Shot -PassThru
 
+          # Clear the desktop first: the runner's own agent console covers most of the
+          # screen. Do this BEFORE launching the host -- minimising afterwards risks
+          # taking our own topmost popup down with everything else.
+          try { (New-Object -ComObject Shell.Application).MinimizeAll() } catch { }
+          Start-Sleep -Seconds 2
+
           $proc = Start-Process -FilePath $exe -ArgumentList "--seconds", $secs -PassThru
           Start-Sleep -Seconds 10
 
