@@ -50,9 +50,10 @@ last-updated: 2026-08-29 (UTC+0)
 
 | PR | 內容 | 狀態 |
 |---|---|---|
-| A（本輪） | 加 `.github/workflows/screenshot-windows.yml` | 進行中 |
-| — | 手動 dispatch，取得 artifact | 待 A 合併 |
-| B | 換圖 + 改寫 README 圖說 | 待 |
+| A | 加 `.github/workflows/screenshot-windows.yml` | **已合併**（`57a6ba6` / #218） |
+| — | 手動 dispatch | **已跑**（3 次，見 `CHG-20260829-03`） |
+| B | 換圖 + 改寫 README 圖說 + workflow 兩處修正 | 進行中（`CHG-20260829-03`） |
 
-**還不知道會不會成功**：GitHub 的 windows runner 是無人桌面環境，GUI 能不能被合成出來
-要 dispatch 才知道。workflow 內建單色檢查——拍到黑畫面就紅燈，不生出騙人的圖。
+**結果：成功。** GitHub 的 windows runner 合成得出 GUI，單色防線三次 dispatch 都回報
+`uniform=False`。過程中修掉兩件事：artifact 只能由人點下載（改推 assets 分支）、
+runner 自己的 console 蓋住大半螢幕（取像前先 MinimizeAll）。
