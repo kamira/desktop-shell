@@ -49,7 +49,7 @@ SAO Utils（ACG 風格啟動器）、伺か Ukagaka（桌面角色）。攤平�
 可拖曳、會吸邊、會記位置。CPU 與 RAM 是主機真實負載，GPU 為 sweep 模擬。
 
 <p align="center">
-  <img src="docs/images/host-desktop.png" alt="desktop-shell host runtime：桌面右上角的系統狀態 widget，右下角是展開的自繪托盤選單" width="900">
+  <img src="docs/images/host-desktop.png" alt="Windows 桌面右上角浮著 desktop-shell 的系統狀態 widget，顯示 CPU / GPU / RAM 三條量表" width="900">
 </p>
 
 托盤右鍵是 **W1-05 自繪選單**（W1-06 另附 MSAA 無障礙支援）。
@@ -57,16 +57,20 @@ SAO Utils（ACG 風格啟動器）、伺か Ukagaka（桌面角色）。攤平�
 **一個每次啟動都自己解鎖的「鎖定」等於沒有鎖**：
 
 <p align="center">
-  <img src="docs/images/host-tray-menu.png" alt="自繪托盤選單：最上層顯示（已勾選）／點擊穿透／鎖定位置／分隔線／結束" width="300">
+  <img src="docs/images/host-tray-menu.png" alt="自繪托盤選單：最上層顯示（已勾選並反白）／點擊穿透／鎖定位置／分隔線／結束" width="260">
 </p>
 
-> **取像環境**：上面兩張是把 `desktop_shell_host.exe` 以 **mingw-w64 交叉編譯**後、
-> 在 **Wine 的虛擬桌面**上執行所截。**程式碼一行未改**，但這不是原生 Windows 的畫面 ——
-> 字型替換（Wine 對 `Segoe UI` 的代用字型）與視窗合成細節會與實機有出入。
-> 專案本身以 **MSVC** 建置，由 CI 的 `gate_windows` 每個 PR 實跑；
-> mingw 這條路徑只為了取像，不是支援的建置方式。
-> 實機的目視驗收紀錄（自繪選單外觀、hover／點選、邊緣翻轉、托盤圖示比對）
-> 見 [`docs/backlog/HANDOFF.md`](docs/backlog/HANDOFF.md) §0-B。
+> **取像環境**：以本 repo 的
+> [`screenshot-windows.yml`](.github/workflows/screenshot-windows.yml)
+> 在 GitHub 的 `windows-latest` runner 上取像 —— **MSVC 建置、原生 Windows 執行、
+> 真的 Segoe UI 渲染**，與 `gate_windows` 每個 PR 跑的是同一套建置方式。
+> 手動 `workflow_dispatch` 即可重拍。
+>
+> 它仍**不是**任何人的實機桌面：runner 是 1024×768 的無人 VM，
+> 沒有真實使用者的 DPI 縮放與多螢幕設定。
+> 「托盤圖示在通知區的實際外觀」與拖曳／吸邊的手感需要有人用眼睛確認，
+> 自動化替代不了 —— 那些記在
+> [`docs/backlog/HANDOFF.md`](docs/backlog/HANDOFF.md) §0-B。
 
 ### 主控台驗證器（跨平台，null 後端）
 

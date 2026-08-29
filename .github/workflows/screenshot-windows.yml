@@ -25,8 +25,11 @@ on:
         required: false
         default: "40"
 
+# 需要 contents: write —— 見最後一個步驟：產物除了上傳 artifact，還要推進 assets 分支。
+# artifact 只能由人在瀏覽器上點下載，API 取用需要另外的憑證；而這個 repo 是 agent 在操作的，
+# 「產物要人去點一下才拿得到」等於這條路只走得完一半。推進分支則是 git 拿得到的東西。
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   screenshot:
@@ -95,6 +98,12 @@ jobs:
           "@
           $u32 = Add-Type -MemberDefinition $sig -Name U32 -Namespace Shot -PassThru
 
+          # Clear the desktop first: the runner's own agent console covers most of the
+          # screen. Do this BEFORE launching the host -- minimising afterwards risks
+          # taking our own topmost popup down with everything else.
+          try { (New-Object -ComObject Shell.Application).MinimizeAll() } catch { }
+          Start-Sleep -Seconds 2
+
           $proc = Start-Process -FilePath $exe -ArgumentList "--seconds", $secs -PassThru
           Start-Sleep -Seconds 10
 
@@ -128,9 +137,35 @@ jobs:
             Write-Host "::warning::menu capture missing or blank; the desktop capture is still usable"
           }
 
-      - name: 上傳截圖
+      - name: 上傳截圖（供人在瀏覽器上取用）
         uses: actions/upload-artifact@v4
         with:
           name: windows-screenshots
           path: shots/
           if-no-files-found: error
+
+      # 同一份產物再推進 `bot/windows-screenshots` 分支，讓 git 取得到。
+      # 該分支是**純產物分支**：每次 dispatch 覆寫成單一 commit，不保留歷史
+      # （截圖沒有可回溯的價值，累積歷史只會讓 repo 一直長大）。
+      # 它不是任何人的工作分支，也不會被合併回 main。
+      - name: 推進 assets 分支
+        shell: bash
+        # env: 一律寫在 run: 之前 —— workflow_lint 以縮排判定 run: 區塊範圍。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          rm -rf .assets && mkdir -p .assets/docs/images
+          cp shots/host-desktop.png .assets/docs/images/host-desktop.png
+          if [ -f shots/host-tray-menu-full.png ]; then
+            cp shots/host-tray-menu-full.png .assets/docs/images/host-tray-menu-full.png
+          fi
+          cd .assets
+          git init -q -b bot/windows-screenshots
+          # 身分要設在**這個新 repo** 裡。設在外層 checkout 上是設錯地方——
+          # commit 發生在 .assets，而 runner 沒有全域 git 身分，那樣會直接失敗。
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "chore(assets): windows-latest 截圖（run ${{ github.run_id }}）"
+          git push -q --force "https://x-access-token:$GITHUB_TOKEN@github.com/${{ github.repository }}.git" bot/windows-screenshots
