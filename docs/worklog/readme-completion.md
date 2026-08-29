@@ -35,3 +35,24 @@ last-updated: 2026-08-29 (UTC+0)
 - 不補**原生 Windows** 的實機截圖 —— 本次環境沒有 Windows 機器。
   改以 mingw-w64 交叉編譯 + Wine 虛擬桌面取像（程式碼一行未改），
   README 的圖說明寫「不是原生 Windows 的畫面」，實機驗收仍以 `HANDOFF.md` §0-B 為準
+
+---
+
+## 續：實機 Windows 重拍（`CHG-20260829-02`，2026-08-29）
+
+`CHG-20260829-01` 已合併（`9c5df9c` / #217）。使用者要求把 README 的桌面截圖
+改用實機 Windows 重拍，並選定走 repo 自己的 CI（`windows-latest`）而非個人機器。
+
+分支處理：#217 已 squash merge，**不得在已合併的歷史上疊新 commit**，
+故自最新 `origin/main` 重開同名分支（`git checkout -B ... origin/main`）。
+
+拆成兩個 PR，因為 `workflow_dispatch` 的 workflow 檔必須先在預設分支上才叫得動：
+
+| PR | 內容 | 狀態 |
+|---|---|---|
+| A（本輪） | 加 `.github/workflows/screenshot-windows.yml` | 進行中 |
+| — | 手動 dispatch，取得 artifact | 待 A 合併 |
+| B | 換圖 + 改寫 README 圖說 | 待 |
+
+**還不知道會不會成功**：GitHub 的 windows runner 是無人桌面環境，GUI 能不能被合成出來
+要 dispatch 才知道。workflow 內建單色檢查——拍到黑畫面就紅燈，不生出騙人的圖。

@@ -1,0 +1,136 @@
+name: windows screenshot (manual)
+
+# 在**真的 Windows**（windows-latest runner）上以 MSVC 建置 host runtime、實際跑起來、
+# 對螢幕取像，產物以 artifact 上傳。
+#
+# 為什麼需要它：README 的桌面截圖初版是以 mingw-w64 交叉編譯 + Wine 取的
+# （CHG-20260829-01）。程式碼雖一行未改，但字型替換與視窗合成細節與實機有出入——
+# Wine 對 `Segoe UI` 的代用字型就換過兩輪才把中文與 `✓` 同時湊齊。
+# 這支讓截圖回到真 Windows / 真 MSVC / 真 Segoe UI。
+#
+# 為什麼是 workflow_dispatch 而不是掛在 pull_request 上：它要跑 GUI、要等數十秒、
+# 產出的是二進位圖檔。截圖是偶發需求，不是閘門——掛在每個 PR 上只會讓每次 PR 多等十分鐘，
+# 而且沒有任何東西會因為「圖沒拍成」而應該擋下合併。
+#
+# 已知限制（README 的圖說必須據實標明，否則這張圖就是另一種假綠燈）：
+# runner 是**無人桌面的 VM**，1024x768、純色背景，沒有真實使用者的桌布與 DPI 縮放。
+# 「托盤圖示在通知區的實際外觀」與拖曳／吸邊的手感仍只能由實機驗收
+# （見 docs/backlog/HANDOFF.md §0-B 第 4、6 項）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "host 的存活秒數（要大於取像所需時間）"
+        required: false
+        default: "40"
+
+permissions:
+  contents: read
+
+jobs:
+  screenshot:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 與 gate_windows 同一套建置方式：不釘死 VS 產生器版本（K-006），只給 -A x64。
+      - name: MSVC 建置 host runtime
+        shell: bash
+        run: |
+          cmake -S . -B build -A x64
+          cmake --build build --config Release --target desktop_shell_host --parallel 4
+          ls -l build/units/host/app/Release/desktop_shell_host.exe
+
+      # 以下 PowerShell 一律**純 ASCII**：runner 把 inline script 寫成無 BOM 的 .ps1，
+      # 而 PowerShell 讀無 BOM 檔用的是系統 ANSI codepage（知識庫 K-004，與 K-001 同族）。
+      # 中文一律留在本檔的 YAML 註解裡，不進 .ps1。
+      #
+      # 每個 ${{ }} 都經 env: 傳入，不直接內插進 run:（K-008 / G8 workflow_lint）。
+      # env: 必須寫在 run: 之前——workflow_lint 以縮排判定 run: 區塊範圍。
+      - name: 執行 host 並對螢幕取像
+        shell: pwsh
+        env:
+          RUN_SECONDS: ${{ inputs.seconds }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+
+          $exe = Join-Path $PWD "build\units\host\app\Release\desktop_shell_host.exe"
+          $secs = $env:RUN_SECONDS
+          if ([string]::IsNullOrWhiteSpace($secs)) { $secs = "40" }
+
+          New-Item -ItemType Directory -Force -Path "shots" | Out-Null
+
+          # Refuse to upload a blank capture. A headless runner that never composited
+          # the window yields a uniform bitmap, and an all-one-colour PNG in the README
+          # is exactly the kind of "looks fine, proves nothing" artifact this repo
+          # spends eleven gates trying to prevent.
+          function Save-Screen([string]$path) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+            $g.Dispose()
+            $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+            $first = $bmp.GetPixel(0, 0)
+            $distinct = $false
+            for ($y = 0; $y -lt $b.Height -and -not $distinct; $y += 16) {
+              for ($x = 0; $x -lt $b.Width; $x += 16) {
+                if ($bmp.GetPixel($x, $y) -ne $first) { $distinct = $true; break }
+              }
+            }
+            $bmp.Dispose()
+            Write-Host ("saved {0} ({1}x{2}) uniform={3}" -f $path, $b.Width, $b.Height, (-not $distinct))
+            return $distinct
+          }
+
+          $sig = @"
+          [DllImport("user32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+          public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr child, string cls, string win);
+          [DllImport("user32.dll", SetLastError=true)]
+          public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+          [DllImport("user32.dll")]
+          public static extern bool SetCursorPos(int x, int y);
+          "@
+          $u32 = Add-Type -MemberDefinition $sig -Name U32 -Namespace Shot -PassThru
+
+          $proc = Start-Process -FilePath $exe -ArgumentList "--seconds", $secs -PassThru
+          Start-Sleep -Seconds 10
+
+          $okWidget = Save-Screen (Join-Path $PWD "shots\host-desktop.png")
+
+          # Tray menu: the host's tray window is message-only (parent = HWND_MESSAGE),
+          # so FindWindow cannot see it -- message-only windows are not in the desktop
+          # z-order. FindWindowEx with HWND_MESSAGE as the parent is the only way in.
+          # Posting WM_APP+1 with WM_RBUTTONUP is the same acceptance path used by
+          # CHG-20260803-15; the menu pops at the current cursor position.
+          $HWND_MESSAGE = New-Object IntPtr(-3)
+          $tray = $u32::FindWindowEx($HWND_MESSAGE, [IntPtr]::Zero, "DesktopShellTrayHost", $null)
+          $okMenu = $false
+          if ($tray -eq [IntPtr]::Zero) {
+            Write-Host "::warning::tray message-only window not found; skipping menu capture"
+          } else {
+            [void]$u32::SetCursorPos(760, 560)
+            Start-Sleep -Milliseconds 500
+            [void]$u32::PostMessage($tray, 0x8001, [IntPtr]::Zero, [IntPtr]0x0205)
+            Start-Sleep -Seconds 3
+            $okMenu = Save-Screen (Join-Path $PWD "shots\host-tray-menu-full.png")
+          }
+
+          if (-not $proc.HasExited) { $proc.Kill() }
+
+          if (-not $okWidget) {
+            Write-Host "::error::desktop capture is a single uniform colour -- the runner never composited the window, so this image proves nothing"
+            exit 1
+          }
+          if (-not $okMenu) {
+            Write-Host "::warning::menu capture missing or blank; the desktop capture is still usable"
+          }
+
+      - name: 上傳截圖
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-screenshots
+          path: shots/
+          if-no-files-found: error
