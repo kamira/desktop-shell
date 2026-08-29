@@ -43,12 +43,38 @@ SAO Utils（ACG 風格啟動器）、伺か Ukagaka（桌面角色）。攤平�
 
 ## 實際畫面
 
-`examples/cpu_gpu_validator` 是階段 A 的驗證器：**不改 `src/` 任何一行**，
-純從已合併的擴充點組裝出一個 CPU/GPU/RAM widget，並把 widget 自己算出的 `RenderModel`
-（`fill_ratio` + `display_text`）畫成可檢視的畫面。
+### 桌面 runtime（Windows host）
 
-下圖是它建置後實際執行的畫面（Linux／null 後端）—— CPU 讀**真實主機負載**，
-GPU / RAM 為 sweep 模擬，用來證明 widget 對「任意指標」皆能組裝呈現：
+`host/app` 把 widget 算出的 `RenderModel` 畫成桌面上的真實視窗：最上層、不搶焦點、
+可拖曳、會吸邊、會記位置。CPU 與 RAM 是主機真實負載，GPU 為 sweep 模擬。
+
+<p align="center">
+  <img src="docs/images/host-desktop.png" alt="desktop-shell host runtime：桌面右上角的系統狀態 widget，右下角是展開的自繪托盤選單" width="900">
+</p>
+
+托盤右鍵是 **W1-05 自繪選單**（W1-06 另附 MSAA 無障礙支援）。
+「最上層顯示」前面的勾號就是 H1-04 持久化下來的 UI 開關狀態 ——
+**一個每次啟動都自己解鎖的「鎖定」等於沒有鎖**：
+
+<p align="center">
+  <img src="docs/images/host-tray-menu.png" alt="自繪托盤選單：最上層顯示（已勾選）／點擊穿透／鎖定位置／分隔線／結束" width="300">
+</p>
+
+> **取像環境**：上面兩張是把 `desktop_shell_host.exe` 以 **mingw-w64 交叉編譯**後、
+> 在 **Wine 的虛擬桌面**上執行所截。**程式碼一行未改**，但這不是原生 Windows 的畫面 ——
+> 字型替換（Wine 對 `Segoe UI` 的代用字型）與視窗合成細節會與實機有出入。
+> 專案本身以 **MSVC** 建置，由 CI 的 `gate_windows` 每個 PR 實跑；
+> mingw 這條路徑只為了取像，不是支援的建置方式。
+> 實機的目視驗收紀錄（自繪選單外觀、hover／點選、邊緣翻轉、托盤圖示比對）
+> 見 [`docs/backlog/HANDOFF.md`](docs/backlog/HANDOFF.md) §0-B。
+
+### 主控台驗證器（跨平台，null 後端）
+
+`examples/cpu_gpu_validator` 是階段 A 的驗證器：**不改 `src/` 任何一行**，
+純從已合併的擴充點組裝出同一個 CPU/GPU/RAM widget，把同一份 `RenderModel`
+（`fill_ratio` + `display_text`）畫成主控台畫面。
+
+**兩者的組裝路徑完全相同，換掉的只有最外層的呈現** —— 這正是「平台」與「工具」的差別。
 
 <p align="center">
   <img src="docs/images/cpu-gpu-validator.png" alt="cpu_gpu_validator 執行畫面：CPU / GPU / RAM 三條量表與驗收結論 ✓ PASS" width="880">
@@ -57,14 +83,6 @@ GPU / RAM 為 sweep 模擬，用來證明 widget 對「任意指標」皆能組�
 驗收②之所以單獨存在，是因為驗收①只看 `fill_ratio` 是否落在 `[0,1]` —— 而 `0.0` 完美滿足它。
 一旦 CPU 取樣壞掉、量表整輪停在 0.0%，只查值域的驗收照樣印 `✓ PASS`。
 **壞掉的指標會偽裝成「CPU 很閒」**，這是會放行假綠燈的驗收條件，比讀不到值本身更危險（知識庫 K-002）。
-
-同一份 `RenderModel` 換一個呈現層就是桌面上的真實視窗 —— `host/app`（相位 2，Windows）
-把它畫成 GDI 像素，得到一個可拖曳、會吸邊、會記位置、有系統匣選單與 MSAA 無障礙支援的常駐 widget。
-**widget 與指標的組裝路徑兩邊完全相同，換掉的只有最外層的呈現。**
-
-> Windows host runtime 的實機截圖目前不隨 repo 收錄（需 Windows 環境產生）。
-> 已做過的實機目視驗收 —— 自繪選單外觀、hover／點選行為、邊緣翻轉、托盤圖示比對 ——
-> 逐項記錄在 [`docs/backlog/HANDOFF.md`](docs/backlog/HANDOFF.md) §0-B。
 
 ## 五個擴充點
 

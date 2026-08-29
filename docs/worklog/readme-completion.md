@@ -32,5 +32,6 @@ last-updated: 2026-08-29 (UTC+0)
 
 - 不動任何程式碼（`src/` / `engine/` / `modules/` / `content/` / `apps/` / `host/` / `tests/` / `scripts/`）
 - 不動 `units.json` / `state.json`（README 只**讀**現況，不改帳本）
-- 不補 Windows host runtime 的實機截圖 —— 需 Windows 環境，本次環境產不出來，
-  README 明寫其不隨 repo 收錄，並指向 `HANDOFF.md` §0-B 的實機驗收紀錄
+- 不補**原生 Windows** 的實機截圖 —— 本次環境沒有 Windows 機器。
+  改以 mingw-w64 交叉編譯 + Wine 虛擬桌面取像（程式碼一行未改），
+  README 的圖說明寫「不是原生 Windows 的畫面」，實機驗收仍以 `HANDOFF.md` §0-B 為準
