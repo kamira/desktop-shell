@@ -4,6 +4,67 @@
 
 ---
 
+## K-010 — CI 產物「上傳成功」不等於「拿得到」：artifact 只能由人在瀏覽器點下載
+
+- 日期：2026-08-29 | 來源：`CHG-20260829-03`
+- 狀態：**已修復**（截圖 workflow 改為同時推進 `bot/windows-screenshots` 分支）
+
+### 錯誤
+
+`screenshot-windows.yml` 以 `actions/upload-artifact` 交付截圖。workflow 全綠、
+log 明寫 `Artifact windows-screenshots has been successfully uploaded!`、
+`Uploaded bytes 502560`、還給了一個 `Artifact download URL`。
+
+然後**取不到檔案**：
+
+```
+https://api.github.com/repos/<owner>/<repo>/actions/artifacts/<id>/zip   → 連不上
+https://github.com/<owner>/<repo>/actions/runs/<run>/artifacts/<id>      → HTTP 403
+```
+
+### 根因
+
+artifact 的下載端點要求一個**互動式工作階段或另一組憑證**。
+agent 的執行環境走的是 proxy 注入的 git 憑證——它讓 `git fetch` / `git push` 能動，
+但那是 git 協定的憑證，**取不出來也套不到 HTTPS 下載端點上**。
+
+更深一層的問題是設計假設：`upload-artifact` 預設的消費者是**坐在瀏覽器前面的人**。
+在一個由 agent 操作的 repo 裡，「產物要人去點一下才拿得到」等於**這條路只走得完一半**——
+而且它會偽裝成成功：workflow 綠燈、log 說上傳成功，失敗發生在下游、無聲無息。
+
+### 解法
+
+產物**同時**推進一個覆寫式分支，讓 git 拿得到：
+
+```yaml
+permissions:
+  contents: write      # 推分支需要
+...
+      - name: 推進 assets 分支
+        shell: bash
+        env:                                   # env: 一律寫在 run: 之前（G8 以縮排判區塊）
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -rf .assets && mkdir -p .assets/docs/images
+          cp shots/*.png .assets/docs/images/
+          cd .assets
+          git init -q -b bot/windows-screenshots
+          git config user.name  "github-actions[bot]"   # 要設在**這個新 repo** 裡
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "chore(assets): ..."
+          git push -q --force "https://x-access-token:$GITHUB_TOKEN@github.com/${{ github.repository }}.git" bot/windows-screenshots
+```
+
+`upload-artifact` 保留給人用，兩者並存。
+
+### 預防
+
+- 交付產物時先問：**誰是消費者？** 消費者是 agent 就不能用「要人點一下」的通道。
+- 連帶踩到的小坑：`git config user.name` 下在外層 checkout 上**沒有用**——
+  commit 發生在新 `git init` 的 repo 裡，而 runner 沒有全域 git 身分，會直接失敗。
+
+---
+
 ## K-009 — 釘住寫入端編碼只解決一半；讀取端沒釘，例外會跑到別的執行緒去
 
 - 日期：2026-08-10 | 來源：`CHG-20260810-05`
