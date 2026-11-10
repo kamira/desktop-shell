@@ -1,11 +1,11 @@
 # HANDOFF — ai-sdlc-autopilot 全實作進度交接
 
-- Date: 2026-07-28（初版）/ 2026-07-30 更新 / **2026-08-03 更新** | 角色: I1（lead implementer / 協調者）
+- Date: 2026-07-28（初版）/ 2026-07-30 更新 / 2026-08-03 更新 / **2026-08-29 更新** | 角色: I1（lead implementer / 協調者）
 - 本檔為 I1 交接便箋，非治理產物。權威狀態一律以 `origin/main` 的 `docs/changes/CHG-*.md` 為準。
 
 ---
 
-## 0-A. 最新狀態（2026-08-03，**本段最新，蓋過下方 §0 與 §1~2**）
+## 0-A. 相位 2 完成狀態（2026-08-03，蓋過下方 §0 與 §1~2；**更後面的進度見 §0-F**）
 
 ### 一句話
 
@@ -13,10 +13,14 @@
 真實 widget。176 → **187 個單元**、**187 個測試**、MSVC 全建 0 warning、
 每個 PR 跑 ubuntu + Windows 雙閘門。
 
+> **2026-08-29 校正**：`CHG-20260810-08` 之後 backlog 為 **193 個單元、已完成 187**
+> （剩 `W1-07` + `H1-06`~`H1-10`）。測試 **187 個註冊 CTest**，其中 11 個被 `if(WIN32)`
+> 守住，ubuntu 上實跑 **176**。隨時以 `python3 scripts/plan.py status` 為準。
+
 ### 接手第一件事：讀知識庫
 
-`docs/knowledge/INDEX.md` 有 **7 條** K 條目。**至少先讀 K-001、K-004、K-007**——
-它們描述的是這個環境會反覆咬人的陷阱，不是歷史紀錄。
+`docs/knowledge/INDEX.md` 有 **10 條** K 條目（本表列到 K-007，其後見 INDEX）。
+**至少先讀 K-001、K-004、K-007**——它們描述的是這個環境會反覆咬人的陷阱，不是歷史紀錄。
 
 | 條目 | 一句話 |
 |---|---|
@@ -77,6 +81,12 @@ build/units/host/app/Debug/desktop_shell_host.exe
 合成拖曳 10/10 證明的是「這台機器上穩」。**兩者都不是「查明了原機器為何不穩」。**
 原機器裝 PC-cillin，防毒掛鉤輸入是合理懷疑，但沒有證據，故不寫成結論。
 
+**2026-08-29 補充**：第 1 項（自繪選單實機外觀）現在有**可重跑的自動化路徑** ——
+`.github/workflows/screenshot-windows.yml` 在 `windows-latest` 上 MSVC 建置、執行、
+送 `WM_APP+1` 叫出選單並對螢幕取像，手動 dispatch 即可重現（見 §0-F）。
+**第 4、6 項不在此列**：螢幕閱讀器要用耳朵聽、拖曳手感要用手感覺，
+CI 的無人 runner 換不來這兩件事。
+
 **驗收腳本**：`CHG-20260803-12` ~ `-15` 的 Verification 段落有各自的做法可循
 （送 `WM_EXITSIZEMOVE` 觸發吸附、送 `WM_APP+1` 叫出托盤選單、`WM_NCHITTEST` 查可拖曳性）；
 `CHG-20260810-07` 記錄了實際使用的視窗契約與量測方式。
@@ -105,6 +115,8 @@ ctest --test-dir build -C Debug
 | **吸附門檻為編譯期常數** | 16px 寫死，無 UI 開關、不隨 DPI 調整（H1-05） |
 | **E9 套件內圖示載入管線未接** | W1-04 只對齊了命名慣例（`icons/<name>`），未接實際套件載入 |
 | **契約 17 條不代表窮盡** | `create_surface` 的前置條件已對齊，其他方法是否也有後端分歧未知（K-007） |
+| **截圖來自無人 VM，非實機桌面** | `windows-latest` runner 是 1024x768、無使用者 DPI 縮放與多螢幕設定。README 的圖說已標明；`HANDOFF` §0-B 第 4、6 項仍需實機（§0-F） |
+| **`bot/windows-screenshots` 為覆寫式分支** | 每次 dispatch 以單一 commit 強制覆寫，不保留歷史。刻意如此（截圖無回溯價值），但代表**舊圖取不回來**（§0-F） |
 
 ---
 
@@ -117,6 +129,24 @@ ctest --test-dir build -C Debug
 - **相位 3 — cocoa 後端**：`phase.json` 的 `phases["3"]` 已定義好白名單；
   契約測試只需再加一個註冊點（見 `docs/structure/units/e1_25.md`），契約標頭不動
 
+### 使用者提出、**尚未進 `units.json`** 的需求（2026-08-29）
+
+> 依 `AGENTS.md` §3，工作單元只能來自 `units.json`。以下是已提出但**還沒開 CHG、
+> 還沒寫進帳本**的需求，記在這裡只為了不遺失。**不得據此直接派工。**
+
+| # | 需求 | 查證結果 |
+|---|---|---|
+| 1 | 檢視前 N 大 service / 行程（N 可自訂 3 / 5 / 10），依 **RAM 或 CPU** 排序 | **機制已存在且已合併**：`E2-19 行程監看`（`modules/sysinfo/process_monitor.*`）本來就提供 `ProcessSortKey{Cpu, Memory}` 與 `top_processes(procs, key, top_n)`（`top_n==0` = 全部），並以 `proc.cpu` / `proc.memory` 兩個指標掛上 E2-01。**缺口有二**：`backend_followup: true`（win32 後端未補）、以及 host 沒接 —— 與 `CHG-20260810-08` 的結論同形 |
+| 2 | 顯示 Claude token 使用額度 | **部分有**：`E2-14 HTTP 取得與結構化解析`（已合併、平台中立，`HttpTransport` 支援自訂標頭）足以表達「打 API 取 JSON」。**缺口**：(a) 沒有任何「API 金鑰 / 憑證儲存」單元 —— 全庫搜尋只有 `E9-02` manifest 的 `permissions` 宣告，沒有實際的祕密保存機制；(b) 需要一個新的 sysinfo 提供者單元 |
+
+**兩者的共同形狀**：不是「要發明新功能」，是「**既有擴充點還沒有消費者**」——
+與 `CHG-20260810-08` 查出來的完全一樣。要推進的話應循同一條路：
+開一份 CHG 做需求分析 + 結構設計，走 **confirm 停點**由使用者放行後才寫進 `units.json`。
+
+需求 2 另有一個必須先裁決的設計問題：**祕密要存在哪裡、以什麼權限模型存取**。
+這是 `docs/requirements.md`「明確不做」沒有涵蓋、但也從未設計過的空白，
+不宜夾在一個 widget 需求裡順手決定。
+
 ---
 
 ## 0-E. 治理現況（與 2026-07-30 相比的變化）
@@ -124,9 +154,90 @@ ctest --test-dir build -C Debug
 - **相位已翻到 2**：`phase.json` `"phase": 2`、`allowed_backends: ["null","win32"]`
 - **閘門從 8 道變成兩個 job**：`gate_windows`（MSVC 全建 + ctest）→ `gate`（原八道）。
   `gate` 以 `needs: gate_windows` 相依，**Windows 紅燈時 `gate` 被跳過、自動合併不會執行**
+  - **2026-08-10 起 `gate` 內為十一道**（新增 G0 `run_python_tests`、G7 `status_check`、
+    G8 `workflow_lint`），順序 G0 → G8 → G1 → G1b → G1c → G2 → G7 → G3 → G4 → G5 → G6。
+    以 `AGENTS.md` §5 為準
+  - **2026-08-29 起 repo 有兩支 workflow**：`governance.yml`（閘門）與
+    `screenshot-windows.yml`（手動截圖，**不參與閘門**，見 §0-F）
 - **`backend_guard` 相位閘門已擴及 `src/` 下任何平台命名目錄**（原本只掃 `src/kernel/backend/*`）
 - **`tests/contract/` 現在真的驗證真實後端**：一份契約標頭、兩個註冊點（null / win32），各 17 條
 - **`state.json` 已重建**：`plan.py status` 不再顯示「已完成 0」的假象
+
+---
+
+## 0-F. 專案門面與截圖管線（2026-08-29，`CHG-20260829-01` / `-02` / `-03`）
+
+### 一句話
+
+`README.md` 從兩行變成完整門面，而且**四張圖全是真的建置後跑出來、對畫面取像的**；
+桌面截圖現在可由 CI 一鍵重拍。
+
+### 變更
+
+| CHG | PR | 內容 |
+|---|---|---|
+| `-01` | #217 | README 補全（定位／五個擴充點／分層／建置／十一道閘門／路線圖／文件地圖）+ 主控台驗證器與 `ctest` 的實跑畫面 |
+| `-02` | #218 | `.github/workflows/screenshot-windows.yml` —— `workflow_dispatch`，windows-latest 上 MSVC 建置 + 執行 + 取像 |
+| `-03` | #219 | 桌面截圖改為**實機 Windows** 取像；workflow 兩處修正 |
+
+### 要重拍截圖時
+
+```bash
+# workflow 檔已在 main 上，手動 dispatch 即可（seconds 預設 40）
+gh workflow run screenshot-windows.yml --ref main -f seconds=40
+# 產物同時上傳 artifact（給人點）與推進 bot/windows-screenshots 分支（給 git 拿）
+git fetch origin bot/windows-screenshots
+git show FETCH_HEAD:docs/images/host-desktop.png > host-desktop.png
+```
+
+**產物為什麼要推分支**：`upload-artifact` 只能由人在瀏覽器上點下載，
+API 端點需要另外的憑證（`CHG-20260829-03` 實測 403）。這個 repo 是 agent 在操作的——
+**「產物要人去點一下才拿得到」等於這條路只走得完一半**（知識庫 K-010）。
+
+### 這批圖證明了什麼
+
+- MSVC 建置的 `desktop_shell_host.exe` 在**原生 Windows** 上跑得起來
+- widget 以**真的 Segoe UI** 渲染（先前 Wine 版的中文與 `✓` 是換了兩輪代用字型才湊齊的）
+- W1-05 自繪選單正確彈出：四列 + 分隔線、勾號與反白列都對
+- H1-04 的「最上層顯示」勾選狀態確實被持久化並反映在選單上
+
+### 沒證明什麼（**別讀成比它多**）
+
+runner 是 **1024x768 的無人 VM，不是任何人的實機桌面**，沒有真實使用者的 DPI 縮放與多螢幕設定。
+§0-B 第 4（螢幕閱讀器）、第 6（拖曳手感）兩項**自動化替代不了**，仍待實機。
+README 的圖說已據實寫明這一段——**省略它，圖就會被讀成比它實際證明的更多。**
+
+### 工作分工：這裡建機制，Windows 做測試與調整
+
+**本環境（Linux 容器 + CI）能做到的**：寫機制、跑 176 個平台中立測試、
+MSVC 全建（`gate_windows`）、在無人 VM 上確認 GUI 真的畫得出來。
+**本環境做不到的**：任何需要人用眼睛看、用手拖、用耳朵聽的判斷。
+
+所以路線是固定的：**機制在這裡建到「可被驗證」為止，然後交接到 Windows 實機測試與調整。**
+CI 截圖管線（§0-F）的價值就在這裡——它讓「交接前」的狀態從「只有程式碼」
+變成「有一張真 Windows 的畫面可以對照」，但它**不是**實機驗收的替代品。
+
+#### 交接到 Windows 時要做的（目前清單）
+
+| # | 項目 | 為什麼只能在實機做 | 來源 |
+|---|---|---|---|
+| 1 | 螢幕閱讀器（NVDA / Narrator）實際朗讀 | 要用耳朵聽 | §0-B 第 4 項（W1-06） |
+| 2 | 合成滑鼠拖曳為何時好時壞 | 原機器的環境差異（疑似防毒掛鉤輸入）無法在別的機器重現 | §0-B 第 6 項（W1-03 / H1-04） |
+| 3 | 拖曳、吸邊的實際手感與門檻 | 16px 門檻是編譯期常數，調不調得剛好要手感 | §0-C（H1-05） |
+| 4 | 多螢幕吸附 | `work_area()` 只取主顯示器，副螢幕行為未知 | §0-C（H1-05） |
+| 5 | 托盤圖示在通知區的外觀（含淺色 / 深色、DPI 分級） | 只有一個 `tray.ico`，實際顯示要看通知區 | §0-C（W1-04） |
+| 6 | 高 DPI 與非整數縮放（125% / 150%）下的細線圓弧 | `CHG-20260810-08` 已預告會糊，要實機看 | H1-08（未做） |
+
+**這張表是交接的交付物。** 每新增一個需要實機判斷的項目就往這裡加一列——
+散在各 CHG 的 Verification 段落裡，交接時沒有人找得到。
+
+### 一條貫穿本 repo 的原則，第三次現身
+
+workflow 取像後會抽樣比對像素，整張同色即紅燈：
+無人桌面若沒合成出視窗，`CopyFromScreen` 會得到單色點陣圖，
+**那種圖放進 README，就是這個 repo 花十一道閘門在防的東西。**
+
+同族：G0/G3 的「零測試也算紅」、K-002 的「`0.0` 不是失敗值」、本次的「單色圖不是截圖」。
 
 ---
 
