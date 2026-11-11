@@ -9,8 +9,8 @@
 ## 現況（由 `units.json` 的 `write_scope` 反推，機器可複算）
 
 ```
-src/                  對系統的操作（需要 per-platform 後端）—— 換平台時只有這裡要改，共 30 條
-├── kernel/           surface kernel、四參數 profile、後端 24 項（含 backend/null 參考實作）
+src/                  對系統的操作（需要 per-platform 後端）—— 換平台時只有這裡要改，共 37 條
+├── kernel/           surface kernel、四參數 profile、後端 27 項（含 backend/null 參考實作）
 │   └── e1_21/        能力矩陣宣告檔（E1-21）：宣告哪些能力可能在某些平台不存在，
 │                     為 has() 能力閘控（NFR-03）與降級路徑的單一資料來源。純宣告 + 查詢介面，
 │                     平台中立、不綁後端；相位 1 has() 回傳宣告的預設可用性、未知能力保守回 false。
@@ -18,11 +18,17 @@ src/                  對系統的操作（需要 per-platform 後端）—— �
 │                     ScreenId 與無單位比值表達，混合 DPI 各螢幕獨立。無絕對座標 / 數字 z-order（NFR-02）；
 │                     相位 1 null 後端回預設縮放 1.0、未知螢幕保守回 1.0。
 ├── events/           全域事件 3 項：全域熱鍵、系統事件、全域指標手勢（其餘事件已遷 engine/）
-└── host/             宿主整合 3 項：系統匣、自繪選單、開機自啟
-    └── e11_03/       開機自動啟動（E11-03）：登入時自動啟動的設定介面。能力閘控項
-                      （host.autostart，E1-21 宣告為 optional / 相位 1 預設不可用）；
-                      平台中立介面 + null 後端（has()==false、操作 no-op 回 Unsupported），
-                      呼叫端須先 has() 閘控。
+├── host/             宿主整合 6 項：系統匣（介面 + win32 後端 + 圖示資源）、自繪選單、開機自啟
+│   └── e11_03/       開機自動啟動（E11-03）：登入時自動啟動的設定介面。能力閘控項
+│                     （host.autostart，E1-21 宣告為 optional / 相位 1 預設不可用）；
+│                     平台中立介面 + null 後端（has()==false、操作 no-op 回 Unsupported），
+│                     呼叫端須先 has() 閘控。
+└── sysinfo/          **sysinfo 的平台後端 1 項**（W1-08，相位 2 起）—— 感測器本身仍在
+                      modules/sysinfo/，這裡只放「真的去問作業系統」的那一層。
+    └── win32/        W1-08 win32 行程列舉後端：實作 E2-19 的 ProcessSource
+                      （EnumProcesses / GetProcessTimes / GetProcessMemoryInfo）。
+                      分兩半：政策層（原始讀數 → ProcessSample 的換算，平台中立、全平台建置）
+                      + win32 層（真實呼叫，整段 if(WIN32)）。
 
 engine/               平台中立的引擎邏輯（62 項）—— 換平台一行都不用動
 ├── format/           宣告式格式、變數、公式引擎、熱重載、設定遷移 15 項
@@ -59,8 +65,9 @@ scripts/              治理工具（plan / scope_check / backend_guard / stage_
 > （它自己走檔案樹；`unittest discover` 對非套件子目錄會跑 0 個測試然後回綠）。
 ```
 
-> `src/` 現在**只剩對系統的操作**：29 項語意分歧（kernel 23 / 全域 events 3 / host 3）
-> 加上 `E1-24` null 後端。`E1-24` 雖平台中立，**刻意留在 `src/kernel/backend/`** ——
+> `src/` 現在**只剩對系統的操作**：kernel 27 / 全域 events 3 / host 6 / sysinfo 1，共 37 條
+> （platform 層 38 條中的 36 條語意分歧 / API 分歧項 + `E1-24` null 後端；餘 1 條為 `W1-06`，
+> write_scope 在 `host/menu/`、`host/app/`，本就不在 `src/`）。`E1-24` 雖平台中立，**刻意留在 `src/kernel/backend/`** ——
 > 它是後端契約的第一個實作，與 win32/cocoa 同屬後端家族不拆散，
 > 且 `backend_guard.py` 以 `src/kernel/backend/*` 執行相位閘門。
 > **`E5` 事件子系統橫跨兩處**：3 個全域事件（需 OS 後端）在 `src/events/`，
@@ -74,13 +81,23 @@ scripts/              治理工具（plan / scope_check / backend_guard / stage_
 
 | layer | 位置 | 項數 | 說明 |
 |---|---|---|---|
-| **platform** | `src/**` 30 條 | 30 | 對系統的操作：29 語意分歧 + `E1-24` null 後端 |
+| **platform** | `src/**` 37 條 + `W1-06`(`host/**`) | 38 | 對系統的操作：含 `E1-24` null 後端與 `src/sysinfo/win32/`（W1-08） |
 | **engine** | `engine/**` 62 條 + `E1-25`(tests)/`E1-26`(scripts) | 64 | 平台中立邏輯，換平台一行不動 |
 | **module** | `modules/sysinfo/**` 25、`modules/elements/**` 22、`modules/actuators/**` 11 | 58 | 掛在擴充點上的提供者 |
 | **artifact** | `content/**`、`apps/**`（`C1`–`C4`） | 24 | 驗證器：證明擴充點真的能被外部使用 |
 
 **「感測器不得出現在 `src/`」現在是目錄結構就看得出來的事** ——
 若某個指標提供者出現在 `src/`，那就是擴充點沒做好的訊號。
+
+> **`src/sysinfo/` 不是這條規則的例外**（W1-08 起存在，CHG-20261111-w1_08）。
+> 分界在「誰實作 `MetricProvider`」：
+> - **指標提供者**（`MetricProvider`：指標身分、top-N、歷史、取樣分級）一律在
+>   `modules/sysinfo/` —— `src/sysinfo/` 底下**沒有**任何 `MetricProvider`。
+> - `src/sysinfo/<platform>/` 只放提供者所**注入的來源後端**（如 E2-19 的 `ProcessSource`）：
+>   真的去問作業系統的那一層，換平台時只有它要改。
+>
+> 判準仍然成立且更銳利：若 `src/sysinfo/` 出現了 `MetricProvider` 的實作、或 `modules/sysinfo/`
+> 出現了平台 API 呼叫，那才是擴充點沒做好的訊號。
 
 ## 目錄扁平化（CHG-20260730-03）
 
