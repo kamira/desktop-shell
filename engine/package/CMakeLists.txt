@@ -142,3 +142,22 @@ target_link_libraries(e9_09 PUBLIC e9_04)
 add_executable(test_e9_09 ${CMAKE_SOURCE_DIR}/tests/e9/test_e9_09.cpp)
 target_link_libraries(test_e9_09 PRIVATE e9_09 GTest::gtest_main)
 add_test(NAME e9_09 COMMAND test_e9_09)
+
+# ==== 單元 e9_10 ====
+# engine/package/CMakeLists.txt — E9-10 已安裝套件登錄的持久化
+# 把「已安裝了哪些套件」的中繼資料序列化為 E7-01 宣告式文字、存於可注入後端，
+# 重新建構登錄物件即可重新列舉（engine 層、平台中立、無真實檔案 I/O）。
+# 根 CMakeLists 會自動 glob 收入本檔（見 docs/backlog/BUILD.md）。
+add_library(e9_10 STATIC install_store.cpp)
+target_include_directories(e9_10 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_features(e9_10 PUBLIC cxx_std_17)
+
+# 相依上游：E7-12 設定值寫回（serialize；E7-01 Value/Document/parse 經其 PUBLIC 傳遞）、
+# E9-07 拖放安裝（InstallRegistry / Package；並經其傳遞 E9-01 / E9-02 / E5-08）。
+# 三者皆已合併於 main，可讀不可改。
+target_link_libraries(e9_10 PUBLIC e7_12 e9_07)
+
+# 契約測試在 tests/e9/（也是本單元的 write_scope），以絕對來源路徑指向。
+add_executable(test_e9_10 ${CMAKE_SOURCE_DIR}/tests/e9/test_e9_10.cpp)
+target_link_libraries(test_e9_10 PRIVATE e9_10 GTest::gtest_main)
+add_test(NAME e9_10 COMMAND test_e9_10)
