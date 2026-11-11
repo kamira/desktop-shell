@@ -5,32 +5,32 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 187,
+  "units": 200,
   "by_priority": {
-   "P0": 68,
-   "P1": 66,
+   "P0": 74,
+   "P1": 76,
    "P2": 50
   },
   "by_risk": {
-   "medium": 19,
-   "low": 168
+   "low": 172,
+   "medium": 28
   },
-  "waves": 17,
+  "waves": 23,
   "by_platform": {
-   "semantic-divergence": 33,
-   "neutral": 114,
-   "api-divergence": 40
+   "api-divergence": 41,
+   "neutral": 125,
+   "semantic-divergence": 34
   },
   "backend_followup": 63,
   "by_layer": {
-   "artifact": 29,
-   "engine": 64,
+   "artifact": 37,
+   "engine": 67,
    "module": 58,
-   "platform": 36
+   "platform": 38
   },
   "by_stage": {
-   "A": 117,
-   "B": 35,
+   "A": 121,
+   "B": 44,
    "C": 12,
    "D": 23
   },
@@ -5755,6 +5755,214 @@
    ],
    "branch": "feat/h1_10",
    "acceptance": "WM_NCHITTEST 在四邊 / 四角回對應 HT* 值進入系統縮放迴圈（沿用 W1-03 的 HTCAPTION 路徑，不新增機制）。縮放後左上角座標不變、組件相對偏移不變（縮放 widget 不縮放內容）。尺寸隨 E9-05 持久化並於重啟還原。locked=true 時四邊皆回 HTCLIENT（鎖定同時停用拖曳與縮放）。縮小到蓋不住組件時允許裁切，但必須提供「縮回內容大小」的動作，不得產生救不回來的狀態。若實作需要改動 src/ 的後端，停下回報，不得自行擴權。",
+   "platform": "neutral",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "E9-10",
+   "title": "已安裝套件登錄的持久化",
+   "priority": "P1",
+   "group": "核心",
+   "layer": "engine",
+   "stage": "A",
+   "module": "E9",
+   "primitives": [
+    "K10"
+   ],
+   "depends_on": [
+    "E9-07",
+    "E7-01",
+    "E7-12"
+   ],
+   "wave": 3,
+   "load_bearing": 2,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "engine/package/**",
+    "tests/e9/test_e9_10*",
+    "docs/changes/CHG-*-e9_10.md"
+   ],
+   "branch": "feat/e9_10",
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC；**沿用 E7-01 文字格式 + E7-12 寫回，不得發明新格式**；驗收須含『安裝 → 不載入 → 重啟 → 仍列得出該套件』——**重啟這一步是重點**，記憶體登錄過不了（CHG-20260829-05 停點）",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "E9-11",
+   "title": "權限授予狀態與決策記錄",
+   "priority": "P1",
+   "group": "核心",
+   "layer": "engine",
+   "stage": "A",
+   "module": "E9",
+   "primitives": [
+    "K10"
+   ],
+   "depends_on": [
+    "E9-02",
+    "E9-10",
+    "E8-04"
+   ],
+   "wave": 4,
+   "load_bearing": 1,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "engine/package/**",
+    "tests/e9/test_e9_11*",
+    "docs/changes/CHG-*-e9_11.md"
+   ],
+   "branch": "feat/e9_11",
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC；每套件每權限三態（未決／已授予／已拒絕）+ 持久化；**組出 E8-04 HostEnvironment，不得修改 E8-04**；驗收須含『拒絕 → 載入回 MissingPermission 且 missing 附缺項』與『已授予 → 撤銷 → 重啟後載入被擋』——**不得靜默降級成載入成功但功能沒作用**",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "E7-16",
+   "title": "設定分頁登錄（核心分頁 + 每套件一頁，append-only）",
+   "priority": "P1",
+   "group": "核心",
+   "layer": "engine",
+   "stage": "A",
+   "module": "E7",
+   "primitives": [
+    "K11"
+   ],
+   "depends_on": [
+    "E7-14",
+    "E9-10"
+   ],
+   "wave": 4,
+   "load_bearing": 1,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "engine/format/**",
+    "tests/e7/test_e7_16*",
+    "docs/changes/CHG-*-e7_16.md"
+   ],
+   "branch": "feat/e7_16",
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC；消費 E7-14 的 EditableField，不得重造欄位模型；**反向斷言**：安裝一個 manifest 宣告與核心設定同名欄位的套件，核心分頁的值不得被改動（append-only 是使用者裁定，必須以測試釘住）；卸載後該分頁消失且核心分頁不受影響",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "C2-11",
+   "title": "行程 top-N widget（N 與排序維度可設定）",
+   "priority": "P1",
+   "group": "監控",
+   "layer": "artifact",
+   "stage": "A",
+   "module": "C2",
+   "primitives": [],
+   "depends_on": [
+    "E2-19",
+    "E4-03",
+    "E7-01",
+    "E7-05"
+   ],
+   "wave": 4,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "content/widgets/**",
+    "tests/c2/test_c2_11*",
+    "docs/changes/CHG-*-c2_11.md"
+   ],
+   "branch": "feat/c2_11",
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；N（3/5/10，0=全部）與排序維度走 E7 宣告式設定；**切換排序維度 = 換掉註冊的指標**（proc.cpu ↔ proc.memory，單位 % ↔ MB），歷史不保留，provider 由 host 重建（CHG-20260829-05 Q-A 停點裁定）；**不得修改已合併的 E2-19**",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "W1-08",
+   "title": "win32 行程列舉後端",
+   "priority": "P1",
+   "group": "桌面 runtime",
+   "layer": "platform",
+   "stage": "B",
+   "module": "W1",
+   "primitives": [
+    "K5"
+   ],
+   "depends_on": [
+    "E2-19",
+    "W1-01"
+   ],
+   "wave": 10,
+   "load_bearing": 0,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "src/sysinfo/win32/**",
+    "tests/e2/test_process_win32*",
+    "docs/changes/CHG-*-w1_08.md"
+   ],
+   "branch": "feat/w1_08",
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC；實作 E2-19 的 ProcessSource（E2-19 的 backend_followup）；**契約測試不得含平台分支**；本單元首次建立 src/sysinfo/win32/ 作為 sysinfo 平台後端的家，須同步 docs/structure/（G4 會擋）",
+   "platform": "api-divergence",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "H1-11",
+   "title": "設定視窗裝配",
+   "priority": "P1",
+   "group": "桌面 runtime",
+   "layer": "artifact",
+   "stage": "B",
+   "module": "H1",
+   "primitives": [],
+   "depends_on": [
+    "E7-16",
+    "H1-09"
+   ],
+   "wave": 21,
+   "load_bearing": 1,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "host/settings/**",
+    "tests/h1/test_h1_11*",
+    "docs/changes/CHG-*-h1_11.md"
+   ],
+   "branch": "feat/h1_11",
+   "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC；消費 E7-16 畫出分頁與欄位，改動走 E7-14 → E7-12 → E7-07；**共用 H1-09 的編輯裝配，不得另造第二條『驗證→寫回→熱重載』鏈**（CHG-20260829-05 Q-B 停點裁定）；設定變更為排序維度時由本單元重建 ProcessMonitorProvider 並重新註冊（Q-A）",
+   "platform": "neutral",
+   "phase": 2,
+   "backend_followup": false
+  },
+  {
+   "id": "H1-12",
+   "title": "權限分頁（授予 / 撤銷）",
+   "priority": "P1",
+   "group": "桌面 runtime",
+   "layer": "artifact",
+   "stage": "B",
+   "module": "H1",
+   "primitives": [],
+   "depends_on": [
+    "E9-11",
+    "H1-11"
+   ],
+   "wave": 22,
+   "load_bearing": 0,
+   "risk": "low",
+   "autonomy": null,
+   "write_scope": [
+    "host/settings/**",
+    "tests/h1/test_h1_12*",
+    "docs/changes/CHG-*-h1_12.md"
+   ],
+   "branch": "feat/h1_12",
+   "acceptance": "單元測試綠燈 + 於 tests/ 留一行可重跑證據；列出已安裝套件與其 permissions，可授予／撤銷；**授權時機為安裝時**（CHG-20260829-05 Q-C 停點裁定），本分頁供補決定『未決』與事後撤銷；**介面須明示此為宣告 + 載入期閘控，不是沙箱**——授權後執行期無強制",
    "platform": "neutral",
    "phase": 2,
    "backend_followup": false
