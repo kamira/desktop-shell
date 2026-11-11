@@ -201,3 +201,30 @@ target_link_libraries(c2_10 PUBLIC c1_01 e10_05)
 add_executable(test_c2_10 ${CMAKE_SOURCE_DIR}/tests/c2/test_c2_10.cpp)
 target_link_libraries(test_c2_10 PRIVATE c2_10 GTest::gtest_main)
 add_test(NAME c2_10 COMMAND test_c2_10)
+
+# ==== 單元 c2_11 ====
+# C2-11 行程 top-N widget（N 與排序維度可設定）
+# 目錄已扁平化（CHG-20260730-03）：源碼直接置於本目錄，無 per-unit slug 子目錄。
+add_library(c2_11 STATIC process_top_widget.cpp)
+target_include_directories(c2_11 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_features(c2_11 PUBLIC cxx_std_17)
+
+# 上游相依（皆已合併，可讀不可改）：本單元組裝四個擴充點——
+#   - e2_19（`ProcessSortKey` / `ProcessMonitorProvider` 的指標身分常數 kCpuMetricId /
+#     kMemoryMetricId / kCpuUnit / kMemoryUnit）：**排序維度 ↔ 指標 id ↔ 單位的對照唯一來源**
+#     （CHG-20260829-05 Q-A：切換維度 = 換掉註冊的指標；provider 由 host 重建，本單元不重建、
+#     不持有 provider）。E2-19 PUBLIC 相依 e2_01 / e2_02，故本單元經它取得 E2-01 的
+#     `MetricRegistry` / `Metric` / `MetricInstance`（refresh() 唯一的讀值入口）。
+#   - e4_03（`BarElement` / `GaugeElement` / `ProgressElement` / `RenderModel`）：每列的視覺
+#     渲染描述（無顯示範圍的列不掛元素，見標頭 K-002 說明）。
+#   - e7_01（`Value` / `parse` / `Document` / `format_version`）：宣告式設定的資料模型，且
+#     `configure_text()` 走其文字解析 + 版本欄位相容檢查。
+#   - e7_05（`is_formula` / `Evaluator`）：min/max 靜態公式（configure 時求值）+ transform
+#     動態公式（refresh 時以 `value` 綁定當列原始值求值）。
+# 標頭皆直接 include 其上游標頭，故 PUBLIC 傳遞其 include 目錄。
+target_link_libraries(c2_11 PUBLIC e2_19 e4_03 e7_01 e7_05)
+
+# 單元測試在 tests/c2/（也是本單元的 write_scope），以絕對來源路徑指向。
+add_executable(test_c2_11 ${CMAKE_SOURCE_DIR}/tests/c2/test_c2_11.cpp)
+target_link_libraries(test_c2_11 PRIVATE c2_11 GTest::gtest_main)
+add_test(NAME c2_11 COMMAND test_c2_11)
