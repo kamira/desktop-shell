@@ -26,6 +26,7 @@
 """
 import io
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -48,18 +49,52 @@ GH_BASH = ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail"]
 
 
 def g5_script():
-    """自 governance.yml 取出 G5 步驟的 run: 腳本原文。"""
-    import yaml  # 延後 import：讓「PyYAML 不在」以明確錯誤呈現，而非 import 期崩在收集階段
+    """自 governance.yml 取出 G5 步驟的 run: 腳本原文。
 
+    以**縮排**解析，不用 PyYAML。兩個理由：
+
+    1. CI 的 `actions/setup-python@v5` 給的是乾淨的 Python，**沒有 PyYAML**。
+       本機容器有（系統套件）、CI 沒有——本檔初版就是這樣在 CI 上 7 個案例全錯的
+       （`ModuleNotFoundError: No module named 'yaml'`）。閘門的自我測試**不該**為了
+       解析自己的 workflow 而給 CI 多一個依賴。
+    2. `scripts/workflow_lint.py` 已經以縮排解析同一批 `run:` 區塊，並在該函式的
+       docstring 寫明「刻意不用 YAML 解析」。多一套解析只會多一個漂移來源。
+    """
     with io.open(WORKFLOW, encoding="utf-8") as fh:
-        doc = yaml.safe_load(fh)
+        lines = fh.read().splitlines()
 
-    for step in doc["jobs"]["gate"]["steps"]:
-        if step.get("name") == STEP_NAME:
-            assert step.get("shell") == "bash", \
-                f"{STEP_NAME} 的 shell 不再是 bash，本檔的 GH_BASH 假設已失效"
-            return step["run"]
-    raise AssertionError(f"governance.yml 的 gate job 找不到步驟「{STEP_NAME}」")
+    # 步驟起點：`- name: G5 ACC + identity`
+    start = step_indent = None
+    for i, ln in enumerate(lines):
+        if ln.strip() == "- name: " + STEP_NAME:
+            start, step_indent = i, len(ln) - len(ln.lstrip())
+            break
+    assert start is not None, f"governance.yml 找不到步驟「{STEP_NAME}」"
+
+    # 步驟終點：下一個同縮排（或更淺）的清單項目
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        ln = lines[i]
+        if not ln.strip():
+            continue
+        if len(ln) - len(ln.lstrip()) <= step_indent and ln.strip().startswith("- "):
+            end = i
+            break
+    body = lines[start:end]
+
+    # shell 必須仍是 bash，否則 GH_BASH 的旗標假設失效（那會變成測一個不存在的環境）
+    assert any(ln.strip() == "shell: bash" for ln in body), \
+        f"{STEP_NAME} 的 shell 不再是 bash，本檔的 GH_BASH 假設已失效"
+
+    # `run: |` 之後縮排更深的行即腳本本體
+    run_at = next((i for i, ln in enumerate(body)
+                   if re.match(r"run:\s*[|>]", ln.strip())), None)
+    assert run_at is not None, f"{STEP_NAME} 沒有 `run: |` 區塊"
+    run_indent = len(body[run_at]) - len(body[run_at].lstrip())
+    script = [ln for ln in body[run_at + 1:]
+              if not ln.strip() or (len(ln) - len(ln.lstrip())) > run_indent]
+    pad = min((len(ln) - len(ln.lstrip()) for ln in script if ln.strip()), default=0)
+    return "\n".join(ln[pad:] if ln.strip() else "" for ln in script)
 
 
 def run_g5(tmp, slug="x"):
