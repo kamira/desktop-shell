@@ -200,13 +200,33 @@ jobs:
       - name: G5 ACC + identity
         if: steps.unit.outputs.is_unit == 'true' && steps.unit.outputs.risk != 'low'
         shell: bash
+        # 每個 `$(... | ...)` 都要收尾 `|| true` —— 知識庫 K-011。
+        # 本步驟的 shell 是 `bash -e -o pipefail`：管線中任一段非零就讓整個**賦值**失敗，
+        # `-e` 當場中止那一行，於是**下一行的 `::error::` 永遠印不出來**。閘門擋得對，
+        # 但操作者只看到一個裸的 `Process completed with exit code 2`，看不到原因。
+        # 而 `ls` 查無 ACC 回 2、`grep` 無命中回 1，正是這道閘門最常走的兩條路徑。
+        #
+        # 但 `|| true` **不可單獨**用在 IMP / VER 上：取值失敗會變成空字串，而空字串讓
+        # 身分比對自動「不相等」——那會把「擋下」悄悄換成「放過一份沒有 Verifier 的 ACC」，
+        # 即 fail-closed 退化為假綠燈。故每個取值後各補一道空值檢查，
+        # 在維持 fail-closed 的同時把原因說出來。
+        #
+        # 取值一律 `grep -o '<欄位>: *[^ |]*'` 先切出該欄位本身，才交給 sed —— 知識庫 K-012。
+        # 直接對整行 `sed 's/.*: *//'` 會因 `.*` **貪婪**而吃到行內**最後**一個冒號：
+        # 房屋格式的 ACC 表頭是 `- Date: … | Verifier: V1.5 | Branch: feat/e1_01`，
+        # `Verifier:` 不在行尾，取出來的會是 `feat/e1_01`；而 CHG 的 `Implemented by:`
+        # 恰好在行尾才取對。兩者於是**永遠不相等**，這道「驗收者與實作者同一人即紅」
+        # 的防線從上線起就是空轉的——一份 Verifier 與 Implemented by 都寫同一人的 ACC
+        # 也會被放過。`[^ |]*` 在空白與 `|` 處停住，正好對上表頭的管線分欄。
         run: |
           S=$(echo "${GITHUB_HEAD_REF#feat/}")
-          A=$(ls docs/acceptance/ACC-*-$S.md 2>/dev/null | head -1)
-          [ -z "$A" ] && { echo "::error::medium 風險需要 ACC，未找到"; exit 1; }
-          grep -q 'Result: *pass' "$A" || { echo "::error::ACC 未判定 pass"; exit 1; }
-          IMP=$(grep -m1 'Implemented by:' docs/changes/CHG-*-$S.md | sed 's/.*: *//')
-          VER=$(grep -m1 'Verifier:' "$A" | sed 's/.*: *//')
+          A=$(ls docs/acceptance/ACC-*-$S.md 2>/dev/null | head -1 || true)
+          [ -z "$A" ] && { echo "::error::medium 風險需要 ACC，未找到：docs/acceptance/ACC-*-$S.md"; exit 1; }
+          grep -q 'Result: *pass' "$A" || { echo "::error::ACC 未判定 pass：$A"; exit 1; }
+          IMP=$(grep -m1 -o 'Implemented by: *[^ |]*' docs/changes/CHG-*-$S.md | head -1 | sed 's/.*: *//' || true)
+          [ -z "$IMP" ] && { echo "::error::CHG 缺 'Implemented by:' 表頭，無法比對驗收者身分"; exit 1; }
+          VER=$(grep -m1 -o 'Verifier: *[^ |]*' "$A" | head -1 | sed 's/.*: *//' || true)
+          [ -z "$VER" ] && { echo "::error::ACC 缺 'Verifier:' 行，無法比對驗收者身分：$A"; exit 1; }
           [ "$IMP" = "$VER" ] && { echo "::error::驗收者與實作者同一人：$IMP"; exit 1; } || true
 
       # G6 停點契約（僅工作單元；infra 變更無對應單元，不跑）
