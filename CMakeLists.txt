@@ -28,6 +28,46 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+# -----------------------------------------------------------------------------
+# 警告旗標（CHG-20261112-04）
+#
+# **為什麼插在這個位置，而不是檔頭。** `add_compile_options` 設的是目錄屬性，只在目標
+# **被建立時**被讀取；googletest 的目標在上面 `FetchContent_MakeAvailable` 當場就建立完了。
+# 放在它之後、放在下面收各單元 CMakeLists 的 foreach 之前，旗標就只套到本庫自己的目標——
+# 日後升 googletest 版本冒出的是別人的警告，不該由本庫的 `-Werror` 承擔。
+#
+# **為什麼需要它。** 在本區塊出現之前，全 repo `-Wall|-Wextra|-Werror|/W[0-9]` grep 為
+# 0 命中，實際 `CXX_FLAGS` 只有 `-std=gnu++17`。於是每一份 CHG 寫的「建置零警告」
+# 幾近自動成立，不管程式碼怎麼寫（`CHG-20261112-02` 已載明此缺口）。
+#
+# **實測（g++ 13.3.0，加入當時）**：全 repo 在 `-Wall -Wextra` 下只有 **3** 個警告，
+# 全部是 `tests/e7/test_e7_09.cpp` 的 `-Wdangling-reference`，且**全為誤判**——
+# 該檔的 `child(r, key)` 回傳 `r.value.at(key)` 的參考，指向具名區域物件 `r`
+# （三個站點都是 `DegradeResult r = resolve_with_fallback(...)`），GCC 只是無法證明
+# 它不指向 `key` 那個臨時字串。該測試在 ASan 下乾淨通過、零報告。
+#
+# 故 `DS_WERROR=ON` 時以 `-Wno-error=dangling-reference` 放行這一類：警告**仍會印出來**
+# （日後真有一個會看得見），但不擋紅，也不必為了開旗標去動已合併單元的測試。
+#
+# `-Werror` 不放進預設建置、只由 CI 的 G3 以 `-DDS_WERROR=ON` 開啟：編譯器升版會新增
+# 警告種類，把 `-Werror` 寫死在預設建置等於讓任何人換個編譯器就建不起來。
+#
+# MSVC **刻意不加 `/W4`**：本變更是在 Linux 上做的，無法實測 MSVC 下會冒出多少警告，
+# 未經實測就打開等於替 `gate_windows` 製造一道不知深淺的紅燈。另案處理。
+# -----------------------------------------------------------------------------
+option(DS_WERROR "把警告升級為錯誤（CI 的 G3 以 -DDS_WERROR=ON 開啟）" OFF)
+if(NOT MSVC)
+  add_compile_options(-Wall -Wextra)
+  if(DS_WERROR)
+    add_compile_options(-Werror)
+    # -Wdangling-reference 是 GCC 13 才有的旗標；clang 不認得，而在 -Werror 之下
+    # 一個不認得的 -Wno-error= 會自己變成錯誤（-Wunknown-warning-option）。故限定 GNU。
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+      add_compile_options(-Wno-error=dangling-reference)
+    endif()
+  endif()
+endif()
+
 # 自動納入各子系統的 CMakeLists（CHG-20260730-03 目錄扁平化後）。
 # 已去除 per-unit <slug>/ 層：各單元源碼直接置於子系統目錄，該目錄一個合併 CMakeLists 定義其下
 # 所有單元的 add_library / test target。故 GLOB 深度較扁平化前少一層。
