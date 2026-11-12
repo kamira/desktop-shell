@@ -54,9 +54,63 @@ jobs:
           done
           echo "Windows 專屬單元均已納入建置"
 
+  # ---------------------------------------------------------------------------
+  # G3s Sanitizer 閘門（CHG-20261112-04）
+  #
+  # 為什麼需要它：K-013 的錯誤（E8-04 `ModuleLoader` 以 const 參考持有 host，而
+  # `compose_host_environment()` 按值回傳 → 綁到一個在該敘述結束就被銷毀的臨時物件）
+  # 在 **35/35 全綠**之下帶著懸空參考進了 PR。加入本閘門前實測確認兩件事：
+  #
+  #   M-A（把那個懸空參考形狀放回去）  → -Wall -Wextra 下 **0 警告，完全靜默**；
+  #                                      ASan 抓到 stack-use-after-scope，測試 FAILED。
+  #   M-B（把成員宣告順序對調，重新製造同一個 UB）
+  #                                    → -Wall -Wextra 抓到 -Wreorder ×3 + -Wuninitialized；
+  #                                      ASan **0 報告，測試通過**，完全靜默。
+  #
+  # 兩道防線互補，缺一不可：旗標守「後人改壞」，本閘門守「一開始就寫錯」。
+  #
+  # -fno-sanitize-recover=all **不可省**：UBSan 預設只印訊息、程序照樣回 0，於是會出現
+  # 「sanitizer 報告印出來了而 ctest 全綠」——那正是本 repo 已防三次的假綠燈（K-011 同族）。
+  # ASAN_OPTIONS=detect_leaks=1 同理：洩漏預設在某些環境不中止。
+  # ---------------------------------------------------------------------------
+  gate_sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ASan + UBSan 全建 + ctest
+        shell: bash
+        run: |
+          SAN="-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g"
+          cmake -S . -B build-san -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="$SAN" -DCMAKE_EXE_LINKER_FLAGS="$SAN"
+          # -j 2 同 G3：每個 Debug gtest TU 峰值可達 ~1.5–2GB，sanitizer 另加額外開銷。
+          # 若日後 runner 被 SIGTERM（exit 143）即為 OOM，降為 -j 1，不要改回無限並行。
+          cmake --build build-san -j 2
+
+          # 真空綠燈防線：註冊數必須與**同平台普通建置**一致，不只是「大於 0」。
+          # sanitizer 旗標若讓某個單元的 CMake 條件走進別的分支，該單元會被靜默排除，
+          # 而其餘測試照樣印綠燈。只 configure 不建置就能取到註冊數（ctest -N 讀的是
+          # configure 時產生的 CTestTestfile.cmake），成本只有一次 configure。
+          #
+          # 兩個賦值都帶 `|| true`：在 `bash -e -o pipefail` 下，管線中任一段失敗會讓賦值
+          # 失敗、-e 當場中止，於是下面那幾行的 ::error:: 永遠印不出來——K-011 就是這樣
+          # 讓一道擋對了的閘門只留下一個裸的 exit code。空值由下面的 -n 檢查 fail-closed。
+          cmake -S . -B build-plain -DCMAKE_BUILD_TYPE=Debug > /dev/null
+          EXPECT=$(ctest --test-dir build-plain -N | sed -n 's/.*Total Tests: //p' || true)
+          GOT=$(ctest --test-dir build-san -N | sed -n 's/.*Total Tests: //p' || true)
+          echo "註冊測試數：sanitizer=$GOT 普通=$EXPECT"
+          [ -n "$EXPECT" ] && [ -n "$GOT" ] || { echo "::error::取不到註冊測試數（sanitizer=$GOT 普通=$EXPECT），fail-closed"; exit 1; }
+          [ "$GOT" -ge 1 ] || { echo "::error::sanitizer 建置收到 0 個測試，綠燈無意義"; exit 1; }
+          [ "$GOT" = "$EXPECT" ] || { echo "::error::sanitizer 建置收到 $GOT 個測試、普通建置 $EXPECT 個——有單元被靜默排除"; exit 1; }
+
+          UBSAN_OPTIONS=print_stacktrace=1 ASAN_OPTIONS=detect_leaks=1 \
+            ctest --test-dir build-san -j 2 --output-on-failure
+
   gate:
-    # 守住 Windows 建置：紅燈時本 job 直接被跳過，合併指令不會執行。
-    needs: gate_windows
+    # 守住 Windows 建置與 sanitizer：任一紅燈時本 job 直接被跳過，合併指令不會執行。
+    # 兩個前置 job 彼此獨立、並行跑，故牆鐘成本是兩者的較大值而非總和。
+    needs: [gate_windows, gate_sanitizers]
     runs-on: ubuntu-latest  # 本 job 的 G3 在 ubuntu 建，守的是「平台中立性」；MSVC 由 gate_windows 負責
     steps:
       - uses: actions/checkout@v4
@@ -174,7 +228,10 @@ jobs:
       # G3 測試綠燈（無測試 = 紅燈，不是綠燈）
       - name: G3 tests（C++ / CMake + CTest）
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+          # -DDS_WERROR=ON：把警告升級為錯誤。在此之前 G3 的實際 CXX_FLAGS 只有
+          # -std=gnu++17，於是每份 CHG 的「建置零警告」幾近自動成立（CHG-20261112-02 的缺口）。
+          # 旗標本身加在根 CMakeLists.txt（只套本庫目標、不套 googletest），該處有完整理由。
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DDS_WERROR=ON
           # -j 不帶數字 = make 無限並行；單元數破百後同時起 100+ 個 gtest 編譯會 OOM（runner 被 SIGTERM，exit 143）。
           # 明確限制並行度以壓住峰值記憶體（每個 Debug gtest TU 可達 ~1.5–2GB；-j 2 → ~4GB，留安全邊際至 176 單元）。
           cmake --build build -j 2
