@@ -161,3 +161,27 @@ target_link_libraries(e9_10 PUBLIC e7_12 e9_07)
 add_executable(test_e9_10 ${CMAKE_SOURCE_DIR}/tests/e9/test_e9_10.cpp)
 target_link_libraries(test_e9_10 PRIVATE e9_10 GTest::gtest_main)
 add_test(NAME e9_10 COMMAND test_e9_10)
+
+# ==== 單元 e9_11 ====
+# engine/package/CMakeLists.txt — E9-11 權限授予狀態與決策記錄
+# 每套件每權限三態（未決／已授予／已拒絕）+ 持久化，並投影成 E8-04 HostEnvironment
+# （只呼叫 E8-04 公開介面，**不修改 E8-04**）。engine 層、平台中立、無真實檔案 I/O。
+# 根 CMakeLists 會自動 glob 收入本檔（見 docs/backlog/BUILD.md）。
+add_library(e9_11 STATIC permission_store.cpp)
+target_include_directories(e9_11 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_features(e9_11 PUBLIC cxx_std_17)
+
+# 相依上游：E8-04 行程內模組載入（HostEnvironment / ModuleLoader / LoadResult，位於
+# engine/script/）、E9-10 已安裝套件登錄的持久化（InstallStorage / InstalledPackageStore，
+# 並經其傳遞 E7-12 serialize → E7-01 Value/Document，及 E9-07 → E9-01/E9-02）。
+# 三者皆已合併於 main，可讀不可改。
+#
+# 註（GLOB 收入順序）：engine/package 早於 engine/script 被 add_subdirectory，但 CMake 在
+# generate 期才解析目標名，與 add_subdirectory 先後無關（E7-16 已實測，證據見
+# docs/changes/CHG-20261112-e7_16.md；本單元 configure + build 再次確認）。
+target_link_libraries(e9_11 PUBLIC e8_04 e9_10)
+
+# 契約測試在 tests/e9/（也是本單元的 write_scope），以絕對來源路徑指向。
+add_executable(test_e9_11 ${CMAKE_SOURCE_DIR}/tests/e9/test_e9_11.cpp)
+target_link_libraries(test_e9_11 PRIVATE e9_11 GTest::gtest_main)
+add_test(NAME e9_11 COMMAND test_e9_11)
