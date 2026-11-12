@@ -4,6 +4,87 @@
 
 ---
 
+## K-014 — 同一 namespace 下三個同名不同型別的 `struct`：單獨看每個程式都對，連在一起才是 UB，而所有旗標與 sanitizer 都靜默
+
+- 日期：2026-11-12 | 來源：`CHG-20261112-05`（發現於 `H1-06` 派工，由 `I1.1` 事前查出兩處、`I1` 複查為三處）
+- 狀態：**未修復**（成因在三個**已合併**單元的標頭，修它要動 E4-03 / E4-18 / E4-14 的公開契約，屬另案）
+
+### 錯誤
+
+`ds::elements::RenderModel` 在 `modules/elements/` 底下有**三個**定義，全在同一個 namespace，結構完全不同：
+
+| 定義處 | 單元 | 內容大致 |
+|---|---|---|
+| `bar_gauge.hpp:68` | E4-03 | `kind` / `fill_ratio` / `has_angle` / 量表角度…（`sizeof` = **224**） |
+| `radial_pointer.hpp:50` | E4-18 | `value_ratio` / `angle_degrees` / 指針幾何比例…（`sizeof` = **144**） |
+| `scroll_view.hpp:54` | E4-14 | `lines` / `position` / `viewport_lines` / 分頁指示… |
+
+同一個 TU 含兩份 → 重定義，編譯當場失敗，**這一半是安全的**。
+危險的是另一半：兩個 TU 各含**一份不同的**定義、連進**同一個程式** → **違反單一定義原則（ODR）**，UB。
+
+### 這一族的特徵：失效方向是「看起來完全正常」
+
+實測（g++ 13.3.0，兩個 TU 各 `sizeof` 該型別後連成一個程式）：
+
+```
+g++ -Wall -Wextra -Wpedantic  編譯兩個 TU   → 各 rc=0、零診斷
+連結                                        → rc=0、零診斷
+執行                                        → 印出 a=224 b=144
+```
+
+**同一個執行檔裡，同一個型別名稱有兩種大小，而工具鏈一聲不響。** 與 `K-013` 同一族（綠燈下的潛伏 UB），
+而且比它更難抓：`K-013` 至少 ASan 會以 `stack-use-after-scope` 報出來，本條**連 ASan + UBSan 都零報告**
+（`CHG-20261112-04` 新增的 `gate_sanitizers` 閘門對它無效）。
+
+### 唯一抓得到它的機械化方法，以及那個方法的邊界
+
+`-flto -Wodr` 可以抓到，**但有條件**，這個條件必須記清楚，否則會誤以為已經有防線：
+
+```
+形狀 A：該型別只在各自 TU 內被 sizeof 用到，不跨 TU 出現在簽章裡
+  g++ -flto -Wodr（編譯 + 連結）     → 零診斷。抓不到。
+形狀 B：該型別跨 TU 出現在同一個函式的簽章裡（真實程式碼的形狀）
+  g++ -flto -Wodr（編譯 + 連結）     → warning: type 'struct RenderModel'
+                                        violates the C++ One Definition Rule [-Wodr]
+```
+
+GCC 的 LTO 型別合併只在型別**真的跨 TU 被比較到**時才去比對定義。所以 `-Wodr` 是一道有用但**不完整**的防線：
+它抓得到會真的出事的那個形狀，抓不到「現在還沒出事、但定義已經分叉」的狀態。
+
+### 目前是陷阱而非已踩的地雷——但下一步就會踩
+
+截至本條記錄時，main 上**沒有**任何 target 同時連進兩側（查全部 `target_link_libraries`）：
+
+```
+desktop_shell_host → h1_01_paint + c2_02          兩者都是 bar 側（E4-03）
+test_h1_06         → h1_06_paint_model → c2_02    bar 側
+test_h1_06_radial  → h1_06_radial     → e4_18     radial 側
+```
+
+`H1-06` 之所以安全，是因為實作者**事前查到**這件事並刻意把兩側拆成**兩個獨立程式**。
+但該單元交回的待辦明寫「把新 kind 註冊進 `host/app/host_main.cpp`」——那一步會讓
+`desktop_shell_host` 同時連進 `c2_02`（bar 側）與 radial 側，**出貨的執行檔當場成為實際的 ODR 違反**。
+
+### 解法
+
+- **短期（做下一步之前必須先決定）**：接 radial kind 進 host 之前，先解決同名問題。
+  三個型別其實是三件不同的東西，正確的修法是讓它們各自有自己的名字
+  （例如 `BarRenderModel` / `RadialRenderModel` / `ScrollRenderModel`，或各自收進
+  `ds::elements::bar_gauge` / `::radial_pointer` / `::scroll_view` 子 namespace）。
+  **這會動到三個已合併單元的公開契約，必須另開單元，不得由任何單元順手改。**
+- **中期**：在 CI 加一道 `-flto -Wodr` 的建置（連結階段才會報，故必須真的連到執行檔／測試二進位）。
+  邊界如上：它抓形狀 B、抓不到形狀 A，所以它是輔助而非充分條件。
+- **寫新程式碼時**：在既有 namespace 裡新增一個**通用名稱**的型別（`RenderModel` / `Config` / `Options` /
+  `Result` 這類）之前，先 grep 同 namespace 下是否已有同名者。本條的三個定義分別來自三個單元，
+  每一個單獨看都合理——問題只在**合起來**，而沒有人看合起來的樣子。
+
+### 與既有條目的關係
+
+[[K-013]] 的第二代：同樣是「UB 存在而測試全綠」，但本條連 sanitizer 都看不見。
+與 [[K-003]] / [[K-007]] 的共同點是「兩道防線同時空轉」——這裡是警告旗標與 sanitizer 同時空轉。
+
+---
+
 ## K-013 — 以 const 參考持有的建構子 + 按值回傳的工廠函式 = 懸空參考，而**測試是綠的**
 
 - 日期：2026-11-12 | 來源：`CHG-20261112-e9_11`
