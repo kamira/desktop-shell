@@ -240,6 +240,48 @@ jobs:
           [ "${N:-0}" -gt 0 ] || { echo "::error::repo 沒有任何 CTest 測試，綠燈無意義"; exit 1; }
           ctest --test-dir build --output-on-failure
 
+      # ---------------------------------------------------------------------
+      # G3b 註冊測試數下界（CHG-20261112-07）
+      #
+      # 為什麼需要它：G3 的真空綠燈防線只檢查「大於 0」，而 `gate_sanitizers` 的一致性
+      # 檢查比對的是「sanitizer 建置 vs 普通建置」—— 兩者都排除同一個單元時它們相等，
+      # 所以**兩道都放行**。H1-06 驗收時實測（V1.5 查出、I1 複現）：把一個單元的
+      # add_executable / add_test 包進 if(WIN32)，ubuntu 的註冊數由 183 掉回 181、
+      # 該單元零命中，而 G3（181>0 通過）、gate_sanitizers（san=181=plain 通過）、
+      # gate_windows（硬編碼名單不含它）**三道防線全部綠燈**，單元在 ubuntu 的覆蓋
+      # 整個消失。`CHG-20261112-04` 把那道一致性檢查寫成「真空綠燈防線」，措辭過滿。
+      #
+      # 本步驟補的是另一個方向：**PR 不得讓 ubuntu 的註冊測試數下降**。
+      # 兩者互補 —— 一致性檢查抓「兩個建置分歧」，本步驟抓「兩邊一起變少」。
+      #
+      # 取 base 的註冊數只需 configure、不必建置（`ctest -N` 讀的是 configure 時產生的
+      # CTestTestfile.cmake）；head 的數字直接用上一步 G3 已經 configure 好的 build/。
+      #
+      # 正當移除測試的豁免走 PR 內文的 `ALLOW-TEST-COUNT-DROP:` 行，且**必須在行首**
+      # （錨住行首，免得有人在散文裡提到這個標記就意外給自己開了後門；已實測）。
+      # PR 內文經 env 進入 shell、**絕不內插進腳本文字**（K-008 / G8 的規則）。
+      # ---------------------------------------------------------------------
+      - name: G3b 註冊測試數下界（PR 不得讓 ubuntu 的測試數下降）
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          git worktree add ../gate-base "origin/$BASE_REF" > /dev/null
+          cmake -S ../gate-base -B ../gate-base-build -DCMAKE_BUILD_TYPE=Debug > /dev/null
+          # 兩個賦值都帶 `|| true`：pipefail + -e 下管線失敗會讓賦值中止，下面的
+          # ::error:: 就永遠印不出來（K-011）。空值由下一行 fail-closed 擋住。
+          BASE_N=$(ctest --test-dir ../gate-base-build -N | sed -n 's/.*Total Tests: //p' || true)
+          HEAD_N=$(ctest --test-dir build -N | sed -n 's/.*Total Tests: //p' || true)
+          echo "註冊測試數：base=$BASE_N head=$HEAD_N"
+          [ -n "$BASE_N" ] && [ -n "$HEAD_N" ] || { echo "::error::取不到註冊測試數（base=$BASE_N head=$HEAD_N），fail-closed"; exit 1; }
+          case "$BASE_N$HEAD_N" in *[!0-9]*) echo "::error::註冊測試數不是數字（base=$BASE_N head=$HEAD_N），fail-closed"; exit 1 ;; esac
+          if [ "$HEAD_N" -lt "$BASE_N" ]; then
+            printf '%s' "$PR_BODY" | grep -qE '^ALLOW-TEST-COUNT-DROP:' \
+              || { echo "::error::ubuntu 註冊測試數由 $BASE_N 降為 $HEAD_N。若是正當移除，請在 PR 內文加一行 'ALLOW-TEST-COUNT-DROP: <理由>'"; exit 1; }
+            echo "::warning::註冊測試數由 $BASE_N 降為 $HEAD_N；PR 內文已明示豁免"
+          fi
+
       # G4 結構同步：動了 src/ 、engine/ 或 modules/ 就得動 docs/structure/
       # 三個程式碼頂層目錄都要涵蓋 —— docs/structure/directory.md 的分層對應表記錄三者的組成，
       # 任一者增減而不同步都會造成結構文件漂移。
