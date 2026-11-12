@@ -1,18 +1,16 @@
-// H1-01 render_model → GDI 繪製橋接 — 實作
+// H1-01 / H1-06 render_model → GDI 繪製橋接 — 實作（本檔是唯一碰 GDI 的地方）
 #include "widget_painter.hpp"
 
+#include <cmath>
 #include <string>
 
 namespace ds::host {
 namespace {
 
-constexpr int kPadding = 12;
-constexpr int kTitleHeight = 24;
-constexpr int kLabelWidth = 44;
-constexpr int kValueWidth = 66;
-constexpr int kGap = 8;
+// 圓周率。MSVC 不定義 M_PI（除非 _USE_MATH_DEFINES），故自備一個常數而不依賴平台巧合。
+constexpr double kPi = 3.14159265358979323846;
 
-// UTF-8 → UTF-16。widget 產出的 display_text 是 std::string（UTF-8），GDI 要 wide。
+// UTF-8 → UTF-16。中立層的文字一律 UTF-8，GDI 要 wide。
 std::wstring widen(const std::string& s) {
     if (s.empty()) return std::wstring();
     const int need = ::MultiByteToWideChar(CP_UTF8, 0, s.c_str(),
@@ -24,21 +22,125 @@ std::wstring widen(const std::string& s) {
     return out;
 }
 
-void fill(HDC hdc, const RECT& r, COLORREF c) {
-    HBRUSH brush = ::CreateSolidBrush(c);
-    ::FillRect(hdc, &r, brush);
-    ::DeleteObject(brush);
+// UTF-16 → UTF-8。`paint_widget` 的 title 是 `std::wstring`（對外 API 不改），而中立的
+// 組版層只認 UTF-8，故在此邊界轉一次、再由 `GdiPaintSink::draw_text` 轉回去。
+// 看似多繞一圈，但換來的是「標題也走同一條文字指令路徑」——標題若自己偷一條捷徑直接
+// 呼叫 GDI，中立層的測試就看不到它畫了什麼。UTF-16 ↔ UTF-8 往返無損。
+std::string narrow(const std::wstring& s) {
+    if (s.empty()) return std::string();
+    const int need = ::WideCharToMultiByte(CP_UTF8, 0, s.c_str(),
+                                           static_cast<int>(s.size()), nullptr, 0,
+                                           nullptr, nullptr);
+    if (need <= 0) return std::string();
+    std::string out(static_cast<std::size_t>(need), '\0');
+    ::WideCharToMultiByte(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()),
+                          &out[0], need, nullptr, nullptr);
+    return out;
 }
 
-void draw_text(HDC hdc, const RECT& r, const std::wstring& text, COLORREF c, UINT align) {
-    ::SetTextColor(hdc, c);
-    ::SetBkMode(hdc, TRANSPARENT);
-    RECT box = r;
-    ::DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &box,
-                align | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+UINT align_flag(TextAlign align) {
+    switch (align) {
+        case TextAlign::Left: return DT_LEFT;
+        case TextAlign::Center: return DT_CENTER;
+        case TextAlign::Right: return DT_RIGHT;
+    }
+    return DT_LEFT;  // 不可達；不寫 default: 以保留 -Wswitch 的提醒
+}
+
+// ---------------------------------------------------------------------------
+// GdiPaintSink —— `PaintSink` 的 GDI 實作
+// ---------------------------------------------------------------------------
+class GdiPaintSink final : public PaintSink {
+public:
+    // **theme 按值持有，不是 `const PaintTheme&`** —— 知識庫 K-013：
+    // 「以 const 參考持有的建構參數 + 按值回傳的工廠函式 = 懸空參考，而測試是綠的」。
+    // 本檔的 `paint_widget(hdc, bounds, model, title)` 正是把 `default_theme()`
+    // （按值回傳）直接餵進來的呼叫端，剛好是那個形狀。PaintTheme 是 7 個 COLORREF，
+    // 複製成本可忽略，沒有任何理由去冒那個 UB。
+    GdiPaintSink(HDC hdc, PaintTheme theme) : hdc_(hdc), theme_(theme) {}
+
+    void fill_box(const PaintBox& box, PaintRole role) override {
+        if (box.empty()) return;
+        const RECT r = to_rect(box);
+        HBRUSH brush = ::CreateSolidBrush(color_of(role));
+        ::FillRect(hdc_, &r, brush);
+        ::DeleteObject(brush);
+    }
+
+    void draw_text(const PaintBox& box, const std::string& utf8, PaintRole role,
+                   TextAlign align) override {
+        if (box.empty()) return;
+        const std::wstring text = widen(utf8);
+        ::SetTextColor(hdc_, color_of(role));
+        ::SetBkMode(hdc_, TRANSPARENT);
+        RECT r = to_rect(box);
+        ::DrawTextW(hdc_, text.c_str(), static_cast<int>(text.size()), &r,
+                    align_flag(align) | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+    }
+
+    void draw_needle(const PaintBox& dial, double angle_degrees, double length_ratio,
+                     double thickness_ratio, PaintRole role) override {
+        if (dial.empty()) return;
+        const int side = dial.width() < dial.height() ? dial.width() : dial.height();
+        const int cx = (dial.left + dial.right) / 2;
+        const int cy = (dial.top + dial.bottom) / 2;
+        const double radius = static_cast<double>(side) / 2.0;
+        const double length = radius * clamp_unit_ratio(length_ratio);
+        // 角度為數學慣例（0° 指向右、逆時針為正）；GDI 的 y 軸朝下，故 sin 取負號。
+        const double rad = angle_degrees * kPi / 180.0;
+        const int x = cx + static_cast<int>(std::lround(length * std::cos(rad)));
+        const int y = cy - static_cast<int>(std::lround(length * std::sin(rad)));
+        int width = static_cast<int>(std::lround(static_cast<double>(side) *
+                                                 clamp_unit_ratio(thickness_ratio)));
+        if (width < 1) width = 1;  // 0 寬的筆在 GDI 下仍會畫 1px，寫明白免得像是巧合
+        HPEN pen = ::CreatePen(PS_SOLID, width, color_of(role));
+        HGDIOBJ old_pen = ::SelectObject(hdc_, pen);
+        ::MoveToEx(hdc_, cx, cy, nullptr);
+        ::LineTo(hdc_, x, y);
+        ::SelectObject(hdc_, old_pen);
+        ::DeleteObject(pen);
+    }
+
+private:
+    COLORREF color_of(PaintRole role) const {
+        switch (role) {
+            case PaintRole::Background: return theme_.background;
+            case PaintRole::Title: return theme_.title;
+            case PaintRole::Label: return theme_.label;
+            case PaintRole::Value: return theme_.value;
+            case PaintRole::Track: return theme_.track;
+            case PaintRole::Fill: return theme_.fill;
+            case PaintRole::Unavailable: return theme_.unavailable;
+        }
+        return theme_.label;  // 不可達；不寫 default: 以保留 -Wswitch 的提醒
+    }
+
+    HDC hdc_;
+    PaintTheme theme_;
+};
+
+// 內建 kind 的預設繪製器。函式區域 static：只建一次（每幀重建分派表是白做工），
+// 生命週期到程式結束，不會有 K-013 那種懸空問題。
+const WidgetRenderer& default_widget_renderer() {
+    static const WidgetRenderer kRenderer = WidgetRenderer::with_builtin_kinds();
+    return kRenderer;
 }
 
 }  // namespace
+
+PaintBox to_paint_box(const RECT& r) {
+    return PaintBox{static_cast<int>(r.left), static_cast<int>(r.top),
+                    static_cast<int>(r.right), static_cast<int>(r.bottom)};
+}
+
+RECT to_rect(const PaintBox& b) {
+    RECT r;
+    r.left = static_cast<LONG>(b.left);
+    r.top = static_cast<LONG>(b.top);
+    r.right = static_cast<LONG>(b.right);
+    r.bottom = static_cast<LONG>(b.bottom);
+    return r;
+}
 
 PaintTheme default_theme() {
     PaintTheme t;
@@ -53,75 +155,38 @@ PaintTheme default_theme() {
 }
 
 RowLayout row_layout(const RECT& bounds, int row, int row_count) {
-    RowLayout out = {};
-    if (row_count <= 0 || row < 0 || row >= row_count) return out;  // 保守，不崩潰
-
-    const int top = bounds.top + kPadding + kTitleHeight;
-    const int usable = (bounds.bottom - kPadding) - top;
-    if (usable <= 0) return out;
-
-    const int row_h = usable / row_count;
-    const int y = top + row * row_h;
-    const int left = bounds.left + kPadding;
-    const int right = bounds.right - kPadding;
-
-    out.label = {left, y, left + kLabelWidth, y + row_h};
-    out.value = {right - kValueWidth, y, right, y + row_h};
-    out.track = {out.label.right + kGap, y + row_h / 2 - 5,
-                 out.value.left - kGap, y + row_h / 2 + 5};
+    const RowGeometry geo = row_geometry(to_paint_box(bounds), row, row_count);
+    RowLayout out;
+    out.label = to_rect(geo.label);
+    out.track = to_rect(geo.track);
+    out.value = to_rect(geo.value);
     return out;
 }
 
 RECT fill_rect(const RECT& track, double fill_ratio) {
-    double r = fill_ratio;
-    if (!(r > 0.0)) r = 0.0;   // 同時擋掉 NaN：NaN 的任何比較都為 false
-    if (r > 1.0) r = 1.0;
-    RECT out = track;
-    const LONG width = track.right - track.left;
-    out.right = track.left + static_cast<LONG>(static_cast<double>(width) * r + 0.5);
-    if (out.right < out.left) out.right = out.left;
-    return out;
+    return to_rect(fill_span(to_paint_box(track), fill_ratio));
 }
 
-void paint_widget(HDC hdc, const RECT& bounds,
-                  const ds::widgets::SystemStatusRenderModel& model,
-                  const std::wstring& title,
-                  const PaintTheme& theme) {
-    fill(hdc, bounds, theme.background);
-
-    RECT title_box = {bounds.left + kPadding, bounds.top + kPadding,
-                      bounds.right - kPadding, bounds.top + kPadding + kTitleHeight};
-    draw_text(hdc, title_box, title, theme.title, DT_LEFT);
-
-    const int count = static_cast<int>(model.entries.size());
-    for (int i = 0; i < count; ++i) {
-        const auto& e = model.entries[static_cast<std::size_t>(i)];
-        const RowLayout row = row_layout(bounds, i, count);
-
-        // NFR-03 優雅降級：某筆指標不可用時只把**該筆**畫成灰的，其餘照常。
-        const bool ok = e.available;
-        const COLORREF label_c = ok ? theme.label : theme.unavailable;
-        const COLORREF value_c = ok ? theme.value : theme.unavailable;
-
-        draw_text(hdc, row.label, widen(e.label.empty() ? std::string("?") : e.label),
-                  label_c, DT_LEFT);
-
-        fill(hdc, row.track, theme.track);
-        if (ok) {
-            const RECT filled = fill_rect(row.track, e.element.fill_ratio);
-            if (filled.right > filled.left) fill(hdc, filled, theme.fill);
-        }
-
-        draw_text(hdc, row.value,
-                  widen(e.display_text.empty() ? std::string("--") : e.display_text),
-                  value_c, DT_RIGHT);
-    }
+PaintSummary paint_widget(HDC hdc, const RECT& bounds,
+                          const ds::widgets::SystemStatusRenderModel& model,
+                          const std::wstring& title,
+                          const PaintTheme& theme,
+                          const WidgetRenderer& renderer) {
+    GdiPaintSink sink(hdc, theme);
+    return renderer.paint(model, to_paint_box(bounds), narrow(title), sink);
 }
 
-void paint_widget(HDC hdc, const RECT& bounds,
-                  const ds::widgets::SystemStatusRenderModel& model,
-                  const std::wstring& title) {
-    paint_widget(hdc, bounds, model, title, default_theme());
+PaintSummary paint_widget(HDC hdc, const RECT& bounds,
+                          const ds::widgets::SystemStatusRenderModel& model,
+                          const std::wstring& title,
+                          const PaintTheme& theme) {
+    return paint_widget(hdc, bounds, model, title, theme, default_widget_renderer());
+}
+
+PaintSummary paint_widget(HDC hdc, const RECT& bounds,
+                          const ds::widgets::SystemStatusRenderModel& model,
+                          const std::wstring& title) {
+    return paint_widget(hdc, bounds, model, title, default_theme());
 }
 
 }  // namespace ds::host
