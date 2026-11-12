@@ -786,6 +786,74 @@ TEST(MediaCase, NamedPresentationParamsChangeTheGeometry) {
     }
 }
 
+// 【UB 防線】呈現參數與縮放係數都是呼叫端給的任意 double，而 `static_cast<int>(d)` 在
+// `d` 超出 int 值域時是**未定義行為**（C++17 [conv.fpint]/1），`std::llround` 超出
+// long long 值域時回傳值未指定。
+//
+// **這一條的斷言形狀是實測逼出來的。** 第一版只斷言「所有部件框都非退化且落在組件框內」——
+// 把實作的夾限拿掉（突變 M18）之後，那一版**完全不紅**：`static_cast<int>(1e20)` 在本機
+// 得到 `INT_MIN`，被 `std::max(0, ...)` 收成 0，於是「按鈕尺寸 0 → 整列按鈕不產出」，
+// 而剩下的部件確實還是非退化且在框內。**更糟的是 UBSan 也沒報** ——
+// GCC 的 `-fsanitize=undefined` **不包含** `float-cast-overflow`（本機實測：
+// 單獨加 `,float-cast-overflow` 才會報 `1e+20 is outside the range of representable
+// values of type 'int'`）。也就是說 CI 的 `gate_sanitizers` 對這一族 UB 是沉默的。
+//
+// 所以斷言改成**區分得出夾限與崩塌的形狀**：巨大但有限（或無限）的按鈕尺寸必須被夾限成
+// 「填滿格位的大按鈕」，**四顆按鈕仍然存在**；NaN / 負值才視為 0（沒有按鈕）。
+// 拿掉夾限 → 巨大值崩塌成 0 → 按鈕消失 → 紅。
+TEST(MediaCase, AbsurdPresentationParamsAreClampedNotCollapsedAndNotUndefined) {
+    MediaFixture f;
+    f.publish(playing_song());
+    MediaControlWidget c207{"widget.media", f.backend, f.layers, f.registry, f.actuator};
+    ASSERT_EQ(c207.refresh(), MediaControlStatus::Ok);
+
+    const Package shared = media_component("com.example.media.control");
+    WidgetAssembly w = one_component_widget(
+        "w", PixelSize{320, 180}, at(0, 0, 320, 180, ds::host::kMediaVariantExpanded), shared);
+
+    const auto parts_with = [&](double button_px) {
+        ComponentPresentation p;
+        p.variant = ds::host::kMediaVariantExpanded;
+        p.params["button_px"] = button_px;  // pad_px 留預設，免得內距自己把格位吃光
+        EXPECT_TRUE(w.present("main", p).ok());
+        WidgetLayout layout;
+        EXPECT_TRUE(w.resolve(1.0, layout).ok());
+        const auto parts = ds::host::media_part_boxes(c207.render_model(), layout.components[0]);
+        for (const MediaPartBox& part : parts) {
+            EXPECT_FALSE(part.box.empty()) << part.part << " @ button_px=" << button_px;
+            EXPECT_TRUE(contains(layout.components[0].box, part.box))
+                << part.part << " @ button_px=" << button_px;
+        }
+        return parts;
+    };
+
+    // 巨大但有限 / 無限 → 夾限到上限後再被格位收住：**四顆按鈕仍然存在**（不是崩塌成 0）。
+    for (const double v : {1e20, std::numeric_limits<double>::infinity()}) {
+        const auto parts = parts_with(v);
+        EXPECT_NE(ds::host::find_part(parts, ds::host::kMediaPartButtonPrev), nullptr)
+            << "button_px=" << v << " 的按鈕消失了 —— 夾限崩塌成 0";
+        EXPECT_NE(ds::host::find_part(parts, ds::host::kMediaPartButtonPlay), nullptr);
+        EXPECT_NE(ds::host::find_part(parts, ds::host::kMediaPartButtonPause), nullptr);
+        EXPECT_NE(ds::host::find_part(parts, ds::host::kMediaPartButtonNext), nullptr);
+    }
+
+    // NaN / 負值 → 視為 0（沒有按鈕），但**不得崩、不得產生負框**。
+    for (const double v : {std::nan(""), -1e20, -std::numeric_limits<double>::infinity()}) {
+        const auto parts = parts_with(v);
+        EXPECT_EQ(ds::host::find_part(parts, ds::host::kMediaPartButtonPlay), nullptr)
+            << "button_px=" << v;
+    }
+
+    // 極大 / 極小的縮放係數：`scale_logical` 必須回有限且夾限於 int 值域的值
+    // （`std::llround` 的引數也先夾限過，否則回傳值未指定）。
+    EXPECT_EQ(ds::host::scale_logical(1000, 1e300), std::numeric_limits<int>::max());
+    EXPECT_EQ(ds::host::scale_logical(-1000, 1e300), std::numeric_limits<int>::min());
+    EXPECT_EQ(ds::host::scale_logical(0, 1e300), 0);
+    // 壞的縮放係數先被 sane_scale 收成 1.0，所以這幾個是原值。
+    EXPECT_EQ(ds::host::scale_logical(7, std::nan("")), 7);
+    EXPECT_EQ(ds::host::scale_logical(7, std::numeric_limits<double>::infinity()), 7);
+}
+
 TEST(MediaCase, DegenerateComponentBoxYieldsNoParts) {
     MediaFixture f;
     f.publish(playing_song());

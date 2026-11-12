@@ -12,13 +12,29 @@ namespace {
 constexpr int kDefaultButtonLogicalPx = 24;
 constexpr int kDefaultPadLogicalPx = 4;
 
+// 具名呈現參數的邏輯像素上限。
+//
+// **它存在的理由是 UB，不是品味**：`static_cast<int>(d)` 在 `d` 超出 int 值域時是
+// **未定義行為**（C++17 [conv.fpint]/1），而呈現參數是呼叫端給的任意 double ——
+// `params["button_px"] = 1e20` 就會踩到。這一族與 K-013 / K-014 同型：
+// 沒有任何警告旗標會提醒，而**本機實測 GCC 的 `-fsanitize=undefined` 也不報** ——
+// 它**不包含** `float-cast-overflow`（單獨加 `,float-cast-overflow` 才會報
+// `1e+20 is outside the range of representable values of type 'int'`）。
+// 也就是說 CI 的 `gate_sanitizers` 對這一族是沉默的，唯一的防線是這裡的夾限 + 斷言。
+//
+// 夾限**在轉型之前**做，且上限取得足夠大（10 萬邏輯像素，遠超任何真實 widget），
+// 於是「荒謬的大值」得到的是「填滿格位的大按鈕」而不是崩塌成 0 ——
+// 後者會讓按鈕整列消失，而那是個看起來正常的空版面（K-002 的形狀）。
+constexpr double kMaxLogicalPx = 100000.0;
+
 // 把一個具名呈現參數讀成非負的實際像素；參數缺席則用 fallback（邏輯像素）。
 int metric_px(const ComponentPresentation& presentation, const char* name, int fallback_logical,
               double scale) {
-    const double logical = presentation.param(name, static_cast<double>(fallback_logical));
-    // 負數 / NaN 的參數不得變成負尺寸：夾限於 0 之後再縮放（`scale_logical` 已處理壞的 scale）。
-    const int sane_logical = (logical > 0.0) ? static_cast<int>(logical) : 0;
-    return std::max(0, scale_logical(sane_logical, scale));
+    double logical = presentation.param(name, static_cast<double>(fallback_logical));
+    // `!(logical > 0.0)` 而非 `logical <= 0.0`：NaN 的任何比較都為 false（K-002）。
+    if (!(logical > 0.0)) logical = 0.0;
+    if (logical > kMaxLogicalPx) logical = kMaxLogicalPx;  // 轉型前夾限，避免上述 UB
+    return std::max(0, scale_logical(static_cast<int>(logical), scale));
 }
 
 PaintBox deflate(const PaintBox& box, int pad) {

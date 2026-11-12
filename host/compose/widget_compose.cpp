@@ -45,8 +45,14 @@ double sane_scale(double scale) noexcept {
 
 int scale_logical(int logical, double scale) noexcept {
     const double s = sane_scale(scale);
-    const double scaled = static_cast<double>(logical) * s;
+    double scaled = static_cast<double>(logical) * s;
     if (!std::isfinite(scaled)) return 0;  // 不可能走到（s 有限、logical 有限），但不留 UB 的路
+    // `std::llround` 的引數超出 long long 值域時，回傳值未指定且會升起 FE_INVALID。
+    // 極大的縮放係數（如 1e300）配上非零的邏輯像素就會走到那裡，所以**先在 double 的
+    // 值域內夾限，再 llround**。夾限門檻取遠小於 long long 上限的 1e18。
+    constexpr double kRoundLimit = 1e18;
+    if (scaled > kRoundLimit) scaled = kRoundLimit;
+    if (scaled < -kRoundLimit) scaled = -kRoundLimit;
     return clamp_to_int(std::llround(scaled));
 }
 
