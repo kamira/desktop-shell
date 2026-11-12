@@ -206,8 +206,16 @@ TEST(Assembly, UnboundSlotMakesResolveIncompleteAndLeavesOutUntouched) {
     layout.widget_id = "untouched";
     const auto r = w.resolve(1.0, layout);
     EXPECT_EQ(r.status, ComposeStatus::IncompleteComposition);
-    EXPECT_FALSE(r.message.empty());  // E9-03 的 validate() 會指名未綁定的插槽
     EXPECT_EQ(layout.widget_id, std::string("untouched"));
+
+    // **原因必須原樣來自 E9-03 的 `validate()`，不是本層自己編的。**
+    // 這一行是突變測試逼出來的：原本只斷言 `message` 非空，於是「resolve 乾脆不呼叫
+    // `validate()`」這個突變**一個案例都打不紅** —— 因為本層還有一道防禦性分支
+    // （取不到綁定組件）會回同一個 `IncompleteComposition`，狀態碼一模一樣。
+    // 比對訊息本體才能分辨「真的問了上游」與「自己掩蓋過去」。
+    const std::string upstream = w.composition().validate().message;
+    EXPECT_FALSE(upstream.empty());
+    EXPECT_EQ(r.message, upstream);
 }
 
 // =============================================================================
@@ -339,6 +347,37 @@ TEST(Dpi, FractionalScaleKeepsAdjacentComponentsEdgeAligned) {
     EXPECT_EQ(layout.components[0].box.left, 18);    // 12 * 1.5
     EXPECT_EQ(layout.components[0].box.right, 168);  // (12+100) * 1.5
     EXPECT_EQ(layout.components[1].box.left, 168);   // 邊界重合，不留縫
+    EXPECT_FALSE(ds::host::boxes_overlap(layout.components[0].box, layout.components[1].box));
+}
+
+// 【突變測試逼出來的一條】`FractionalScaleKeepsAdjacentComponentsEdgeAligned` 原本用
+// (12,100) / (112,88) @1.5，而那組數字下「右緣 = 絕對邏輯座標縮放」與「右緣 = left +
+// 寬度縮放」**算出完全一樣的結果**（18+150 = 168 = round(112*1.5)），於是把實作改成後者
+// 的突變一個案例都打不紅。下面這組數字是兩種算法**會分歧**的最小例子。
+TEST(Dpi, ScaledEdgesComeFromAbsoluteLogicalCoordinatesNotPerComponentWidths) {
+    // 1.5 倍下：round((1+1) * 1.5) = 3，而 round(1*1.5) + round(1*1.5) = 2 + 2 = 4。
+    EXPECT_EQ(ds::host::scale_box(PixelPoint{1, 1}, PixelSize{1, 1}, 1.5),
+              (PaintBox{2, 2, 3, 3}));
+    EXPECT_EQ(ds::host::scale_logical(1, 1.5), 2);
+    EXPECT_EQ(ds::host::scale_logical(2, 1.5), 3);
+
+    // 同一個分歧在組裝層也要看得見：兩個各 1 邏輯像素寬的相鄰組件在 1.5 倍下
+    // 仍必須邊界重合、不重疊。
+    WidgetAssembly w{"w", PixelSize{10, 10}};
+    const Package a = media_component("com.example.a");
+    const Package b = media_component("com.example.b");
+    ASSERT_TRUE(w.declare(ds::host::media_control_slot("l"), at(1, 0, 1, 10, "")).ok());
+    ASSERT_TRUE(w.declare(ds::host::media_control_slot("r"), at(2, 0, 1, 10, "")).ok());
+    ASSERT_TRUE(w.bind("l", a).ok());
+    ASSERT_TRUE(w.bind("r", b).ok());
+
+    WidgetLayout layout;
+    ASSERT_TRUE(w.resolve(1.5, layout).ok());
+    EXPECT_EQ(layout.components[0].box.left, 2);   // round(1 * 1.5)
+    EXPECT_EQ(layout.components[0].box.right, 3);  // round(2 * 1.5) —— 不是 2 + round(1.5) = 4
+    EXPECT_EQ(layout.components[1].box.left, 3);
+    EXPECT_EQ(layout.components[1].box.right, 5);  // round(3 * 1.5) = 5（4.5 進位）
+    EXPECT_EQ(layout.components[0].box.right, layout.components[1].box.left);
     EXPECT_FALSE(ds::host::boxes_overlap(layout.components[0].box, layout.components[1].box));
 }
 
