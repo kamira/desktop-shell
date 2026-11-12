@@ -495,8 +495,14 @@ TEST(ThreeMetrics, AllThreeAreDrawnEachByItsOwnKind) {
         EXPECT_NE(std::find(texts.begin(), texts.end(), std::string(expected)), texts.end())
             << expected << " 不見了";
     }
-    // CPU 是量表 → 恰好一根指針；GPU/RAM 是線性 → 各一條填充。
-    EXPECT_EQ(sink.count(Op::Type::Needle), 1);
+    // CPU 是量表 → 恰好一根指針，且指針角度真的是 E4-03 算出來的那個
+    // （135 + 0.5*270 = 270）—— 這一條若只斷言「有一根指針」，把 angle_degrees
+    // 接成 start_angle_degrees 之類的錯接就會從 paint() 這條端到端路徑溜過去。
+    ASSERT_EQ(sink.count(Op::Type::Needle), 1);
+    const Op* cpu_needle = sink.first(Op::Type::Needle, PaintRole::Fill);
+    ASSERT_NE(cpu_needle, nullptr);
+    EXPECT_DOUBLE_EQ(cpu_needle->angle, 270.0);
+    EXPECT_EQ(cpu_needle->box, ds::host::dial_box(ds::host::row_geometry(widget_bounds(), 0, 3).cell));
     EXPECT_EQ(sink.count_role(Op::Type::Fill, PaintRole::Fill), 2);
     EXPECT_EQ(sink.count_role(Op::Type::Fill, PaintRole::Track), 3);  // 三條軌道 / 錶盤
 }
