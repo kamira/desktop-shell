@@ -236,3 +236,26 @@ target_link_libraries(e7_15 PUBLIC e7_12 e5_08)
 add_executable(test_e7_15 ${CMAKE_SOURCE_DIR}/tests/e7/test_e7_15.cpp)
 target_link_libraries(test_e7_15 PRIVATE e7_15 GTest::gtest_main)
 add_test(NAME e7_15 COMMAND test_e7_15)
+
+# ==== 單元 e7_16 ====
+# engine/format/e7_16/CMakeLists.txt — E7-16 設定分頁登錄（核心分頁 + 每套件一頁，append-only）
+# E7-14 圖形化設定與就地編輯的應用（engine 層，平台中立）。根 CMakeLists 會自動 glob 收入本檔。
+add_library(e7_16 STATIC settings_pages.cpp)
+target_include_directories(e7_16 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_features(e7_16 PUBLIC cxx_std_17)
+
+# 相依上游 E7-14（已合併，可讀不可改）：消費其 EditableField / EditorSchema /
+# build_editor_model / find_field / apply_edit 契約——**不重造欄位模型**（驗收標準明文要求）。
+# E7-12 的 Path / set_value 與 E7-01 的 Value / Document 經 e7_14 的 PUBLIC 傳遞相依可見。
+#
+# 刻意**不**連結 e9_10：E9-10 回答「安裝了哪些套件」，但 E9-02 manifest 不含設定宣告欄位、
+# E9-01 Package 不含資源內容，故「套件宣告了哪些設定欄位」不在其回答範圍內。本單元改以
+# 可注入抽象 `SettingsContributionSource` 表達（同 E9-10 `InstallStorage` / E9-05
+# `LayoutStorage` / E2-19 `ProcessSource` 的既有風格），host 層組裝時才決定來源。
+# 理由詳見 settings_pages.hpp 檔首與 CHG-20261112-e7_16.md。
+target_link_libraries(e7_16 PUBLIC e7_14)
+
+# 契約測試在 tests/e7/（也是本單元的 write_scope），以絕對來源路徑指向。
+add_executable(test_e7_16 ${CMAKE_SOURCE_DIR}/tests/e7/test_e7_16.cpp)
+target_link_libraries(test_e7_16 PRIVATE e7_16 GTest::gtest_main)
+add_test(NAME e7_16 COMMAND test_e7_16)
