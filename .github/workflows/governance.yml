@@ -81,7 +81,14 @@ jobs:
       - name: ASan + UBSan 全建 + ctest
         shell: bash
         run: |
-          SAN="-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g"
+          # float-cast-overflow **必須明寫**：它不在 -fsanitize=undefined 的群組裡。
+          # 實測（g++ 13.3，CHG-20261113-02）：`volatile double d = 1e30; (int)d`
+          #   -fsanitize=address,undefined                     → 靜默印出 -2147483648、rc=0
+          #   -fsanitize=address,undefined,float-cast-overflow → runtime error、rc=1
+          # 加它之前已量過 main 在其下乾淨（183/183 通過、0 份報告），不是賭。
+          # 它**抓不到** K-002 那一族（std::lround(NaN) 的定義域錯誤不在 UBSan 涵蓋內），
+          # 兩者是不同的洞，不要因為這一條而以為浮點轉換已全部守住。
+          SAN="-fsanitize=address,undefined,float-cast-overflow -fno-sanitize-recover=all -fno-omit-frame-pointer -g"
           cmake -S . -B build-san -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="$SAN" -DCMAKE_EXE_LINKER_FLAGS="$SAN"
           # -j 2 同 G3：每個 Debug gtest TU 峰值可達 ~1.5–2GB，sanitizer 另加額外開銷。
@@ -280,6 +287,59 @@ jobs:
             printf '%s' "$PR_BODY" | grep -qE '^ALLOW-TEST-COUNT-DROP:' \
               || { echo "::error::ubuntu 註冊測試數由 $BASE_N 降為 $HEAD_N。若是正當移除，請在 PR 內文加一行 'ALLOW-TEST-COUNT-DROP: <理由>'"; exit 1; }
             echo "::warning::註冊測試數由 $BASE_N 降為 $HEAD_N；PR 內文已明示豁免"
+          fi
+
+      # ---------------------------------------------------------------------
+      # G3c 單元必須在 ubuntu 留下可見的測試（CHG-20261113-02）
+      #
+      # G3b 擋的是「測試數下降」。它擋不住另一個方向：**一個全新單元一上線就整份躲在
+      # `if(WIN32)` 裡**——數字沒有下降，只是沒有上升，於是 G3、G3b、sanitizer 一致性
+      # 三道全綠，而該單元在 ubuntu 的覆蓋從來不存在（沒經過 -Werror，也沒經過 ASan/UBSan）。
+      #
+      # 這不是假想。實測本 repo 現況（已合併）：
+      #   H1-05「邊緣吸附」在 units.json 標記 platform: neutral，
+      #   而 host/position/CMakeLists.txt 把 h1_05_edge_snap 包在 if(WIN32) 內，
+      #   該檔自己的註解還寫著「純幾何……同樣不碰 Windows API」。
+      #   → 它在 ubuntu 從未建置、從未經 -Werror、從未經 sanitizer。本步驟正是為此而設。
+      #
+      # 為什麼用 units.json 的 platform 而不是一律要求：實測 194 個已合併單元，
+      # 若一律要求 ubuntu 同名測試會誤殺 13 個（W1-01…W1-06、H1-01…H1-04 等平台專屬單元），
+      # 而下一個待派的 W1-07 正屬該族。以 platform 分流後，歷史誤殺降到 3 個
+      # （E1-24/25/26，wave 1 的 bootstrap 單元，驗收標準本就寫明由 E1-25 契約測試組涵蓋）。
+      # 那三個以 PR 內文的豁免行處理，且豁免必須錨在行首、必須說理由。
+      #
+      # 未知的 platform 值一律紅燈（fail-closed）：多一個靜默放行的分支，
+      # 就等於把這道閘門交給 units.json 的手誤來決定。
+      # ---------------------------------------------------------------------
+      - name: G3c 單元必須在 ubuntu 留下可見的測試
+        if: steps.unit.outputs.is_unit == 'true'
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          PLATFORM: ${{ steps.unit.outputs.platform }}
+          UNIT_ID: ${{ steps.unit.outputs.id }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          SLUG="${HEAD_REF##*/}"
+          [ -n "$SLUG" ] || { echo "::error::取不到分支 slug（HEAD_REF=$HEAD_REF），fail-closed"; exit 1; }
+          case "$PLATFORM" in
+            neutral) ;;
+            api-divergence|semantic-divergence)
+              echo "::notice::$UNIT_ID 的 platform=$PLATFORM（平台專屬），ubuntu 不要求同名測試；其覆蓋由 gate_windows 負責"
+              exit 0 ;;
+            *)
+              echo "::error::$UNIT_ID 的 platform 值無法辨識（$PLATFORM），fail-closed"; exit 1 ;;
+          esac
+          # `|| true`：pipefail + -e 下管線失敗會讓賦值中止，下面的 ::error:: 就印不出來（K-011）。
+          # grep -c 在零命中時回 1，同樣會中止——這在本 session 已踩過四次。
+          NAMES=$(ctest --test-dir build -N | sed -n 's/^ *Test *#[0-9]*: *//p' || true)
+          [ -n "$NAMES" ] || { echo "::error::取不到任何註冊測試名稱，fail-closed"; exit 1; }
+          HITS=$(printf '%s\n' "$NAMES" | grep -cF -e "$SLUG" || true)
+          echo "ubuntu 註冊測試中名稱含 '$SLUG' 者：${HITS:-0} 個"
+          if [ "${HITS:-0}" -eq 0 ]; then
+            printf '%s' "$PR_BODY" | grep -qE '^ALLOW-NO-UBUNTU-TEST:' \
+              || { echo "::error::$UNIT_ID（platform=neutral）在 ubuntu 沒有任何名稱含 '$SLUG' 的註冊測試。該單元不會經過 -Werror 也不會經過 sanitizer。若覆蓋確實由別的測試提供，請在 PR 內文加一行 'ALLOW-NO-UBUNTU-TEST: <由哪支測試涵蓋>'"; exit 1; }
+            echo "::warning::$UNIT_ID 無同名 ubuntu 測試；PR 內文已明示豁免"
           fi
 
       # G4 結構同步：動了 src/ 、engine/ 或 modules/ 就得動 docs/structure/
