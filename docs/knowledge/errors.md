@@ -4,6 +4,82 @@
 
 ---
 
+## K-015 — 檢查器看不見的那一半：`float` 型的絕對幾何，以及寫進公開介面的「原點在左上角」
+
+- 日期：2026-11-13 | 來源：`CHG-20261113-01`（`V1.6` 於 `H1-07` 獨立驗收時查出，`I1` 逐項複核）
+- 狀態：**未修復**（成因在 `src/kernel/**` 的公開契約，修它要另開單元）
+
+### 錯誤
+
+`H1-07` 的驗收標準含一條反向斷言：「**E4 與 kernel 的公開介面不得出現任何像素型別**」，
+並自述危害機制是「往上滲會在**相位 3 換後端時**才爆，而 `backend_guard` 擋不到」。
+該單元以三條規則實作掃描，現況命中數 **0**、兩個方向都以突變證明過。
+
+**但那個 0 有一半來自檢查器看不見。** 三條規則對 **`float` 型的絕對擺放幾何零覆蓋**，
+而 kernel 的公開介面上正有四個：
+
+| 位置 | 型別 | 標頭自己的說法 |
+|---|---|---|
+| `src/kernel/anchor_model.hpp:88` | `struct Size { float width, height; }` | `resolve()` 的**輸入**，「具體數字只在此計算邊界出現」 |
+| `src/kernel/anchor_model.hpp:97` | `struct ResolvedPlacement { float x, y, width, height; }` | `resolve()` 的**輸出**，「元件在容器座標系內的矩形（**x, y = 左上角**）」 |
+| `src/kernel/edge_snapping.hpp:79` | `SnapResult::rect` | 「`rect` 是吸附後的具體矩形（resolve 邊界，像素只在此出現）」 |
+| `src/kernel/edge_hot_zone.hpp:44` | `struct ScreenExtent { float width, height; }` | 螢幕尺寸 |
+
+`anchor_model.hpp:8` 自己就寫「具體像素數字**只在 `resolve()` 這個純佈局計算的邊界**出現」，
+而 `host/position/position_store.cpp:73` 真的把 `ResolvedPlacement::x` `lround` 成螢幕絕對座標。
+
+### 根因
+
+三條規則的不可見是**結構性的**，不是漏列：
+
+- 規則一（host 像素型別名）是**精確比對**的名單，且刻意排除 `Rect` / `Point` / `Size`
+  這類混合大小寫通名（因為 `ShapeKind::Rect`、`ds::elements::Point` 都是正當的）。
+- 規則二要求識別字**同時**含像素單位詞（`px`/`pixel`）與幾何角色詞——這四個名稱一個都沒有。
+  （這個合取本身是承重的：拿掉它，`AlphaMode::PerPixel` 一族立刻被誤判。）
+- 規則三只看**整數型** token，而這四個全是 `float`。
+
+更早一步的根因是**提問的形狀**：`I1` 在派工時以
+`grep -rnE '\bpixels?\b|_px\b|Pixel'` 斷言「現況沒有被違反」。那個樣式問的是
+「**有沒有 pixel 這個識別字**」，而驗收標準問的是「**有沒有像素語意的幾何型別**」。
+同一次驗收還因此漏掉 `modules/elements/image_element.hpp:51` 的
+`ImageDimensions { int width; int height; }`（註解明寫「固有像素寬／高」，
+型別名與欄位名都沒有 pixel 字樣）——那一筆由實作者查出並更正了 `I1`。
+
+### 最尖的一處：原點慣例
+
+`ResolvedPlacement` 把「**x, y = 左上角**」這個**原點慣例**寫進了 kernel 的公開介面，
+而 **Cocoa 的 `NSRect` 原點在左下角**。相位 3 接上 macOS 後端時，這個失配：
+
+- 不會有編譯錯誤（型別相同、單位相同，只有慣例不同）
+- 不會有 sanitizer 報告
+- `backend_guard` 看不到（它擋**路徑**不擋**型別**）
+- `H1-07` 的像素邊界斷言掃不到（`float`）
+
+**那正是該驗收標準擔心的那種失敗，只是它穿了 `float` 的外套。**
+
+### 解法
+
+**判定：不算「已被違反」，但「機器承諾小於文字承諾」。** 這四個型別的單位由呼叫端決定，
+kernel 自己不指定像素；宣告式 API（`Anchor` 九宮 / `Spacing` / 正規化分數偏移）確實不含
+絕對座標，符合 NFR-02 的正面表述。故 `H1-07` 不因此判 fail。
+
+要讓機器承諾追上文字承諾，需另開單元評估兩件事（**都動 kernel 的公開契約，與 [[K-014]] 同類**）：
+
+1. 把規則三擴充到**浮點型**幾何欄位，並為上述四個型別建一組**具名附理由的基線**，
+   讓「kernel 的絕對幾何有哪些」變成 machine-readable 且**會紅**的清單。
+2. `ResolvedPlacement` 的「左上角」原點慣例要不要在相位 3 之前改成**具名原點**。
+
+### 可帶走的通則
+
+- **一個檢查器報 0，要先問它看得見什麼。** 「命中數 0」與「不存在」之間隔著覆蓋範圍，
+  而覆蓋範圍通常寫在實作裡、不寫在結論裡。本條的 0 有一半是真的、一半是盲區。
+- **別讓樣式替你改寫問題。** 用 grep 回答「有沒有 X 語意」時，樣式實際問的是
+  「有沒有 X 這個字」。兩者在命名良好的程式碼裡常常重合——**而那正是它危險的原因**。
+- **慣例也是介面。** 「原點在左上角」沒有型別、沒有單位、不會被任何型別系統檢查，
+  但換平台時它和型別一樣會爆。寫進公開介面的註解裡的約定，要當成契約來管。
+
+---
+
 ## K-014 — 同一 namespace 下三個同名不同型別的 `struct`：單獨看每個程式都對，連在一起才是 UB，而所有旗標與 sanitizer 都靜默
 
 - 日期：2026-11-12 | 來源：`CHG-20261112-05`（發現於 `H1-06` 派工，由 `I1.1` 事前查出兩處、`I1` 複查為三處）
@@ -810,6 +886,34 @@ repo 裡有兩個同名但毫不相干的 `KernelBackend`：`ds::kernel::KernelB
   驗收條件要問「這個值是不是活的」，不是只問「這個值格式對不對」。
 - **新加的驗收條件要跑一次負向測試。** 本案把取樣間隔暫時改 0 重跑，確認條件②真的紅、
   且條件①在同一輪仍然全綠——沒跑這步的話，等於加了一條從未被證明會擋任何東西的規則。
+
+### 復發紀錄
+
+本族已在 repo 內獨立復發多次，形狀都是**用比較運算判定「值正不正常」，而 NaN 的任何比較
+都是 false，於是 NaN 落進「正常」那一支**：
+
+| 日期 | 位置 | 狀態 |
+|---|---|---|
+| 2026-11-12 | `host/compose/widget_compose.cpp` 的 `sane_scale`（H1-07 施工中自查） | **已修**：改用 `!(scale > 0.0) \|\| !std::isfinite(scale)`，並以突變 M14 證明斷言承重 |
+| 2026-11-13 | `engine/package/palette.cpp:16` 的 `clamp01`（V1.6 於 H1-07 驗收時查出，I1 複核） | **未修**（已合併單元，修它要另開單元） |
+
+`clamp01` 的形狀逐字如下，下游後果比 `sane_scale` 更隱蔽：
+
+```cpp
+double clamp01(double v) noexcept { return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v); }
+// NaN：兩個比較都是 false → NaN 原封不動回傳
+int round_channel(double v) noexcept {
+    return clamp_channel(static_cast<int>(std::lround(v)));  // lround(NaN)：未指定回傳值 + FE_INVALID
+}
+```
+
+於是一個 NaN 的色彩分量**不會崩潰、不會有任何診斷**，而是產出一個被夾進 `[0,255]` 的
+「看起來正常的顏色」——`K-002` 標題那句「讓壞掉的值看起來像正常資料」的字面重現。
+
+**而且這一條沒有任何自動防線接得住**：`-Wall -Wextra -Werror` 不警告；
+`gate_sanitizers` 的 ASan + UBSan 不報（`std::lround` 的定義域錯誤不在 UBSan 的涵蓋內，
+加 `float-cast-overflow` 也補不到，見 [[K-015]] 的同族分界）。
+它在 ubuntu CI 的建置範圍內，但沒有任何測試餵 NaN 給它。
 
 ## K-001 — MSVC 以系統 ANSI codepage 誤讀 UTF-8 原始碼，中文字串炸成 69 個編譯錯誤
 
