@@ -105,6 +105,7 @@
 #include "layout_store.hpp"   // E9-05：LayoutState / LayoutStorage / LayoutStore
 #include "migration.hpp"      // E7-08：MigrationRegistry / version_less
 #include "render_dispatch.hpp"  // H1-06：ElementDraw / PaintBox / ElementRendererTable
+#include "widget_compose.hpp"   // H1-07：ComponentPlacement / PixelPoint / PixelSize（宣告相依）
 #include "writeback.hpp"      // E7-12：Path / set_value / serialize
 
 // 自成一個巢狀命名空間：`host/paint/`（H1-06 / H1-08）與 `host/compose/`（H1-07）已經在
@@ -186,9 +187,47 @@ double sanitize_dpi(double scale) noexcept;
 // 四個欄位逐一消毒；`repaired` 非 null 時累加**實際被改動**的欄位數（不是「檢查過幾個」）。
 LogicalPlacement sanitize_placement(const LogicalPlacement& p, int* repaired = nullptr) noexcept;
 
+// double → 整數像素。**最後一道防線，且是公開的**：先判有限、再夾到遠小於 `int` 值域的
+// 範圍、最後才 `lround`。非有限 → 0。
+//
+// 為什麼公開：它原本是 .cpp 匿名命名空間裡的「防禦性」檢查，而今日所有呼叫端都先過
+// `clamp_finite`，於是**拿掉它不會有任何測試紅**（V1.7 的 MX5 存活）。一條沒有斷言保護的
+// 防線，等於下一個人可以安靜地刪掉它——而它正是 `-fsanitize=float-cast-overflow` 的最後
+// 一道牆。公開 + 直接測它，這條防線才真的被釘住。
+int round_to_px(double v) noexcept;
+
+// 以半開區間慣例組出一個 `PaintBox`：右 / 下不得小於左 / 上（反過來就夾平成退化矩形）。
+// 同樣是公開的，理由同 `round_to_px`（V1.7 的 MX6：夾限本身已保證順序，故那兩行在
+// `resolve_placement` 內部不可達、刪掉沒有測試會紅）。
+ds::host::PaintBox normalize_box(int left, int top, int right, int bottom) noexcept;
+
 // 邏輯像素 + 縮放 → 裝置像素矩形（H1-06 `PaintBox`，半開區間）。
 // **純函式、不會崩潰、不會產生溢位的 double→int 轉換**：先消毒、再夾限、最後才 lround。
 ds::host::PaintBox resolve_placement(const LogicalPlacement& placement, double dpi_scale) noexcept;
+
+// ---------------------------------------------------------------------------
+// 與 H1-07 組件組合裝配的橋接（`units.json` 宣告的相依）
+// ---------------------------------------------------------------------------
+// H1-07 的 `ComponentPlacement` 與本層的 `LogicalPlacement` **語意相同**（邏輯像素、
+// 原點左上、widget 內相對），只差表示型別：H1-07 是 `int`（版面一經定案就是整數格位），
+// 本層是 `double`（拖曳要累加、存檔要保留使用者拖到的位置，整數會每拖一次就掉一次精度）。
+//
+// 兩個同語意不同型別的幾何放著不管，遲早有人各自寫一份轉換、然後在某一側漏掉消毒
+// ——所以轉換只有這一處，而且有測試釘住（含 NaN / 超限）。
+ds::host::ComponentPlacement to_component_placement(
+    const LogicalPlacement& placement,
+    ds::host::ComponentPresentation presentation = ds::host::ComponentPresentation{});
+LogicalPlacement from_component_placement(const ds::host::ComponentPlacement& placement) noexcept;
+
+// ---------------------------------------------------------------------------
+// 非有限數值的**深層**偵測（F2：巢狀 Map / List 裡的 NaN 一樣不得進入持久化狀態）
+// ---------------------------------------------------------------------------
+// 回傳 `root` 內所有非有限數值的路徑（E7-12 路徑語法，如 `cfg.inner`、`arr[0]`）；
+// 根自己就是非有限純量時回傳一個空字串元素。空 vector = 乾淨。
+std::vector<std::string> non_finite_paths(const ds::format::Value& root);
+
+// 便捷述詞（等價於 `!non_finite_paths(root).empty()`，但不配置路徑字串）。
+bool contains_non_finite(const ds::format::Value& root) noexcept;
 
 // ---------------------------------------------------------------------------
 // format_version 預掃（純字串掃描，不解析內容）
@@ -276,12 +315,44 @@ const char* to_string(EditStatus status) noexcept;
 
 enum class SaveStatus {
     Ok,
-    EmptyName,        // 名稱為空（E9-05 的契約）
-    SerializeFailed,  // E9-05 序列化拒絕目前狀態（如 id / type 為空）
-    VerifyFailed,     // 往返自驗不過 —— **不提交**，storage 原封不動
+    EmptyName,                // 名稱為空（E9-05 的契約）
+    SerializeFailed,          // E9-05 序列化拒絕目前狀態（如 id / type 為空）
+    VerifyFailed,             // 往返自驗不過 —— **不提交**，storage 原封不動
+    RefusedUnreadableTarget,  // 目標存檔存在、但本層讀不出來 → 拒絕覆寫（見下）
 };
 
 const char* to_string(SaveStatus status) noexcept;
+
+// 覆寫既有存檔的策略。
+//
+// ---------------------------------------------------------------------------
+// 為什麼需要這個 enum（本單元第一版的阻擋缺陷，V1.7 的 F1）
+// ---------------------------------------------------------------------------
+// 第一版的 `save()` 完全不管目標存檔是什麼，一律 `put()` 覆寫。於是這條路會毀資料：
+//
+//     開機 → restore("desktop") 被拒收（檔案裡多了一個 tab）→ 記憶體佈局是空的
+//          → 離開時自動 save("desktop") → **使用者的佈局永久消失**，而 save 回報 Ok
+//
+// 第一版的辯詞是「載入失敗不寫回，原文原封不動，使用者還改得回來」——前半句對（就那一次
+// `restore` 而言），後半句錯：「還改得回來」要求檔案活到使用者去改它，而下一個正常操作
+// 就把它刪了。`VersionTooNew` 尤其諷刺：拒收它正是為了保護它（不降級），結果 save 把它刪了。
+//
+// 相位 1 的後端是 `MemoryLayoutStorage`：沒有版本、沒有備份、沒有 `.bak`，被覆寫就是沒了。
+// CHG 第一版用「相位 1 沒有磁碟可以被寫到一半」論證原子性——那對**撕裂寫入**成立，但相位 1
+// 真正的資料毀損路徑不是撕裂寫入，是**一次完整、合法、通過往返自驗的寫入，蓋掉本層刻意
+// 拒絕讀取的資料**。那一條本層擋得住（`ingest_layout_text` 就在手上），所以本層就該擋。
+enum class Overwrite {
+    // 預設：目標存在但讀不出來 → 具名拒絕（`RefusedUnreadableTarget`），**不提交**。
+    Refuse,
+    // 明示丟棄：使用者真的要扔掉那份壞檔案。即使如此，**原文仍會先被另存一份**
+    // （`<name>` + `kRejectedSuffix`），所以連「明示丟棄」都不真的丟掉位元組。
+    DiscardUnreadable,
+};
+
+const char* to_string(Overwrite policy) noexcept;
+
+// 明示丟棄時，原文被另存到的名稱後綴。
+inline constexpr const char* kRejectedSuffix = ".rejected";
 
 enum class ReloadOutcome {
     NoSource,   // 沒有接上任何 ReloadSource
@@ -298,6 +369,10 @@ struct EditStats {
     int edits_rejected = 0;
     int saves = 0;
     int saves_rejected = 0;
+    // `save()` 因為「目標讀不出來」而拒絕覆寫的次數（F1 的防線是否真的擋到，可被斷言）。
+    int saves_refused_target = 0;
+    // 明示丟棄時，把讀不出來的原文另存為 `<name>.rejected` 的次數。
+    int rejected_backups = 0;
     int loads = 0;
     int loads_failed = 0;
     int reloads = 0;
@@ -364,21 +439,44 @@ public:
     std::string kind_of(const std::string& id) const;  // 找不到 → 空字串
 
     // 就地編輯任一設定欄位：路徑已存在 → 走 **E7-14** `apply_edit`（型別 / 約束驗證）；
-    // 路徑不存在 → 走 **E7-12** `set_value` 新增。數值為非有限一律先擋下（不進持久化狀態）。
+    // 路徑不存在 → 走 **E7-12** `set_value` 新增。
+    //
+    // 非有限數值一律先擋下，且檢查是**深層的**：候選值是 Map / List 時會遞迴檢查裡面每一個
+    // 數值。第一版只查 `value.is_number()`，於是 `{inner: NaN}` 這種巢狀值直接通過公開 API
+    // 進了持久化狀態（V1.7 的 F2）——雖然 `save()` 的往返自驗擋得住（fail-closed、
+    // storage 未被動），但那時的診斷說不出是哪一欄，呼叫端只能逐路徑猜。
     EditStatus edit_property(const std::string& id, const std::string& path,
                              const ds::format::Value& value);
     // 取出某個屬性（找不到 → false）。
     bool property_of(const std::string& id, const std::string& path,
                      ds::format::Value& out) const;
 
+    // 移除某個屬性（map 鍵；路徑不存在 / 非 map 鍵 → 具名失敗）。
+    // 存在的理由：`reset()` 塞進來的壞狀態要有辦法清掉，而不是只能整個元件丟掉。
+    EditStatus remove_property(const std::string& id, const std::string& path);
+
     // 拖放產生設定項（**E7-15**）：`generate_config_item` 決定寫到哪個路徑、寫什麼。
     EditStatus apply_drop(const std::string& id, const ds::format::DropContent& drop);
 
     // --- 存檔 / 還原（E9-05；帶 format_version）---
-    SaveStatus save(const std::string& name);
+    //
+    // `save()` 在提交之前會做兩件事：
+    //   1. 序列化目前狀態並**往返自驗**（序列化 → 以本層讀回 → 逐欄比對）；
+    //   2. **把目標存檔讀一次**——目標存在但本層讀不出來 → 依 `policy` 決定拒絕或明示丟棄。
+    // 兩者皆通過才 `storage_.put()`。提交點仍然只有一個。
+    SaveStatus save(const std::string& name, Overwrite policy = Overwrite::Refuse);
     IntakeStatus restore(const std::string& name);
+
     // 存檔但不提交，只看會不會過 —— 給呼叫端做「存得起來嗎」的預檢。
-    SaveStatus dry_run_save() const;
+    // `name` 為空 → 只檢查記憶體狀態；非空 → 連目標存檔是否可覆寫也一起檢查。
+    SaveStatus dry_run_save(const std::string& name = std::string()) const;
+
+    // 目標存檔目前讀不讀得出來。
+    //   - storage 裡沒有這個名字 → true（沒有東西會被毀掉）。
+    //   - 讀得出來（含 `Repaired` / `Migrated`）→ true。
+    //   - 讀不出來 → false，`why` 非 null 時寫入具名原因。
+    // 給呼叫端在「要不要提示使用者」時問，而不是讓它自己猜。
+    bool target_is_readable(const std::string& name, IntakeStatus* why = nullptr) const;
 
     // --- 遷移鏈（E7-08）---
     // 註冊給載入路徑用的遷移登錄。以**指標**持有，呼叫端負責存活期；null = 解除。
@@ -423,6 +521,9 @@ private:
     void adopt(IntakeReport report);
     // 序列化目前狀態並往返自驗；通過才把文字寫進 `text`。
     SaveStatus serialize_verified(std::string& text, std::string& message) const;
+    // 往返前後第一個對不上的地方（人類可讀；`VerifyFailed` 的訊息用）。
+    static std::string describe_mismatch(const ds::layout::LayoutState& before,
+                                         const ds::layout::LayoutState& after);
 
     // 寫入一律經 E9-05 `serialize_layout`（`LayoutStore::save` 用的就是它），
     // 格式不在本層另開一份；提交點是 `storage_.put()`，見 `save()` 的往返自驗。

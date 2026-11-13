@@ -38,6 +38,14 @@ target_compile_features(h1_09_edit PUBLIC cxx_std_17)
 #   - e7_07（E7-07 熱重載）：`ReloadSource` / `HotReloader`（經其傳遞 e7_06 的診斷）。
 #   - h1_06_dispatch（H1-06 繪製層分派核心）：`ElementDraw` / `PaintBox` /
 #     `ElementRendererTable` —— 換 kind 之後造型真的會變，靠的就是這張分派表。
+#   - h1_07_compose（H1-07 組件組合裝配）：`ComponentPlacement` / `PixelPoint` / `PixelSize`
+#     —— `units.json` 的 `H1-09.depends_on` 明文列了 H1-07，第一版卻既沒連它、也沒消費
+#     它的任何型別，而是另造了 `LogicalPlacement`（獨立驗收 ACC-20261113-h1_09 的 R3）。
+#     兩個語意相同（邏輯像素、原點左上、widget 內相對）但表示型別不同（`int` vs `double`）
+#     的幾何放著不管，遲早各自長出一份轉換、再在某一側漏掉消毒。現在轉換只有一處
+#     （`to_component_placement` / `from_component_placement`），且有測試釘住含 NaN / 超限
+#     的行為。**只連 `h1_07_compose`，不連 `h1_07_media`** —— 後者連 `c2_07`，會把
+#     E4 的型別帶進來（見下方 K-014）。
 #
 # **K-014（同名不同型別的 ODR 陷阱）—— 本目錄刻意踩不到。**
 # `ds::elements::RenderModel` 在 `modules/elements/` 下有三個同名但結構完全不同的定義
@@ -46,7 +54,10 @@ target_compile_features(h1_09_edit PUBLIC cxx_std_17)
 # ASan + UBSan **同時零診斷**。本目錄的任何 target **都不**連入任何 `e4_*` / `c2_*`：
 # `h1_06_dispatch` 自己就刻意不相依任何 E4 target（它只認具名字串 kind），
 # 所以 `test_h1_09*` 這兩個程式內 `ds::elements::RenderModel` 的定義數為 **0**。
-target_link_libraries(h1_09_edit PUBLIC e9_05 e7_14 e7_15 e7_08 e7_07 h1_06_dispatch)
+# `h1_07_compose` 的相依鏈是 e9_03 → e9_01 → e9_02、e1_17、h1_06_dispatch ——
+# 本驗收期間逐一查過，**沒有任何 `e4_*` / `c2_*`**，故下面這行不會破壞 K-014 的保證。
+target_link_libraries(h1_09_edit PUBLIC e9_05 e7_14 e7_15 e7_08 e7_07 h1_06_dispatch
+                      h1_07_compose)
 
 # =============================================================================
 # 測試（**全部註冊在 if(WIN32) 之外**：ubuntu 的 G3 / G3b / G3c 與 gate_sanitizers 都會跑）

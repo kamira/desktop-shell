@@ -108,20 +108,6 @@ bool parse_version_strict(const std::string& text, FormatVersion& out) {
     return true;
 }
 
-// 已消毒且已夾限的 double → int。呼叫端必須先保證 |v| <= kDeviceLimit 且為有限數。
-int to_device_px(double v) noexcept {
-    // 防禦：即使呼叫端漏了，這裡也不會送出一個溢位的轉換。
-    if (!std::isfinite(v)) {
-        return 0;
-    }
-    if (v < -kDeviceLimit) {
-        v = -kDeviceLimit;
-    } else if (v > kDeviceLimit) {
-        v = kDeviceLimit;
-    }
-    return static_cast<int>(std::lround(v));
-}
-
 // 走訪路徑取節點；任何一段對不上 → nullptr（不 throw）。
 const Value* locate(const Value& root, const Path& path) noexcept {
     const Value* cur = &root;
@@ -244,6 +230,34 @@ LogicalPlacement sanitize_placement(const LogicalPlacement& p, int* repaired) no
     return s;
 }
 
+int round_to_px(double v) noexcept {
+    // **這三步的順序就是這條防線本身**：先判有限（NaN / ±Inf 不得往下走），再夾到遠小於
+    // `int` 值域的範圍，最後才 `lround`。少任何一步，`-fsanitize=float-cast-overflow`
+    // 就會在某個輸入上當場 FAILED（不是印訊息而已）。本函式是公開且被直接測試的，
+    // 所以拿掉其中任何一步都會有測試紅 —— 這正是第一版缺的東西（V1.7 的 MX5 存活）。
+    if (!std::isfinite(v)) {
+        return 0;
+    }
+    if (v < -kDeviceLimit) {
+        v = -kDeviceLimit;
+    } else if (v > kDeviceLimit) {
+        v = kDeviceLimit;
+    }
+    return static_cast<int>(std::lround(v));
+}
+
+ds::host::PaintBox normalize_box(int left, int top, int right, int bottom) noexcept {
+    ds::host::PaintBox box;
+    box.left = left;
+    box.top = top;
+    // 半開區間 [left,right) x [top,bottom) 的慣例：右 / 下不得小於左 / 上。
+    // 反過來的框會讓 `width()` / `height()` 變負，而 `PaintBox::empty()` 查的是 `<= 0`，
+    // 所以負寬度會被當成「退化」—— 但沿途任何用 `right - left` 當長度的計算都會拿到負數。
+    box.right = std::max(right, left);
+    box.bottom = std::max(bottom, top);
+    return box;
+}
+
 ds::host::PaintBox resolve_placement(const LogicalPlacement& placement,
                                      double dpi_scale) noexcept {
     const LogicalPlacement s = sanitize_placement(placement, nullptr);
@@ -256,15 +270,102 @@ ds::host::PaintBox resolve_placement(const LogicalPlacement& placement,
     const double bottom =
         clamp_finite((s.y + s.height) * scale, top, -kDeviceLimit, kDeviceLimit);
 
-    ds::host::PaintBox box;
-    box.left = to_device_px(left);
-    box.top = to_device_px(top);
-    box.right = to_device_px(right);
-    box.bottom = to_device_px(bottom);
-    // 半開區間的慣例：右 / 下不得小於左 / 上（夾限後理論上不會發生，但不靠「理論上」）。
-    box.right = std::max(box.right, box.left);
-    box.bottom = std::max(box.bottom, box.top);
-    return box;
+    return normalize_box(round_to_px(left), round_to_px(top), round_to_px(right),
+                         round_to_px(bottom));
+}
+
+// ---------------------------------------------------------------------------
+// 與 H1-07 的橋接
+// ---------------------------------------------------------------------------
+
+ds::host::ComponentPlacement to_component_placement(
+    const LogicalPlacement& placement, ds::host::ComponentPresentation presentation) {
+    const LogicalPlacement s = sanitize_placement(placement, nullptr);
+    ds::host::ComponentPlacement out;
+    out.origin.x = round_to_px(s.x);
+    out.origin.y = round_to_px(s.y);
+    out.size.width = round_to_px(s.width);
+    out.size.height = round_to_px(s.height);
+    out.presentation = std::move(presentation);
+    return out;
+}
+
+LogicalPlacement from_component_placement(
+    const ds::host::ComponentPlacement& placement) noexcept {
+    LogicalPlacement out;
+    out.x = static_cast<double>(placement.origin.x);
+    out.y = static_cast<double>(placement.origin.y);
+    out.width = static_cast<double>(placement.size.width);
+    out.height = static_cast<double>(placement.size.height);
+    return sanitize_placement(out, nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// 非有限數值的深層偵測
+// ---------------------------------------------------------------------------
+
+namespace {
+
+void collect_non_finite(const Value& node, const std::string& prefix,
+                        std::vector<std::string>& out) {
+    switch (node.type()) {
+        case ds::format::ValueType::Number:
+            if (!std::isfinite(node.as_number())) {
+                out.push_back(prefix);
+            }
+            return;
+        case ds::format::ValueType::Map:
+            for (const Value::Member& m : node.as_map()) {
+                collect_non_finite(m.second, prefix.empty() ? m.first : prefix + "." + m.first,
+                                   out);
+            }
+            return;
+        case ds::format::ValueType::List: {
+            const std::vector<Value>& items = node.as_list();
+            for (std::size_t i = 0; i < items.size(); ++i) {
+                collect_non_finite(items[i], prefix + "[" + std::to_string(i) + "]", out);
+            }
+            return;
+        }
+        case ds::format::ValueType::Null:
+        case ds::format::ValueType::Bool:
+        case ds::format::ValueType::String:
+            return;
+    }
+}
+
+}  // namespace
+
+std::vector<std::string> non_finite_paths(const Value& root) {
+    std::vector<std::string> out;
+    collect_non_finite(root, std::string(), out);
+    return out;
+}
+
+bool contains_non_finite(const Value& root) noexcept {
+    switch (root.type()) {
+        case ds::format::ValueType::Number:
+            return !std::isfinite(root.as_number());
+        case ds::format::ValueType::Map:
+            for (const Value::Member& m : root.as_map()) {
+                if (contains_non_finite(m.second)) {
+                    return true;
+                }
+            }
+            return false;
+        case ds::format::ValueType::List:
+            for (const Value& item : root.as_list()) {
+                if (contains_non_finite(item)) {
+                    return true;
+                }
+            }
+            return false;
+        case ds::format::ValueType::Null:
+        case ds::format::ValueType::Bool:
+        case ds::format::ValueType::String:
+            return false;
+    }
+    return false;
 }
 
 // =============================================================================
@@ -533,8 +634,17 @@ const char* to_string(SaveStatus status) noexcept {
         case SaveStatus::EmptyName: return "EmptyName";
         case SaveStatus::SerializeFailed: return "SerializeFailed";
         case SaveStatus::VerifyFailed: return "VerifyFailed";
+        case SaveStatus::RefusedUnreadableTarget: return "RefusedUnreadableTarget";
     }
     return "Ok";
+}
+
+const char* to_string(Overwrite policy) noexcept {
+    switch (policy) {
+        case Overwrite::Refuse: return "Refuse";
+        case Overwrite::DiscardUnreadable: return "DiscardUnreadable";
+    }
+    return "Refuse";
 }
 
 const char* to_string(ReloadOutcome outcome) noexcept {
@@ -766,9 +876,18 @@ EditStatus EditAssembly::edit_property(const std::string& id, const std::string&
     if (e == nullptr) {
         return note_edit(EditStatus::UnknownElement, "查無 id 為 '" + id + "' 的元件");
     }
-    if (value.is_number() && !std::isfinite(value.as_number())) {
+    // **深層**檢查：第一版只查 `value.is_number()`，於是巢狀的 `{inner: NaN}` / `[Inf]`
+    // 整個繞過守衛進了持久化狀態（V1.7 的 F2）。
+    if (contains_non_finite(value)) {
+        std::string where;
+        for (const std::string& bad : non_finite_paths(value)) {
+            if (!where.empty()) {
+                where += "、";
+            }
+            where += bad.empty() ? "（值本身）" : bad;
+        }
         return note_edit(EditStatus::NonFiniteValue,
-                         "候選值為非有限數，拒絕寫入持久化狀態：" + path);
+                         "候選值含非有限數，拒絕寫入持久化狀態：" + path + " → " + where);
     }
     std::string message;
     const EditStatus st = write_property(*e, path, value, message);
@@ -792,6 +911,40 @@ bool EditAssembly::property_of(const std::string& id, const std::string& path,
     }
     out = *found;
     return true;
+}
+
+EditStatus EditAssembly::remove_property(const std::string& id, const std::string& path) {
+    LayoutElement* e = find(id);
+    if (e == nullptr) {
+        return note_edit(EditStatus::UnknownElement, "查無 id 為 '" + id + "' 的元件");
+    }
+    Path parsed;
+    if (!ds::format::parse_path(path, parsed) || parsed.empty() ||
+        parsed.back().kind != PathSegment::Kind::Key) {
+        // 只支援移除 map 鍵：從 list 中間抽掉一個元素會讓其後所有索引位移，
+        // 而呼叫端手上的路徑是按索引寫的——那是靜默的錯位，不如明確拒絕。
+        return note_edit(EditStatus::BadPath, "只能移除 map 鍵（且路徑不得為空）：" + path);
+    }
+    const Value props = as_props(e->properties);
+    const Path parent(parsed.begin(), parsed.end() - 1);
+    const Value* owner = locate(props, parent);
+    if (owner == nullptr || !owner->is_map() || owner->find(parsed.back().key) == nullptr) {
+        return note_edit(EditStatus::BadPath, "路徑不存在：" + path);
+    }
+    std::vector<Value::Member> kept;
+    for (const Value::Member& m : owner->as_map()) {
+        if (m.first != parsed.back().key) {
+            kept.push_back(m);
+        }
+    }
+    try {
+        e->properties = parent.empty() ? Value::map(std::move(kept))
+                                       : ds::format::set_value(props, parent,
+                                                               Value::map(std::move(kept)));
+    } catch (const std::exception& ex) {
+        return note_edit(EditStatus::BadPath, std::string(ex.what()));
+    }
+    return note_edit(EditStatus::Ok, std::string());
 }
 
 EditStatus EditAssembly::apply_drop(const std::string& id,
@@ -818,6 +971,25 @@ EditStatus EditAssembly::apply_drop(const std::string& id,
 // --- 存檔 ---
 
 SaveStatus EditAssembly::serialize_verified(std::string& text, std::string& message) const {
+    // --- 先指名道姓地找非有限數值 ---
+    // 它是往返自驗失敗最常見的原因，而「往返不一致」這個訊息說不出是哪一欄：第一版的
+    // `last_message()` 只有「往返自驗不通過（Ok）：」——狀態 Ok、原因空字串，呼叫端拿不到
+    // 任何線索去定位被汙染的路徑（V1.7 的 F2）。這裡一次列出**全部**路徑，讓呼叫端能一輪
+    // 修完（而不是修一個、再 save 一次、再發現下一個）。
+    std::string bad;
+    for (const LayoutElement& e : state_.elements) {
+        for (const std::string& path : non_finite_paths(as_props(e.properties))) {
+            if (!bad.empty()) {
+                bad += "、";
+            }
+            bad += "'" + e.id + "'.properties" + (path.empty() ? "" : "." + path);
+        }
+    }
+    if (!bad.empty()) {
+        message = "持久化狀態含非有限數值，拒絕存檔：" + bad;
+        return SaveStatus::VerifyFailed;
+    }
+
     try {
         // 格式的唯一事實來源：E9-05（`LayoutStore::save` 用的也是這個函式）。
         text = ds::layout::serialize_layout(state_);
@@ -828,21 +1000,67 @@ SaveStatus EditAssembly::serialize_verified(std::string& text, std::string& mess
     // 往返自驗：序列化 → 以本層讀回 → 逐欄比對。過了才准提交。
     const IntakeReport check = ingest_layout_text(text, nullptr);
     if (check.status != IntakeStatus::Ok || check.state != state_) {
-        message = "往返自驗不通過（" + std::string(to_string(check.status)) + "）：" +
-                  check.message;
+        message = "往返自驗不通過（" + std::string(to_string(check.status)) + "）" +
+                  (check.message.empty() ? std::string() : "：" + check.message) +
+                  describe_mismatch(state_, check.state);
         return SaveStatus::VerifyFailed;
     }
     message.clear();
     return SaveStatus::Ok;
 }
 
-SaveStatus EditAssembly::dry_run_save() const {
-    std::string text;
-    std::string message;
-    return serialize_verified(text, message);
+// 往返前後第一個對不上的地方（給人看的，不是給機器解析的）。
+std::string EditAssembly::describe_mismatch(const ds::layout::LayoutState& before,
+                                            const ds::layout::LayoutState& after) {
+    if (before.elements.size() != after.elements.size()) {
+        return "；元件數 " + std::to_string(before.elements.size()) + " → " +
+               std::to_string(after.elements.size());
+    }
+    for (std::size_t i = 0; i < before.elements.size(); ++i) {
+        const LayoutElement& a = before.elements[i];
+        const LayoutElement& b = after.elements[i];
+        if (a.id != b.id) {
+            return "；第 " + std::to_string(i) + " 個元件的 id '" + a.id + "' → '" + b.id + "'";
+        }
+        if (a.type != b.type) {
+            return "；元件 '" + a.id + "' 的 kind '" + a.type + "' → '" + b.type + "'";
+        }
+        if (a != b) {
+            return "；元件 '" + a.id + "' 的 properties 往返後不一致";
+        }
+    }
+    return std::string();
 }
 
-SaveStatus EditAssembly::save(const std::string& name) {
+bool EditAssembly::target_is_readable(const std::string& name, IntakeStatus* why) const {
+    std::string existing;
+    if (!storage_.get(name, existing)) {
+        if (why != nullptr) {
+            *why = IntakeStatus::NotFound;
+        }
+        return true;  // 沒有東西會被毀掉
+    }
+    const IntakeReport target = ingest_layout_text(existing, migrations_);
+    if (why != nullptr) {
+        *why = target.status;
+    }
+    return target.usable();
+}
+
+SaveStatus EditAssembly::dry_run_save(const std::string& name) const {
+    std::string text;
+    std::string message;
+    const SaveStatus st = serialize_verified(text, message);
+    if (st != SaveStatus::Ok) {
+        return st;
+    }
+    if (!name.empty() && !target_is_readable(name, nullptr)) {
+        return SaveStatus::RefusedUnreadableTarget;
+    }
+    return SaveStatus::Ok;
+}
+
+SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
     if (name.empty()) {
         last_save_ = SaveStatus::EmptyName;
         last_message_ = "佈局名稱不得為空（E9-05 契約）";
@@ -858,6 +1076,35 @@ SaveStatus EditAssembly::save(const std::string& name) {
         ++stats_.saves_rejected;
         return st;  // **沒有碰過 storage**：既有存檔原封不動
     }
+
+    // --- F1 防線：不覆寫一份「本層讀不出來」的既有存檔 ---
+    //
+    // 刻意**在提交的當下重讀目標**，而不是查「這個 session 的上一次 restore 結果」：
+    // 後者只擋得住「restore 失敗 → save」這一條路，擋不住「從來沒 restore 過就 save」
+    // ——而那一條毀的資料一模一樣。重讀一次的成本是一次解析，佈局檔很小。
+    std::string existing;
+    if (storage_.get(name, existing)) {
+        const IntakeReport target = ingest_layout_text(existing, migrations_);
+        if (!target.usable()) {
+            if (policy == Overwrite::Refuse) {
+                last_save_ = SaveStatus::RefusedUnreadableTarget;
+                last_message_ =
+                    "目標存檔 '" + name + "' 目前讀不出來（" +
+                    std::string(to_string(target.status)) + "）：" + target.message +
+                    "；覆寫它會永久毀掉使用者的佈局。先修好那份檔案，或以 "
+                    "Overwrite::DiscardUnreadable 明示丟棄（原文會另存為 '" +
+                    name + kRejectedSuffix + "'）";
+                ++stats_.saves_rejected;
+                ++stats_.saves_refused_target;
+                return last_save_;  // **沒有碰過 storage**
+            }
+            // 明示丟棄：先把讀不出來的原文另存一份，再覆寫。
+            // 連「明示丟棄」都不真的丟掉位元組 —— 使用者按錯了還有得救。
+            storage_.put(name + kRejectedSuffix, existing);
+            ++stats_.rejected_backups;
+        }
+    }
+
     storage_.put(name, text);  // 唯一的提交點
     last_save_ = SaveStatus::Ok;
     last_message_.clear();

@@ -20,6 +20,7 @@
 #include <cmath>
 #include <limits>
 #include <string>
+#include <vector>
 
 #include "edit_assembly.hpp"
 
@@ -48,9 +49,12 @@ struct Fixture {
     ds::layout::MemoryLayoutStorage storage;
     EditAssembly session{storage};
 
+    std::string good_text;
+
     Fixture() {
         EXPECT_EQ(session.add_element("good", "bar", place(11, 22, 33, 44)), EditStatus::Ok);
         EXPECT_EQ(session.save("desktop"), SaveStatus::Ok);
+        EXPECT_TRUE(storage.get("desktop", good_text));
     }
 
     std::string stored(const std::string& name = "desktop") const {
@@ -413,6 +417,12 @@ TEST(AbsurdNumbers, ParserThrowFromOutOfRangeLiteralIsContained) {
         "    properties:\n      x: 1e400\n",
         "format_version: 1.0\nelements:\n  -\n    id: a\n    type: bar\n"
         "    properties:\n      y: -1e400\n",
+        // **下溢走的是同一個 `std::stod`**，一樣會丟 std::out_of_range。
+        // 補測試時很容易只補上溢那一半（本單元第一版就是）。
+        "format_version: 1.0\nelements:\n  -\n    id: a\n    type: bar\n"
+        "    properties:\n      x: 1e-400\n",
+        "format_version: 1.0\nelements:\n  -\n    id: a\n    type: bar\n"
+        "    properties:\n      width: 1e999999\n",
     };
     for (const char* text : texts) {
         SCOPED_TRACE(text);
@@ -635,6 +645,341 @@ TEST(KeepLastGood, RepairedLoadIsAdoptedAndCounted) {
 
     // 降級後的狀態**沒有**被自動寫回去：原文還在，使用者還能手改回來。
     EXPECT_NE(fx.stored().find("orphan"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// 7. 拒收之後的 save() 不得把那份檔案毀掉（ACC-20261113-h1_09 的 F1）
+// -----------------------------------------------------------------------------
+//
+// 第一版的洞：`save()` 完全不看目標存檔，一律覆寫。於是這條路會毀資料——
+//   開機 → restore 被拒收 → 記憶體佈局是空的 → 離開時自動 save → 使用者的佈局永久消失。
+// 而那次 save 回報 `Ok`。使用者沒做錯任何事，只是檔案裡多了一個 tab。
+//
+// 下面每一組都跨越「拒收 → save」這**兩次**呼叫 —— 第一版 32 支測試裡沒有任何一條跨過
+// 這個邊界，所以那個洞一條測試都沒踩到。
+
+// 五種拒收分類各自對應的壞檔案（內容本身由 API 產生的合法文字改出來，不是手編的）。
+struct BadFile {
+    const char* label;
+    IntakeStatus expected;
+    std::string text;
+};
+
+std::vector<BadFile> bad_files(const std::string& good) {
+    std::vector<BadFile> out;
+
+    std::string tabbed = good;
+    const std::size_t el = tabbed.find("elements:");
+    EXPECT_NE(el, std::string::npos);
+    tabbed.insert(el, "\t");
+    out.push_back({"多打一個 tab 縮排", IntakeStatus::Malformed, tabbed});
+
+    std::string no_version = good;
+    const std::size_t nl = no_version.find('\n');
+    EXPECT_NE(nl, std::string::npos);
+    no_version.erase(0, nl + 1);
+    out.push_back({"不小心刪掉版本行", IntakeStatus::MissingVersion, no_version});
+
+    std::string comma = good;
+    comma.replace(comma.find("format_version: 1.0"), 19, "format_version: 1,0");
+    out.push_back({"版本打成 1,0", IntakeStatus::MalformedVersion, comma});
+
+    std::string future = good;
+    future.replace(future.find("format_version: 1.0"), 19, "format_version: 2.0");
+    out.push_back({"新版程式寫的 2.0", IntakeStatus::VersionTooNew, future});
+
+    std::string old_one = good;
+    old_one.replace(old_one.find("format_version: 1.0"), 19, "format_version: 0.9");
+    out.push_back({"舊版且無遷移鏈", IntakeStatus::MigrationUnavailable, old_one});
+
+    return out;
+}
+
+TEST(OverwriteGuard, SaveRefusesToClobberAnUnreadableLayout) {
+    for (const BadFile& bad : bad_files(Fixture().stored())) {
+        SCOPED_TRACE(bad.label);
+        Fixture fx;
+        fx.tamper(bad.text);
+
+        // 開機 → 還原失敗（既有佈局保留，檔案未動 —— 第一版就做到的部分）
+        EXPECT_EQ(fx.session.restore("desktop"), bad.expected) << fx.session.last_message();
+        EXPECT_EQ(fx.stored(), bad.text);
+
+        // ← 這一次呼叫就是第一版毀掉使用者資料的地方
+        EXPECT_EQ(fx.session.save("desktop"), SaveStatus::RefusedUnreadableTarget);
+        EXPECT_EQ(fx.stored(), bad.text);  // 一個位元組都沒被改到
+        EXPECT_NE(fx.session.last_message().find("desktop"), std::string::npos);
+        EXPECT_NE(fx.session.last_message().find(ds::host::edit::to_string(bad.expected)),
+                  std::string::npos)
+            << fx.session.last_message();
+        EXPECT_EQ(fx.session.stats().saves_refused_target, 1);
+        EXPECT_EQ(fx.session.stats().rejected_backups, 0);
+
+        // 而且使用者真的救得回來：把檔案修好，佈局就回來了。
+        fx.tamper(fx.good_text);
+        ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Ok);
+        LogicalPlacement p;
+        ASSERT_TRUE(fx.session.placement_of("good", p));
+        EXPECT_DOUBLE_EQ(p.x, 11.0);
+    }
+}
+
+// V1.7 的原始重現：**從來沒有 restore 成功過**，記憶體佈局是空的，然後自動存檔。
+// 守衛刻意做在「提交的當下重讀目標」，而不是查「上一次 restore 的結果」——
+// 後者擋不住這一條，而這一條毀的資料一模一樣。
+TEST(OverwriteGuard, RefusesEvenWhenRestoreWasNeverCalled) {
+    ds::layout::MemoryLayoutStorage storage;
+    const std::string user_file =
+        "format_version: 2.0\n"            // 新版程式寫的
+        "elements:\n"
+        "  -\n"
+        "    id: cpu\n"
+        "    type: ring_gauge\n";
+    storage.put("desktop", user_file);
+
+    EditAssembly app(storage);             // 開機，記憶體是空的
+    EXPECT_EQ(app.size(), 0u);
+    EXPECT_EQ(app.save("desktop"), SaveStatus::RefusedUnreadableTarget);  // 離開時自動存檔
+
+    std::string after;
+    ASSERT_TRUE(storage.get("desktop", after));
+    EXPECT_EQ(after, user_file);
+    EXPECT_NE(after.find("cpu"), std::string::npos);  // 元件還在
+}
+
+TEST(OverwriteGuard, ReadableTargetsAreOverwrittenAsBefore) {
+    Fixture fx;  // 目標是自己剛存的合法檔案
+    ASSERT_EQ(fx.session.add_element("second", "bar", place(1, 2, 3, 4)), EditStatus::Ok);
+    EXPECT_EQ(fx.session.save("desktop"), SaveStatus::Ok);
+    EXPECT_NE(fx.stored().find("second"), std::string::npos);
+    EXPECT_EQ(fx.session.stats().saves_refused_target, 0);
+
+    // storage 裡沒有這個名字 → 沒有東西會被毀掉，照存。
+    EXPECT_EQ(fx.session.save("brand_new"), SaveStatus::Ok);
+    EXPECT_TRUE(fx.storage.has("brand_new"));
+}
+
+// `Repaired` / `Migrated` 都算「讀得出來」—— 使用者的資料已經在記憶體裡了，覆寫不會毀掉它。
+TEST(OverwriteGuard, RepairedTargetIsStillOverwritable) {
+    Fixture fx;
+    fx.tamper(
+        "format_version: 1.0\n"
+        "elements:\n"
+        "  -\n"
+        "    id: survivor\n"
+        "    type: bar\n"
+        "  -\n"
+        "    type: orphan\n");
+    ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Repaired);
+    EXPECT_EQ(fx.session.save("desktop"), SaveStatus::Ok);
+    EXPECT_EQ(fx.session.stats().saves_refused_target, 0);
+}
+
+TEST(OverwriteGuard, ExplicitDiscardStillKeepsTheOriginalBytes) {
+    Fixture fx;
+    const std::string original = fx.stored();
+    std::string broken = original;
+    broken.insert(broken.find("elements:"), "\t");
+    fx.tamper(broken);
+    ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Malformed);
+
+    // 使用者看到提示後明示「我要丟掉那份壞檔案」。
+    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardUnreadable),
+              SaveStatus::Ok);
+    EXPECT_EQ(fx.session.stats().rejected_backups, 1);
+
+    // 新檔案可讀。
+    EXPECT_NE(fx.stored(), broken);
+    EXPECT_EQ(ds::host::edit::ingest_layout_text(fx.stored()).status, IntakeStatus::Ok);
+
+    // 而原文**仍然在**：連「明示丟棄」都不真的丟掉位元組。
+    std::string kept;
+    ASSERT_TRUE(fx.storage.get(std::string("desktop") + ds::host::edit::kRejectedSuffix, kept));
+    EXPECT_EQ(kept, broken);
+}
+
+TEST(OverwriteGuard, DiscardOnAReadableTargetMakesNoBackup) {
+    Fixture fx;
+    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardUnreadable),
+              SaveStatus::Ok);
+    EXPECT_EQ(fx.session.stats().rejected_backups, 0);
+    EXPECT_FALSE(fx.storage.has(std::string("desktop") + ds::host::edit::kRejectedSuffix));
+}
+
+TEST(OverwriteGuard, CallersCanAskBeforeSaving) {
+    Fixture fx;
+    IntakeStatus why = IntakeStatus::Ok;
+
+    EXPECT_TRUE(fx.session.target_is_readable("desktop", &why));
+    EXPECT_EQ(why, IntakeStatus::Ok);
+
+    EXPECT_TRUE(fx.session.target_is_readable("never_saved", &why));
+    EXPECT_EQ(why, IntakeStatus::NotFound);  // 沒有東西會被毀掉
+
+    std::string future = fx.stored();
+    future.replace(future.find("format_version: 1.0"), 19, "format_version: 9.9");
+    fx.tamper(future);
+    EXPECT_FALSE(fx.session.target_is_readable("desktop", &why));
+    EXPECT_EQ(why, IntakeStatus::VersionTooNew);
+
+    // 預檢看得到同一個拒絕；而只檢查記憶體狀態（不給名字）仍然是 Ok。
+    EXPECT_EQ(fx.session.dry_run_save("desktop"), SaveStatus::RefusedUnreadableTarget);
+    EXPECT_EQ(fx.session.dry_run_save(), SaveStatus::Ok);
+    EXPECT_EQ(fx.stored(), future);  // 預檢不碰 storage
+}
+
+// -----------------------------------------------------------------------------
+// 8. 非有限數值的守衛必須是**深層**的（ACC 的 F2）
+// -----------------------------------------------------------------------------
+
+TEST(DeepNonFiniteGuard, NestedNanCannotEnterThroughEditProperty) {
+    const double nan = std::nan("");
+    const double inf = std::numeric_limits<double>::infinity();
+    ds::layout::MemoryLayoutStorage storage;
+    EditAssembly session(storage);
+    ASSERT_EQ(session.add_element("a", "bar", place(0, 0, 10, 10)), EditStatus::Ok);
+
+    // 第一版只查 `value.is_number()`，所以下面這兩個都會 Ok 並把 NaN / Inf 寫進持久化狀態。
+    EXPECT_EQ(session.edit_property("a", "cfg",
+                                    Value::map({{"inner", Value::number(nan)}})),
+              EditStatus::NonFiniteValue);
+    EXPECT_EQ(session.edit_property("a", "arr", Value::list({Value::number(inf)})),
+              EditStatus::NonFiniteValue);
+    EXPECT_EQ(session.edit_property(
+                  "a", "deep",
+                  Value::map({{"list", Value::list({Value::map(
+                                           {{"x", Value::number(-inf)}})})}})),
+              EditStatus::NonFiniteValue);
+
+    // 訊息要指名道姓到路徑，呼叫端才不必猜。
+    EXPECT_NE(session.last_message().find("list[0].x"), std::string::npos)
+        << session.last_message();
+
+    // 什麼都沒寫進去。
+    Value out;
+    EXPECT_FALSE(session.property_of("a", "cfg", out));
+    EXPECT_FALSE(session.property_of("a", "arr", out));
+    EXPECT_FALSE(session.property_of("a", "deep", out));
+    EXPECT_EQ(session.save("x"), SaveStatus::Ok);  // 狀態仍然乾淨
+
+    // 有限數的巢狀值照常可寫（守衛不是一律擋掉容器）。
+    EXPECT_EQ(session.edit_property("a", "cfg", Value::map({{"inner", Value::number(1.5)}})),
+              EditStatus::Ok);
+    ASSERT_TRUE(session.property_of("a", "cfg.inner", out));
+    EXPECT_DOUBLE_EQ(out.as_number(), 1.5);
+}
+
+TEST(DeepNonFiniteGuard, PathsAreReportedForEveryOffender) {
+    const double nan = std::nan("");
+    EXPECT_TRUE(ds::host::edit::non_finite_paths(Value::number(nan)).size() == 1u);
+    EXPECT_EQ(ds::host::edit::non_finite_paths(Value::number(nan))[0], "");  // 根自己
+
+    const Value tree = Value::map({{"ok", Value::number(1.0)},
+                                   {"bad", Value::number(nan)},
+                                   {"nest", Value::map({{"deep", Value::number(nan)}})},
+                                   {"arr", Value::list({Value::number(0.0),
+                                                        Value::number(nan)})},
+                                   {"text", Value::string("nan")}});
+    const std::vector<std::string> paths = ds::host::edit::non_finite_paths(tree);
+    ASSERT_EQ(paths.size(), 3u);
+    EXPECT_EQ(paths[0], "bad");
+    EXPECT_EQ(paths[1], "nest.deep");
+    EXPECT_EQ(paths[2], "arr[1]");
+    EXPECT_TRUE(ds::host::edit::contains_non_finite(tree));
+    EXPECT_FALSE(ds::host::edit::contains_non_finite(
+        Value::map({{"a", Value::number(1.0)}, {"b", Value::string("inf")}})));
+}
+
+// `reset()` 仍然是不消毒的後門（刻意的），但失敗訊息必須說得出是哪一欄。
+TEST(DeepNonFiniteGuard, VerifyFailedNamesTheOffendingFields) {
+    const double nan = std::nan("");
+    const double inf = std::numeric_limits<double>::infinity();
+    Fixture fx;
+    const std::string good = fx.stored();
+
+    ds::layout::LayoutState poisoned = fx.session.state();
+    poisoned.elements[0].properties = ds::format::set_value(
+        poisoned.elements[0].properties, "cfg", Value::map({{"inner", Value::number(nan)}}));
+    poisoned.elements[0].properties = ds::format::set_value(
+        poisoned.elements[0].properties, "arr", Value::list({Value::number(inf)}));
+    fx.session.reset(poisoned);
+
+    EXPECT_EQ(fx.session.save("desktop"), SaveStatus::VerifyFailed);
+    EXPECT_EQ(fx.stored(), good);  // storage 未被動
+
+    // 一次列出**全部**路徑 —— 第一版只說「往返自驗不通過（Ok）：」，修完一個才發現還有下一個。
+    const std::string& msg = fx.session.last_message();
+    EXPECT_NE(msg.find("'good'.properties.cfg.inner"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("'good'.properties.arr[0]"), std::string::npos) << msg;
+
+    // 而且清得掉：照訊息給的路徑把它們移除，就存得回去了。
+    ASSERT_EQ(fx.session.remove_property("good", "cfg"), EditStatus::Ok);
+    ASSERT_EQ(fx.session.remove_property("good", "arr"), EditStatus::Ok);
+    EXPECT_EQ(fx.session.save("desktop"), SaveStatus::Ok);
+}
+
+TEST(DeepNonFiniteGuard, RemovePropertyContract) {
+    ds::layout::MemoryLayoutStorage storage;
+    EditAssembly session(storage);
+    ASSERT_EQ(session.add_element("a", "bar", place(0, 0, 10, 10)), EditStatus::Ok);
+    ASSERT_EQ(session.edit_property("a", "cfg.inner", Value::number(1.0)), EditStatus::Ok);
+
+    EXPECT_EQ(session.remove_property("nope", "x"), EditStatus::UnknownElement);
+    EXPECT_EQ(session.remove_property("a", "not_there"), EditStatus::BadPath);
+    EXPECT_EQ(session.remove_property("a", ""), EditStatus::BadPath);
+    EXPECT_EQ(session.remove_property("a", "bad["), EditStatus::BadPath);
+
+    Value out;
+    ASSERT_EQ(session.remove_property("a", "cfg.inner"), EditStatus::Ok);
+    EXPECT_FALSE(session.property_of("a", "cfg.inner", out));
+    ASSERT_TRUE(session.property_of("a", "cfg", out));  // 父節點還在，只少了那個鍵
+    EXPECT_EQ(out.size(), 0u);
+    ASSERT_TRUE(session.property_of("a", "x", out));    // 其他鍵沒被波及
+}
+
+// -----------------------------------------------------------------------------
+// 9. 兩個像素原語自己要被測到（ACC 的 F3：有防線、沒有斷言保護）
+// -----------------------------------------------------------------------------
+//
+// 這兩個函式原本藏在 .cpp 的匿名命名空間裡，而所有呼叫端都先過 `clamp_finite`，
+// 於是「拿掉它們裡面的防線」不會有任何測試紅（MX5 / MX6 存活）。公開 + 直接測，
+// 它們才真的被釘住。
+
+TEST(PixelPrimitives, RoundToPxNeverEmitsAnOverflowingCast) {
+    const double nan = std::nan("");
+    const double inf = std::numeric_limits<double>::infinity();
+
+    EXPECT_EQ(ds::host::edit::round_to_px(nan), 0);   // 非有限 → 0（不是垃圾整數）
+    EXPECT_EQ(ds::host::edit::round_to_px(inf), 0);
+    EXPECT_EQ(ds::host::edit::round_to_px(-inf), 0);
+
+    // 夾限：超出範圍的有限數**不得**直接轉型（float-cast-overflow 會當場 FAILED）。
+    EXPECT_EQ(ds::host::edit::round_to_px(1.0e308), ds::host::edit::round_to_px(1.0e300));
+    EXPECT_GT(ds::host::edit::round_to_px(1.0e308), 0);
+    EXPECT_LT(ds::host::edit::round_to_px(-1.0e308), 0);
+
+    // 正常範圍內就是四捨五入。
+    EXPECT_EQ(ds::host::edit::round_to_px(0.0), 0);
+    EXPECT_EQ(ds::host::edit::round_to_px(12.4), 12);
+    EXPECT_EQ(ds::host::edit::round_to_px(12.5), 13);
+    EXPECT_EQ(ds::host::edit::round_to_px(-12.5), -13);
+}
+
+TEST(PixelPrimitives, NormalizeBoxKeepsTheHalfOpenConvention) {
+    const ds::host::PaintBox ok = ds::host::edit::normalize_box(10, 20, 30, 40);
+    EXPECT_EQ(ok.left, 10);
+    EXPECT_EQ(ok.right, 30);
+    EXPECT_EQ(ok.width(), 20);
+
+    // 反過來的框會被夾平成退化矩形，而不是交出一個負寬度。
+    const ds::host::PaintBox flipped = ds::host::edit::normalize_box(30, 40, 10, 20);
+    EXPECT_EQ(flipped.left, 30);
+    EXPECT_EQ(flipped.right, 30);
+    EXPECT_EQ(flipped.width(), 0);
+    EXPECT_EQ(flipped.height(), 0);
+    EXPECT_TRUE(flipped.empty());
+    EXPECT_GE(flipped.right, flipped.left);
+    EXPECT_GE(flipped.bottom, flipped.top);
 }
 
 TEST(KeepLastGood, StatusStringsAreAllDistinct) {

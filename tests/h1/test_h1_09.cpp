@@ -433,6 +433,112 @@ TEST(DropBridge, DropGeneratesConfigItemViaE715) {
     EXPECT_EQ(out.as_string(), "/tmp/wall.png");
 }
 
+// -----------------------------------------------------------------------------
+// 7. 與 H1-07 的橋接（`units.json` 宣告的相依；ACC-20261113-h1_09 的 R3）
+// -----------------------------------------------------------------------------
+//
+// H1-07 的 `ComponentPlacement` 與本層的 `LogicalPlacement` **語意相同**（邏輯像素、
+// 原點左上、widget 內相對），只差表示型別（`int` vs `double`）。第一版既沒連 H1-07、
+// 也沒消費它的型別，等於宣告了相依卻各自長了一套幾何。轉換現在只有這一處，而且
+// 這一組測試釘住它的消毒行為 —— 否則日後兩邊一漂移，沒有人會發現。
+
+TEST(ComposeBridge, LogicalAndComponentPlacementRoundTrip) {
+    const LogicalPlacement src = place(12, 34, 56, 78);
+    const ds::host::ComponentPlacement mid = ds::host::edit::to_component_placement(src);
+    EXPECT_EQ(mid.origin.x, 12);
+    EXPECT_EQ(mid.origin.y, 34);
+    EXPECT_EQ(mid.size.width, 56);
+    EXPECT_EQ(mid.size.height, 78);
+    EXPECT_FALSE(mid.size.empty());
+
+    const LogicalPlacement back = ds::host::edit::from_component_placement(mid);
+    EXPECT_EQ(back, src);  // 整數值原樣往返
+}
+
+TEST(ComposeBridge, FractionalLogicalPixelsRoundOnTheWayToH107) {
+    // 本層保留小數（拖曳要累加，整數會每拖一次掉一次精度）；H1-07 的版面是整數格位。
+    // 轉換是**四捨五入**，而且只發生在這一處。
+    const ds::host::ComponentPlacement p =
+        ds::host::edit::to_component_placement(place(12.4, 12.5, 0.5, 1.49));
+    EXPECT_EQ(p.origin.x, 12);
+    EXPECT_EQ(p.origin.y, 13);
+    EXPECT_EQ(p.size.width, 1);
+    EXPECT_EQ(p.size.height, 1);
+}
+
+TEST(ComposeBridge, HostileGeometryIsSanitizedBeforeCrossingOver) {
+    // 壞幾何不得帶著 NaN / 超限值跨進 H1-07（那一側全是 int，轉型本身就是 UB 風險）。
+    const double nan = std::nan("");
+    const double inf = std::numeric_limits<double>::infinity();
+    const ds::host::ComponentPlacement p =
+        ds::host::edit::to_component_placement(place(nan, inf, -5.0, 1.0e308));
+    EXPECT_EQ(p.origin.x, 0);
+    EXPECT_EQ(p.origin.y, 0);
+    EXPECT_EQ(p.size.width, 0);  // 負尺寸歸 0，不翻正
+    EXPECT_EQ(p.size.height, ds::host::edit::round_to_px(ds::host::edit::kExtentLimit));
+    EXPECT_TRUE(p.size.empty());
+}
+
+TEST(ComposeBridge, PresentationIsCarriedThroughUntouched) {
+    ds::host::ComponentPresentation pres;
+    pres.variant = "compact";
+    pres.params["opacity"] = 0.5;
+    pres.visible = false;
+
+    const ds::host::ComponentPlacement p =
+        ds::host::edit::to_component_placement(place(1, 2, 3, 4), pres);
+    EXPECT_EQ(p.presentation.variant, "compact");
+    EXPECT_DOUBLE_EQ(p.presentation.param("opacity", -1.0), 0.5);
+    EXPECT_FALSE(p.presentation.visible);
+}
+
+TEST(ComposeBridge, ElementGeometryReachesH107ThroughTheBridge) {
+    // 端到端：存檔裡的幾何 → 本層讀回 → 橋接 → H1-07 的 `scale_box` 算出裝置像素，
+    // 結果必須與本層 `resolve_placement` **逐一相等**。
+    //
+    // 這條等式不是巧合：兩層的右 / 下緣都是「**邏輯座標的和**再縮放」
+    // （H1-07 `scale_box` 寫明不用 `left + scale(width)`，以免相鄰組件在非整數縮放下
+    // 出現 1px 的縫；本層 `resolve_placement` 算的是 `(x + width) * scale`），
+    // 且兩邊都是四捨五入。任何一側改掉這個組合方式，下面就會紅。
+    struct Case {
+        LogicalPlacement p;
+        double scale;
+    };
+    const Case cases[] = {
+        {place(10, 20, 100, 40), 1.0},   {place(10, 20, 100, 40), 1.25},
+        {place(10, 20, 100, 40), 1.5},   {place(12, 7, 101, 33), 1.25},
+        {place(0, 0, 1, 1), 2.0},        {place(-30, -15, 60, 20), 1.25},
+        {place(3, 3, 0, 0), 1.75},
+        // 下面這兩組是刻意挑的「兩邊各自四捨五入會對不上」的例子：
+        // (1+1)*1.5 = 3.0 → 3，但 round(1*1.5) + round(1*1.5) = 2 + 2 = **4**。
+        // 任何一側改成「先各自取整再相加」，這兩組就會紅 —— 而那正是 H1-07 `scale_box`
+        // 的註解明文要避免的相鄰組件 1px 縫隙。
+        {place(1, 1, 1, 1), 1.5},        {place(2, 2, 3, 3), 1.5},
+    };
+    for (const Case& c : cases) {
+        SCOPED_TRACE(std::to_string(c.p.x) + "," + std::to_string(c.p.y) + " @" +
+                     std::to_string(c.scale));
+        ds::layout::MemoryLayoutStorage storage;
+        EditAssembly session(storage);
+        ASSERT_EQ(session.add_element("w", "bar", c.p), EditStatus::Ok);
+        ASSERT_EQ(session.save("x"), SaveStatus::Ok);
+
+        EditAssembly reopened(storage);
+        ASSERT_EQ(reopened.restore("x"), IntakeStatus::Ok);
+        LogicalPlacement p;
+        ASSERT_TRUE(reopened.placement_of("w", p));
+        EXPECT_EQ(p, c.p);  // 存檔往返不改幾何
+
+        const ds::host::ComponentPlacement cp = ds::host::edit::to_component_placement(p);
+        const ds::host::PaintBox via_h1_07 = ds::host::scale_box(cp.origin, cp.size, c.scale);
+        const ds::host::PaintBox via_h1_09 = ds::host::edit::resolve_placement(p, c.scale);
+        EXPECT_EQ(via_h1_07.left, via_h1_09.left);
+        EXPECT_EQ(via_h1_07.top, via_h1_09.top);
+        EXPECT_EQ(via_h1_07.right, via_h1_09.right);
+        EXPECT_EQ(via_h1_07.bottom, via_h1_09.bottom);
+    }
+}
+
 // 舊版存檔：E7-08 遷移鏈真的被套用（而不是「結構看起來一樣就收下」）。
 TEST(MigrationBridge, OldVersionGoesThroughE708) {
     // 0.9 的假想舊格式：座標叫 pos_x / pos_y。
