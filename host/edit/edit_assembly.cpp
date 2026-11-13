@@ -567,6 +567,14 @@ IntakeReport ingest_layout_text(const std::string& text,
         return rep;
     }
 
+    // 根層除了 `elements` 之外的鍵，本層的資料模型帶不走（`serialize_layout` 只寫 elements）。
+    // `format_version` 不在這裡——E7-01 把它收進 Document，不進 root map。
+    for (const Value::Member& m : root.as_map()) {
+        if (m.first != "elements") {
+            ++rep.unconsumed_keys;
+        }
+    }
+
     std::set<std::string> seen;
     if (elems != nullptr && elems->is_list()) {
         for (const Value& item : elems->as_list()) {
@@ -588,9 +596,17 @@ IntakeReport ingest_layout_text(const std::string& text,
             LayoutElement e;
             e.id = idv->as_string();
             e.type = tv->as_string();
+            // 元件層級除了 id / type / properties 之外的鍵同樣帶不走。
+            for (const Value::Member& m : item.as_map()) {
+                if (m.first != "id" && m.first != "type" && m.first != "properties") {
+                    ++rep.unconsumed_keys;
+                }
+            }
             const Value* pv = item.find("properties");
             if (pv != nullptr && !pv->is_null() && !pv->is_map()) {
-                ++rep.repaired_fields;  // properties 型別不對 → 當成空 Map（具名修補）
+                // 整個 properties 區塊被丟掉 —— 這是**內容遺失**，不是欄位消毒。
+                // 修訂 2 把它算進 `repaired_fields`，於是它被當成「自我修復」而放行覆寫。
+                ++rep.discarded_properties;
             }
             Value props = (pv == nullptr) ? Value::map({}) : as_props(*pv);
             e.properties = sanitize_geometry(props, rep.repaired_fields);
@@ -635,6 +651,8 @@ const char* to_string(SaveStatus status) noexcept {
         case SaveStatus::SerializeFailed: return "SerializeFailed";
         case SaveStatus::VerifyFailed: return "VerifyFailed";
         case SaveStatus::RefusedUnreadableTarget: return "RefusedUnreadableTarget";
+        case SaveStatus::RefusedIncompleteTarget: return "RefusedIncompleteTarget";
+        case SaveStatus::RefusedBackupSlotExhausted: return "RefusedBackupSlotExhausted";
     }
     return "Ok";
 }
@@ -642,7 +660,7 @@ const char* to_string(SaveStatus status) noexcept {
 const char* to_string(Overwrite policy) noexcept {
     switch (policy) {
         case Overwrite::Refuse: return "Refuse";
-        case Overwrite::DiscardUnreadable: return "DiscardUnreadable";
+        case Overwrite::DiscardTargetContent: return "DiscardTargetContent";
     }
     return "Refuse";
 }
@@ -716,6 +734,20 @@ EditStatus EditAssembly::note_edit(EditStatus status, std::string message) {
 // **不碰計數器**：一次公開編輯可能要寫好幾個欄位（見 set_placement），計數由公開層做一次。
 EditStatus EditAssembly::write_property(LayoutElement& element, const std::string& path,
                                         const Value& value, std::string& message) {
+    // **深層**非有限檢查放在這裡（而不是 `edit_property`）：`apply_drop` 也走這條路，
+    // 掛在呼叫端等於漏掉它（驗收 R10）。F2 的教訓就是「守衛放錯位置」，修它的時候
+    // 不該又放錯一次。
+    if (contains_non_finite(value)) {
+        std::string where;
+        for (const std::string& bad : non_finite_paths(value)) {
+            if (!where.empty()) {
+                where += "、";
+            }
+            where += bad.empty() ? "（值本身）" : bad;
+        }
+        message = "候選值含非有限數，拒絕寫入持久化狀態：" + path + " → " + where;
+        return EditStatus::NonFiniteValue;
+    }
     Path parsed;
     if (!ds::format::parse_path(path, parsed)) {
         message = "路徑語法錯誤：" + path;
@@ -876,19 +908,6 @@ EditStatus EditAssembly::edit_property(const std::string& id, const std::string&
     if (e == nullptr) {
         return note_edit(EditStatus::UnknownElement, "查無 id 為 '" + id + "' 的元件");
     }
-    // **深層**檢查：第一版只查 `value.is_number()`，於是巢狀的 `{inner: NaN}` / `[Inf]`
-    // 整個繞過守衛進了持久化狀態（V1.7 的 F2）。
-    if (contains_non_finite(value)) {
-        std::string where;
-        for (const std::string& bad : non_finite_paths(value)) {
-            if (!where.empty()) {
-                where += "、";
-            }
-            where += bad.empty() ? "（值本身）" : bad;
-        }
-        return note_edit(EditStatus::NonFiniteValue,
-                         "候選值含非有限數，拒絕寫入持久化狀態：" + path + " → " + where);
-    }
     std::string message;
     const EditStatus st = write_property(*e, path, value, message);
     return note_edit(st, std::move(message));
@@ -1032,19 +1051,24 @@ std::string EditAssembly::describe_mismatch(const ds::layout::LayoutState& befor
     return std::string();
 }
 
-bool EditAssembly::target_is_readable(const std::string& name, IntakeStatus* why) const {
+bool EditAssembly::target_is_safe_to_overwrite(const std::string& name,
+                                               IntakeReport* report) const {
     std::string existing;
     if (!storage_.get(name, existing)) {
-        if (why != nullptr) {
-            *why = IntakeStatus::NotFound;
+        if (report != nullptr) {
+            IntakeReport miss;
+            miss.status = IntakeStatus::NotFound;
+            miss.message = "storage 裡沒有名為 '" + name + "' 的佈局";
+            *report = std::move(miss);
         }
         return true;  // 沒有東西會被毀掉
     }
-    const IntakeReport target = ingest_layout_text(existing, migrations_);
-    if (why != nullptr) {
-        *why = target.status;
+    IntakeReport target = ingest_layout_text(existing, migrations_);
+    const bool safe = target.carries_everything();
+    if (report != nullptr) {
+        *report = std::move(target);
     }
-    return target.usable();
+    return safe;
 }
 
 SaveStatus EditAssembly::dry_run_save(const std::string& name) const {
@@ -1054,10 +1078,33 @@ SaveStatus EditAssembly::dry_run_save(const std::string& name) const {
     if (st != SaveStatus::Ok) {
         return st;
     }
-    if (!name.empty() && !target_is_readable(name, nullptr)) {
-        return SaveStatus::RefusedUnreadableTarget;
+    if (name.empty()) {
+        return SaveStatus::Ok;
     }
-    return SaveStatus::Ok;
+    // **與 save() 用同一個述詞**：預檢不得給出比 save() 寬鬆的答案。
+    // 修訂 2 的預檢在「元件被丟棄」時回 Ok，呼叫端照契約問了、得到綠燈、然後資料沒了（F4）。
+    IntakeReport target;
+    if (target_is_safe_to_overwrite(name, &target)) {
+        return SaveStatus::Ok;
+    }
+    return target.usable() ? SaveStatus::RefusedIncompleteTarget
+                           : SaveStatus::RefusedUnreadableTarget;
+}
+
+bool EditAssembly::free_backup_name(const std::string& name, std::string& out) const {
+    // 備份**永遠不覆寫任何既有的名字**（驗收 R8）。第一個用 `<name>.rejected`，
+    // 之後依序加序號；全部占用就讓呼叫端拒絕，寧可存不了也不蓋掉東西。
+    for (int i = 1; i <= kMaxRejectedBackups; ++i) {
+        std::string candidate = name + kRejectedSuffix;
+        if (i > 1) {
+            candidate += "." + std::to_string(i);
+        }
+        if (!storage_.has(candidate)) {
+            out = std::move(candidate);
+            return true;
+        }
+    }
+    return false;
 }
 
 SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
@@ -1077,30 +1124,46 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
         return st;  // **沒有碰過 storage**：既有存檔原封不動
     }
 
-    // --- F1 防線：不覆寫一份「本層讀不出來」的既有存檔 ---
+    // --- 覆寫守衛：本層知不知道自己沒能完整帶走目標的內容？---
+    //
+    // 判據是 `IntakeReport::carries_everything()`，不是 `usable()`。
+    // `usable()`（修訂 2 用的）把 `Repaired` 一律當成「可以覆寫」，但 `Repaired` 同時涵蓋
+    // 「幾何欄位被消毒」（自我修復，存回去是對的）與「整個元件被丟棄」
+    // （存回去就是把使用者的資料扔掉）。後者讓同一條驗收標準被第二個入口攻破（驗收 F4）。
     //
     // 刻意**在提交的當下重讀目標**，而不是查「這個 session 的上一次 restore 結果」：
-    // 後者只擋得住「restore 失敗 → save」這一條路，擋不住「從來沒 restore 過就 save」
-    // ——而那一條毀的資料一模一樣。重讀一次的成本是一次解析，佈局檔很小。
+    // 後者擋不住「從來沒 restore 過就 save」，而那一條毀的資料一模一樣。
+    // 反過來，重讀**只保護同名目標**，擋不住「還原 A 失敗、接著存到 B」（驗收 R7）——
+    // 兩者覆蓋的是不同集合，不是誰涵蓋誰。後者本層分不出誤存與刻意新建，不在本層處理。
     std::string existing;
     if (storage_.get(name, existing)) {
         const IntakeReport target = ingest_layout_text(existing, migrations_);
-        if (!target.usable()) {
+        if (!target.carries_everything()) {
+            const bool readable = target.usable();
             if (policy == Overwrite::Refuse) {
-                last_save_ = SaveStatus::RefusedUnreadableTarget;
-                last_message_ =
-                    "目標存檔 '" + name + "' 目前讀不出來（" +
-                    std::string(to_string(target.status)) + "）：" + target.message +
-                    "；覆寫它會永久毀掉使用者的佈局。先修好那份檔案，或以 "
-                    "Overwrite::DiscardUnreadable 明示丟棄（原文會另存為 '" +
-                    name + kRejectedSuffix + "'）";
+                last_save_ = readable ? SaveStatus::RefusedIncompleteTarget
+                                      : SaveStatus::RefusedUnreadableTarget;
+                last_message_ = describe_unsafe_target(name, target);
                 ++stats_.saves_rejected;
-                ++stats_.saves_refused_target;
+                if (readable) {
+                    ++stats_.saves_refused_incomplete;
+                } else {
+                    ++stats_.saves_refused_target;
+                }
                 return last_save_;  // **沒有碰過 storage**
             }
-            // 明示丟棄：先把讀不出來的原文另存一份，再覆寫。
-            // 連「明示丟棄」都不真的丟掉位元組 —— 使用者按錯了還有得救。
-            storage_.put(name + kRejectedSuffix, existing);
+            // 明示丟棄：先把目標原文另存一份，再覆寫。連「明示丟棄」都不真的丟掉位元組，
+            // 而且備份**不覆寫任何既有的名字**（R8）。
+            std::string backup;
+            if (!free_backup_name(name, backup)) {
+                last_save_ = SaveStatus::RefusedBackupSlotExhausted;
+                last_message_ = "'" + name + "' 的備份名稱已全部占用（上限 " +
+                                std::to_string(kMaxRejectedBackups) +
+                                "），拒絕覆寫——寧可存不了，也不蓋掉任何東西";
+                ++stats_.saves_rejected;
+                return last_save_;  // **沒有碰過 storage**
+            }
+            storage_.put(backup, existing);
             ++stats_.rejected_backups;
         }
     }
@@ -1110,6 +1173,36 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
     last_message_.clear();
     ++stats_.saves;
     return SaveStatus::Ok;
+}
+
+// 「為什麼不讓你覆寫」的人類可讀說明：說得出是哪一種、少了什麼、以及怎麼跨過去。
+std::string EditAssembly::describe_unsafe_target(const std::string& name,
+                                                 const IntakeReport& target) {
+    std::string why;
+    if (!target.usable()) {
+        why = "目前讀不出來（" + std::string(to_string(target.status)) + "）：" +
+              target.message;
+    } else {
+        why = "讀得出來（" + std::string(to_string(target.status)) +
+              "），但本層沒能帶走它的全部內容：";
+        std::string parts;
+        auto add = [&parts](int n, const char* label) {
+            if (n > 0) {
+                if (!parts.empty()) {
+                    parts += "、";
+                }
+                parts += std::string(label) + " " + std::to_string(n);
+            }
+        };
+        add(target.dropped_elements, "被丟棄的元件");
+        add(target.discarded_properties, "被丟棄的 properties 區塊");
+        add(target.unconsumed_keys, "帶不走的鍵");
+        why += parts;
+    }
+    return "目標存檔 '" + name + "' " + why +
+           "；覆寫它會永久毀掉使用者的佈局。先修好那份檔案，或以 "
+           "Overwrite::DiscardTargetContent 明示丟棄（原文會先另存為 '" +
+           name + kRejectedSuffix + "'）";
 }
 
 // --- 還原 ---

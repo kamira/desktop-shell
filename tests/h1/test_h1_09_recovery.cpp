@@ -343,7 +343,12 @@ TEST(PartialDamage, PropertiesOfWrongTypeBecomeEmptyMap) {
         "    type: bar\n"
         "    properties: \"not a map\"\n");
     EXPECT_EQ(rep.status, IntakeStatus::Repaired);
-    EXPECT_EQ(rep.repaired_fields, 1);
+    // 整個 properties 區塊被丟掉是**內容遺失**，不是欄位消毒 —— 兩者的差別決定了
+    // save() 要不要擋（F4）。修訂 2 把它算進 repaired_fields，於是它被當成自我修復。
+    EXPECT_EQ(rep.discarded_properties, 1);
+    EXPECT_EQ(rep.repaired_fields, 0);
+    EXPECT_EQ(rep.lost_content(), 1);
+    EXPECT_FALSE(rep.carries_everything());
     ASSERT_EQ(rep.state.elements.size(), 1u);
     EXPECT_TRUE(rep.state.elements[0].properties.is_map());
     EXPECT_EQ(rep.state.elements[0].properties.size(), 0u);
@@ -759,20 +764,158 @@ TEST(OverwriteGuard, ReadableTargetsAreOverwrittenAsBefore) {
     EXPECT_TRUE(fx.storage.has("brand_new"));
 }
 
-// `Repaired` / `Migrated` 都算「讀得出來」—— 使用者的資料已經在記憶體裡了，覆寫不會毀掉它。
-TEST(OverwriteGuard, RepairedTargetIsStillOverwritable) {
+// **只有欄位被消毒、零內容遺失**的 `Repaired` 才可以覆寫：那種情況下使用者的資料
+// 真的全部都在記憶體裡，存回去是**自我修復**（把 NaN 寫回成 0）。
+//
+// 修訂 2 的這支測試用的是「第二個元件缺 id」，斷言 save 回 Ok，註解寫
+// 「使用者的資料已經在記憶體裡了」——**對那個輸入是假的**：被丟棄的元件不在記憶體裡，
+// 正因為不在，覆寫才會毀掉它。那條測試把 F4 這個洞釘成了「正確行為」。
+TEST(OverwriteGuard, FieldRepairOnlyTargetIsStillOverwritable) {
     Fixture fx;
     fx.tamper(
         "format_version: 1.0\n"
         "elements:\n"
         "  -\n"
-        "    id: survivor\n"
+        "    id: good\n"
         "    type: bar\n"
-        "  -\n"
-        "    type: orphan\n");
+        "    properties:\n"
+        "      x: nan\n");  // 幾何被消毒；沒有任何元件 / 鍵被丟掉
     ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Repaired);
+    ASSERT_GT(fx.session.last_intake().repaired_fields, 0);
+    ASSERT_EQ(fx.session.last_intake().lost_content(), 0);
+    ASSERT_TRUE(fx.session.last_intake().carries_everything());
+
+    EXPECT_TRUE(fx.session.target_is_safe_to_overwrite("desktop"));
+    EXPECT_EQ(fx.session.dry_run_save("desktop"), SaveStatus::Ok);
     EXPECT_EQ(fx.session.save("desktop"), SaveStatus::Ok);
     EXPECT_EQ(fx.session.stats().saves_refused_target, 0);
+    EXPECT_EQ(fx.session.stats().saves_refused_incomplete, 0);
+    // 自我修復：寫回去的是消毒後的值。
+    EXPECT_EQ(ds::host::edit::ingest_layout_text(fx.stored()).status, IntakeStatus::Ok);
+}
+
+// -----------------------------------------------------------------------------
+// 7b. 部分丟棄之後的 save() 一樣不得靜默覆寫（ACC 的 F4）
+// -----------------------------------------------------------------------------
+//
+// F1 修的是「整份讀不出來」。F4 是**同一條驗收標準的第二個入口**：檔案讀得出來，
+// 但本層丟掉了其中一塊——使用者把一個元件的 `type:` 打成 `typo:`，那個元件連同它的
+// 整組設定就此消失，而修訂 2 的 `save()` 回報 `Ok`、沒有備份、兩個預檢 API 還都給綠燈。
+//
+// 判據因此從「讀不讀得出來」（`usable()`）改成
+// 「**本層有沒有完整帶走檔案裡的內容**」（`carries_everything()`）。
+
+// 兩個元件，第二個被使用者改壞；被丟掉的那個帶著 `tune: 777` 當作可驗的指紋。
+std::string two_elements_second_broken(const std::string& breakage) {
+    return "format_version: 1.0\n"
+           "elements:\n"
+           "  -\n"
+           "    id: cpu\n"
+           "    type: bar\n"
+           "  -\n" +
+           breakage +
+           "    properties:\n"
+           "      tune: 777\n";
+}
+
+TEST(OverwriteGuard, SaveRefusesWhenTheTargetWasOnlyPartiallyCarried) {
+    struct Case {
+        const char* label;
+        std::string breakage;
+        int dropped;
+    };
+    const std::vector<Case> cases = {
+        {"第二個元件缺 id", "    type: ring_gauge\n", 1},
+        {"第二個元件缺 type", "    id: tuner\n", 1},
+        {"兩個元件 id 重複", "    id: cpu\n    type: ring_gauge\n", 1},
+        {"第二個元件 id 型別錯", "    id: 42\n    type: ring_gauge\n", 1},
+    };
+    for (const Case& c : cases) {
+        SCOPED_TRACE(c.label);
+        Fixture fx;
+        const std::string user_file = two_elements_second_broken(c.breakage);
+        fx.tamper(user_file);
+
+        // 開機 → 還原：讀得出來，但丟掉了一個元件。
+        ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Repaired);
+        EXPECT_EQ(fx.session.last_intake().dropped_elements, c.dropped);
+        EXPECT_FALSE(fx.session.last_intake().carries_everything());
+        ASSERT_EQ(fx.session.size(), 1u);  // tune 那一個不在記憶體裡
+
+        // 預檢必須看得到警訊（修訂 2 這兩行都回綠燈）。
+        EXPECT_FALSE(fx.session.target_is_safe_to_overwrite("desktop"));
+        EXPECT_EQ(fx.session.dry_run_save("desktop"), SaveStatus::RefusedIncompleteTarget);
+
+        // ← 修訂 2 在這裡回 Ok 並讓 tune: 777 永久消失
+        EXPECT_EQ(fx.session.save("desktop"), SaveStatus::RefusedIncompleteTarget);
+        EXPECT_EQ(fx.stored(), user_file);                     // 位元組原封不動
+        EXPECT_NE(fx.stored().find("777"), std::string::npos);  // 指紋還在
+        EXPECT_EQ(fx.session.stats().saves_refused_incomplete, 1);
+        EXPECT_EQ(fx.session.stats().saves_refused_target, 0);  // 這不是「讀不出來」
+        EXPECT_EQ(fx.session.stats().rejected_backups, 0);
+
+        // 訊息要說得出少了什麼。
+        EXPECT_NE(fx.session.last_message().find("被丟棄的元件"), std::string::npos)
+            << fx.session.last_message();
+    }
+}
+
+// 另外兩種「帶不走」：整個 properties 區塊型別不對、以及模型根本沒有的鍵。
+TEST(OverwriteGuard, SaveRefusesWhenPropertiesOrUnknownKeysCannotBeCarried) {
+    {
+        Fixture fx;
+        const std::string f =
+            "format_version: 1.0\n"
+            "elements:\n"
+            "  -\n"
+            "    id: cpu\n"
+            "    type: bar\n"
+            "    properties: \"使用者打成了一段字串 tune=777\"\n";
+        fx.tamper(f);
+        ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Repaired);
+        EXPECT_EQ(fx.session.last_intake().discarded_properties, 1);
+        EXPECT_EQ(fx.session.save("desktop"), SaveStatus::RefusedIncompleteTarget);
+        EXPECT_EQ(fx.stored(), f);
+        EXPECT_NE(fx.session.last_message().find("properties"), std::string::npos);
+    }
+    {
+        // 根層與元件層的未知鍵：本層的資料模型帶不走，`serialize_layout` 不會寫出來，
+        // 所以覆寫 = 刪掉它們。
+        Fixture fx;
+        const std::string f =
+            "format_version: 1.0\n"
+            "wallpaper: /home/u/bg.png\n"   // 根層未知鍵
+            "elements:\n"
+            "  -\n"
+            "    id: cpu\n"
+            "    type: bar\n"
+            "    note: 使用者自己加的註記\n";  // 元件層未知鍵
+        fx.tamper(f);
+        ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Repaired);
+        EXPECT_EQ(fx.session.last_intake().unconsumed_keys, 2);
+        EXPECT_EQ(fx.session.last_intake().dropped_elements, 0);
+        EXPECT_EQ(fx.session.save("desktop"), SaveStatus::RefusedIncompleteTarget);
+        EXPECT_EQ(fx.stored(), f);
+        EXPECT_NE(fx.stored().find("wallpaper"), std::string::npos);
+        EXPECT_NE(fx.session.last_message().find("帶不走的鍵"), std::string::npos);
+    }
+}
+
+// 逃生門對「部分丟棄」一樣要通，而且一樣要留下備份。
+TEST(OverwriteGuard, ExplicitDiscardWorksForPartiallyCarriedTargetsToo) {
+    Fixture fx;
+    const std::string user_file = two_elements_second_broken("    type: ring_gauge\n");
+    fx.tamper(user_file);
+    ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Repaired);
+
+    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardTargetContent),
+              SaveStatus::Ok);
+    EXPECT_EQ(fx.session.stats().rejected_backups, 1);
+
+    std::string kept;
+    ASSERT_TRUE(fx.storage.get(std::string("desktop") + ds::host::edit::kRejectedSuffix, kept));
+    EXPECT_EQ(kept, user_file);
+    EXPECT_NE(kept.find("777"), std::string::npos);  // 被丟掉的那一塊救得回來
 }
 
 TEST(OverwriteGuard, ExplicitDiscardStillKeepsTheOriginalBytes) {
@@ -784,7 +927,7 @@ TEST(OverwriteGuard, ExplicitDiscardStillKeepsTheOriginalBytes) {
     ASSERT_EQ(fx.session.restore("desktop"), IntakeStatus::Malformed);
 
     // 使用者看到提示後明示「我要丟掉那份壞檔案」。
-    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardUnreadable),
+    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardTargetContent),
               SaveStatus::Ok);
     EXPECT_EQ(fx.session.stats().rejected_backups, 1);
 
@@ -798,9 +941,52 @@ TEST(OverwriteGuard, ExplicitDiscardStillKeepsTheOriginalBytes) {
     EXPECT_EQ(kept, broken);
 }
 
+// 備份**永遠不覆寫任何既有的名字**（ACC 的 R8）。
+// 修訂 2 的備份是直接 `put(name + ".rejected", ...)`，那是整個修訂裡唯一一處
+// 「沒先檢查就寫」——剛好有一份同名的可讀 profile 就會被它蓋掉。
+TEST(OverwriteGuard, BackupNeverClobbersAnExistingName) {
+    Fixture fx;
+    const std::string backup_name = std::string("desktop") + ds::host::edit::kRejectedSuffix;
+
+    // 使用者自己存了一份叫 `desktop.rejected` 的佈局（名字難看，但那是他的資料）。
+    ASSERT_EQ(fx.session.save(backup_name), SaveStatus::Ok);
+    const std::string precious = fx.stored(backup_name);
+
+    std::string broken = fx.good_text;
+    broken.insert(broken.find("elements:"), "\t");
+    fx.tamper(broken);
+    ASSERT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardTargetContent),
+              SaveStatus::Ok);
+
+    EXPECT_EQ(fx.stored(backup_name), precious);  // 他的資料沒被蓋掉
+    std::string second;
+    ASSERT_TRUE(fx.storage.get(backup_name + ".2", second));  // 備份改落在下一個空位
+    EXPECT_EQ(second, broken);
+}
+
+TEST(OverwriteGuard, BackupSlotExhaustionIsNamedAndWritesNothing) {
+    Fixture fx;
+    const std::string backup_name = std::string("desktop") + ds::host::edit::kRejectedSuffix;
+    fx.storage.put(backup_name, "occupied");
+    for (int i = 2; i <= ds::host::edit::kMaxRejectedBackups; ++i) {
+        fx.storage.put(backup_name + "." + std::to_string(i), "occupied");
+    }
+    const std::size_t before = fx.storage.names().size();
+
+    std::string broken = fx.good_text;
+    broken.insert(broken.find("elements:"), "\t");
+    fx.tamper(broken);
+
+    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardTargetContent),
+              SaveStatus::RefusedBackupSlotExhausted);
+    EXPECT_EQ(fx.stored(), broken);                      // 目標沒被覆寫
+    EXPECT_EQ(fx.storage.names().size(), before);        // 也沒有多出任何名字
+    EXPECT_EQ(fx.session.stats().rejected_backups, 0);
+}
+
 TEST(OverwriteGuard, DiscardOnAReadableTargetMakesNoBackup) {
     Fixture fx;
-    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardUnreadable),
+    EXPECT_EQ(fx.session.save("desktop", ds::host::edit::Overwrite::DiscardTargetContent),
               SaveStatus::Ok);
     EXPECT_EQ(fx.session.stats().rejected_backups, 0);
     EXPECT_FALSE(fx.storage.has(std::string("desktop") + ds::host::edit::kRejectedSuffix));
@@ -808,19 +994,19 @@ TEST(OverwriteGuard, DiscardOnAReadableTargetMakesNoBackup) {
 
 TEST(OverwriteGuard, CallersCanAskBeforeSaving) {
     Fixture fx;
-    IntakeStatus why = IntakeStatus::Ok;
+    ds::host::edit::IntakeReport why;
 
-    EXPECT_TRUE(fx.session.target_is_readable("desktop", &why));
-    EXPECT_EQ(why, IntakeStatus::Ok);
+    EXPECT_TRUE(fx.session.target_is_safe_to_overwrite("desktop", &why));
+    EXPECT_EQ(why.status, IntakeStatus::Ok);
 
-    EXPECT_TRUE(fx.session.target_is_readable("never_saved", &why));
-    EXPECT_EQ(why, IntakeStatus::NotFound);  // 沒有東西會被毀掉
+    EXPECT_TRUE(fx.session.target_is_safe_to_overwrite("never_saved", &why));
+    EXPECT_EQ(why.status, IntakeStatus::NotFound);  // 沒有東西會被毀掉
 
     std::string future = fx.stored();
     future.replace(future.find("format_version: 1.0"), 19, "format_version: 9.9");
     fx.tamper(future);
-    EXPECT_FALSE(fx.session.target_is_readable("desktop", &why));
-    EXPECT_EQ(why, IntakeStatus::VersionTooNew);
+    EXPECT_FALSE(fx.session.target_is_safe_to_overwrite("desktop", &why));
+    EXPECT_EQ(why.status, IntakeStatus::VersionTooNew);
 
     // 預檢看得到同一個拒絕；而只檢查記憶體狀態（不給名字）仍然是 Ok。
     EXPECT_EQ(fx.session.dry_run_save("desktop"), SaveStatus::RefusedUnreadableTarget);
@@ -918,6 +1104,26 @@ TEST(DeepNonFiniteGuard, VerifyFailedNamesTheOffendingFields) {
     EXPECT_EQ(fx.session.save("desktop"), SaveStatus::Ok);
 }
 
+// `describe_mismatch` 的 properties 分支（ACC 的 R11：修 F3 的同一次提交又新增了一行
+// 沒有斷言保護的診斷碼）。觸發方式用的是 **E7-12 自己載明的已知限制**：空容器序列化後
+// 再解析會塌成 null，所以一個空 Map 的屬性不 round-trip。
+TEST(DeepNonFiniteGuard, VerifyFailureNamesTheElementWhosePropertiesDidNotRoundTrip) {
+    ds::layout::MemoryLayoutStorage storage;
+    EditAssembly session(storage);
+    ASSERT_EQ(session.add_element("a", "bar", place(0, 0, 10, 10)), EditStatus::Ok);
+    ASSERT_EQ(session.edit_property("a", "cfg", Value::map({})), EditStatus::Ok);
+
+    EXPECT_EQ(session.save("x"), SaveStatus::VerifyFailed);
+    EXPECT_FALSE(storage.has("x"));  // 沒提交
+    const std::string& msg = session.last_message();
+    EXPECT_NE(msg.find("往返自驗不通過"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("元件 'a' 的 properties 往返後不一致"), std::string::npos) << msg;
+
+    // 清掉那個空容器就存得回去了。
+    ASSERT_EQ(session.remove_property("a", "cfg"), EditStatus::Ok);
+    EXPECT_EQ(session.save("x"), SaveStatus::Ok);
+}
+
 TEST(DeepNonFiniteGuard, RemovePropertyContract) {
     ds::layout::MemoryLayoutStorage storage;
     EditAssembly session(storage);
@@ -963,6 +1169,34 @@ TEST(PixelPrimitives, RoundToPxNeverEmitsAnOverflowingCast) {
     EXPECT_EQ(ds::host::edit::round_to_px(12.4), 12);
     EXPECT_EQ(ds::host::edit::round_to_px(12.5), 13);
     EXPECT_EQ(ds::host::edit::round_to_px(-12.5), -13);
+}
+
+// 右緣必須由「**邏輯座標的和**再縮放」算出，不是「各自縮放再相加」。
+//
+// 這兩組是 V1.8 構造出來的、真值剛好貼在 `lround` 的 .5 邊界上的案例：兩種算法差的是
+// **整整 1 個像素**，不是 ULP。修訂 2 的 CHG 把這條差異稱為「等價突變」是用詞錯誤——
+// 等價突變的意思是「不可能被任何測試殺死」，而它顯然殺得死，只是當時沒人去構造輸入。
+TEST(PixelPrimitives, RightEdgeIsTheScaledSumNotTheSumOfScaledParts) {
+    struct Case {
+        double x;
+        double w;
+        double scale;
+    };
+    const Case cases[] = {
+        {-311820.55261569237, 376612.82534296508, 1.1},
+        {-451682.21715042065, 779001.21715042065, 1.5},
+    };
+    for (const Case& c : cases) {
+        SCOPED_TRACE(std::to_string(c.x) + " + " + std::to_string(c.w) + " @" +
+                     std::to_string(c.scale));
+        const int correct = ds::host::edit::round_to_px((c.x + c.w) * c.scale);
+        const int parts = ds::host::edit::round_to_px(c.x * c.scale + c.w * c.scale);
+        ASSERT_NE(correct, parts) << "這組輸入沒有落在取整邊界上，測不到東西";
+
+        const ds::host::PaintBox box =
+            ds::host::edit::resolve_placement(place(c.x, 0.0, c.w, 1.0), c.scale);
+        EXPECT_EQ(box.right, correct);
+    }
 }
 
 TEST(PixelPrimitives, NormalizeBoxKeepsTheHalfOpenConvention) {

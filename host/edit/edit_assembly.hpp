@@ -278,16 +278,48 @@ struct IntakeReport {
     std::string message;                      // 人類可讀原因（解析失敗帶行號）
     ds::format::FormatVersion source_version{};  // 文件自己宣告的版本
     bool has_version = false;
-    int dropped_elements = 0;                 // 被具名丟棄的元件數
-    int repaired_fields = 0;                  // 被消毒的欄位數
+
+    // --- 「沒能帶走的內容」：三個互斥的計數器 ---
+    // 這三個是**覆寫決定的判據**（見 `carries_everything()`）。分開數而不是合成一個 bool，
+    // 是因為它們的成因不同，訊息要說得出是哪一種。
+    int dropped_elements = 0;      // 整個元件帶不進來（缺 id / 缺 type / 型別錯 / 重複 id）
+    int discarded_properties = 0;  // 整個 properties 區塊型別不對而被丟掉
+    int unconsumed_keys = 0;       // 檔案裡有、但本層的資料模型根本帶不走的鍵
+
+    // --- 「修好了的東西」：不算遺失 ---
+    // 幾何值被消毒（NaN → 0、負尺寸 → 0、超限 → 夾限）。存回去是**自我修復**，是對的。
+    int repaired_fields = 0;
 
     // 這份報告帶得出一個可用的佈局。
     bool usable() const noexcept {
         return status == IntakeStatus::Ok || status == IntakeStatus::Repaired ||
                status == IntakeStatus::Migrated;
     }
+
+    // 本層**沒能帶走**的內容量。覆寫前要問的就是這個數字。
+    int lost_content() const noexcept {
+        return dropped_elements + discarded_properties + unconsumed_keys;
+    }
+
+    // 讀得出來，**而且**檔案裡的每一塊內容都真的進到了記憶體模型裡。
+    //
+    // ---------------------------------------------------------------------------
+    // 這個述詞就是覆寫決定的判據（修訂 3 / 驗收 F4）
+    // ---------------------------------------------------------------------------
+    // 修訂 2 的 `save()` 用的是 `usable()`，而 `usable()` 把 `Repaired` 一律當成「可以」。
+    // 但 `Repaired` 同時涵蓋兩種語意完全相反的情況：
+    //   - 幾何欄位被消毒（`repaired_fields`）→ 存回去是**自我修復**，是對的；
+    //   - 整個元件被丟棄（`dropped_elements`）→ 存回去是**把使用者的資料扔掉**。
+    // 使用者把一個元件的 `type:` 打成 `typo:`，那個元件連同它的整組設定就此消失，
+    // 而 `save()` 回報 `Ok`。那是同一條驗收標準被第二個入口攻破。
+    //
+    // 所以判據不是「讀不讀得出來」，而是：
+    //   **本層在做覆寫決定的那一刻，知不知道自己沒能完整帶走使用者的內容？**
+    // 知道（`lost_content() > 0`）就不能靜默覆寫。
+    bool carries_everything() const noexcept { return usable() && lost_content() == 0; }
+
     // 讀進來的東西與檔案裡寫的不完全一樣（降級是**具名且可觀測**的，不是靜默）。
-    bool degraded() const noexcept { return dropped_elements > 0 || repaired_fields > 0; }
+    bool degraded() const noexcept { return lost_content() > 0 || repaired_fields > 0; }
 };
 
 // 從宣告式文字讀出佈局。`migrations` 為 null 時，舊版文件一律 `MigrationUnavailable`。
@@ -318,7 +350,9 @@ enum class SaveStatus {
     EmptyName,                // 名稱為空（E9-05 的契約）
     SerializeFailed,          // E9-05 序列化拒絕目前狀態（如 id / type 為空）
     VerifyFailed,             // 往返自驗不過 —— **不提交**，storage 原封不動
-    RefusedUnreadableTarget,  // 目標存檔存在、但本層讀不出來 → 拒絕覆寫（見下）
+    RefusedUnreadableTarget,  // 目標存檔存在、但本層**讀不出來** → 拒絕覆寫（見下）
+    RefusedIncompleteTarget,  // 目標讀得出來，但本層**沒能帶走它的全部內容** → 拒絕覆寫
+    RefusedBackupSlotExhausted,  // 明示丟棄，但備份名稱全被占用 → 拒絕（不蓋掉任何東西）
 };
 
 const char* to_string(SaveStatus status) noexcept;
@@ -342,17 +376,25 @@ const char* to_string(SaveStatus status) noexcept;
 // 真正的資料毀損路徑不是撕裂寫入，是**一次完整、合法、通過往返自驗的寫入，蓋掉本層刻意
 // 拒絕讀取的資料**。那一條本層擋得住（`ingest_layout_text` 就在手上），所以本層就該擋。
 enum class Overwrite {
-    // 預設：目標存在但讀不出來 → 具名拒絕（`RefusedUnreadableTarget`），**不提交**。
+    // 預設：目標存在、但本層讀不出來或帶不走它的全部內容 → 具名拒絕，**不提交**。
     Refuse,
-    // 明示丟棄：使用者真的要扔掉那份壞檔案。即使如此，**原文仍會先被另存一份**
-    // （`<name>` + `kRejectedSuffix`），所以連「明示丟棄」都不真的丟掉位元組。
-    DiscardUnreadable,
+    // 明示丟棄：使用者真的要扔掉目標現有的內容。即使如此，**原文仍會先被另存一份**
+    // （`<name>` + `kRejectedSuffix`，必要時加序號），所以連「明示丟棄」都不真的丟掉位元組。
+    //
+    // 修訂 2 原名 `DiscardUnreadable`；修訂 3 之後它同時涵蓋「讀不出來」與「讀不全」
+    // 兩種拒絕，舊名字會讓呼叫端以為後者不在保護範圍內，故更名。
+    DiscardTargetContent,
 };
 
 const char* to_string(Overwrite policy) noexcept;
 
-// 明示丟棄時，原文被另存到的名稱後綴。
+// 明示丟棄時，原文被另存到的名稱後綴。第一個備份用 `<name>.rejected`，
+// 之後依序為 `<name>.rejected.2`、`.3`…… —— **備份永遠不覆寫任何既有的名字**
+// （驗收 R8：修訂 2 的備份直接 `put()`，會蓋掉一個剛好同名的、可讀的 profile；
+//  那是修訂 2 裡唯一一處「沒先檢查就寫」的地方，與本單元其餘部分的原則不一致）。
 inline constexpr const char* kRejectedSuffix = ".rejected";
+// 備份槽上限。全部用完 → `RefusedBackupSlotExhausted`，寧可拒絕也不蓋掉任何東西。
+inline constexpr int kMaxRejectedBackups = 32;
 
 enum class ReloadOutcome {
     NoSource,   // 沒有接上任何 ReloadSource
@@ -371,6 +413,8 @@ struct EditStats {
     int saves_rejected = 0;
     // `save()` 因為「目標讀不出來」而拒絕覆寫的次數（F1 的防線是否真的擋到，可被斷言）。
     int saves_refused_target = 0;
+    // `save()` 因為「目標讀得出來、但本層帶不走它的全部內容」而拒絕覆寫的次數（F4）。
+    int saves_refused_incomplete = 0;
     // 明示丟棄時，把讀不出來的原文另存為 `<name>.rejected` 的次數。
     int rejected_backups = 0;
     int loads = 0;
@@ -442,9 +486,13 @@ public:
     // 路徑不存在 → 走 **E7-12** `set_value` 新增。
     //
     // 非有限數值一律先擋下，且檢查是**深層的**：候選值是 Map / List 時會遞迴檢查裡面每一個
-    // 數值。第一版只查 `value.is_number()`，於是 `{inner: NaN}` 這種巢狀值直接通過公開 API
-    // 進了持久化狀態（V1.7 的 F2）——雖然 `save()` 的往返自驗擋得住（fail-closed、
-    // storage 未被動），但那時的診斷說不出是哪一欄，呼叫端只能逐路徑猜。
+    // 數值。修訂 1 只查 `value.is_number()`，於是 `{inner: NaN}` 這種巢狀值直接通過公開 API
+    // 進了持久化狀態（驗收 F2）。
+    //
+    // 修訂 3 起這道守衛放在**共用的 `write_property()`**，而不是掛在本函式上
+    // （驗收 R10）：`apply_drop()` 也走 `write_property`，掛在這裡等於漏掉它。
+    // 今日 E7-15 只產生字串值所以不可達，但 F2 的教訓本來就是「守衛放錯位置」，
+    // 修它的時候不該又放錯一次。
     EditStatus edit_property(const std::string& id, const std::string& path,
                              const ds::format::Value& value);
     // 取出某個屬性（找不到 → false）。
@@ -462,21 +510,35 @@ public:
     //
     // `save()` 在提交之前會做兩件事：
     //   1. 序列化目前狀態並**往返自驗**（序列化 → 以本層讀回 → 逐欄比對）；
-    //   2. **把目標存檔讀一次**——目標存在但本層讀不出來 → 依 `policy` 決定拒絕或明示丟棄。
+    //   2. **把目標存檔讀一次**，問 `IntakeReport::carries_everything()`——
+    //      讀不出來 → `RefusedUnreadableTarget`；讀得出來但帶不走全部內容 →
+    //      `RefusedIncompleteTarget`。兩者都可用 `Overwrite::DiscardTargetContent` 明示跨過，
+    //      而跨過時原文一定先被備份。
     // 兩者皆通過才 `storage_.put()`。提交點仍然只有一個。
+    //
+    // **只保護同名目標**（驗收 R7）：本層看的是 `name` 這一份存檔。
+    // 「還原 A 失敗、接著存到 B」不在保護範圍內——本層分不出那是誤存，
+    // 還是使用者刻意從空白建一份新的 B。那需要呼叫端契約，不是本層單方面能決定的。
     SaveStatus save(const std::string& name, Overwrite policy = Overwrite::Refuse);
     IntakeStatus restore(const std::string& name);
 
     // 存檔但不提交，只看會不會過 —— 給呼叫端做「存得起來嗎」的預檢。
-    // `name` 為空 → 只檢查記憶體狀態；非空 → 連目標存檔是否可覆寫也一起檢查。
+    // `name` 為空 → 只檢查記憶體狀態；非空 → 連目標是否可安全覆寫也一起檢查。
+    // **與 `save()` 用同一個述詞**，不得給出比 `save()` 寬鬆的答案。
     SaveStatus dry_run_save(const std::string& name = std::string()) const;
 
-    // 目標存檔目前讀不讀得出來。
+    // 覆寫 `name` 會不會丟掉使用者的內容。
     //   - storage 裡沒有這個名字 → true（沒有東西會被毀掉）。
-    //   - 讀得出來（含 `Repaired` / `Migrated`）→ true。
-    //   - 讀不出來 → false，`why` 非 null 時寫入具名原因。
-    // 給呼叫端在「要不要提示使用者」時問，而不是讓它自己猜。
-    bool target_is_readable(const std::string& name, IntakeStatus* why = nullptr) const;
+    //   - 讀得出來**且**本層帶得走它的全部內容 → true。
+    //   - 讀不出來，或讀得出來但有元件 / properties / 鍵帶不走 → **false**。
+    // `report` 非 null 時寫入完整的 `IntakeReport`（狀態 + 三個遺失計數器），
+    // 讓呼叫端能對使用者說清楚「會失去什麼」。
+    //
+    // 修訂 2 原名 `target_is_readable()`，述詞是 `usable()`——它在「元件被丟棄」的那一刻
+    // 回 `true`，呼叫端照契約問了、得到綠燈、然後資料沒了（驗收 F4）。
+    // 名字與述詞一起改掉：要問的從來不是「讀不讀得出來」，而是「覆寫安不安全」。
+    bool target_is_safe_to_overwrite(const std::string& name,
+                                     IntakeReport* report = nullptr) const;
 
     // --- 遷移鏈（E7-08）---
     // 註冊給載入路徑用的遷移登錄。以**指標**持有，呼叫端負責存活期；null = 解除。
@@ -513,7 +575,8 @@ public:
 private:
     ds::layout::LayoutElement* find(const std::string& id);
     const ds::layout::LayoutElement* find(const std::string& id) const;
-    // 共用的寫入路徑：路徑存在 → E7-14 apply_edit；不存在 → E7-12 set_value。
+    // 共用的寫入路徑：先擋非有限數值（深層），再依路徑是否存在走 E7-14 apply_edit
+    // 或 E7-12 set_value。**所有**寫入屬性的公開 API 都經過這裡。
     EditStatus write_property(ds::layout::LayoutElement& element, const std::string& path,
                               const ds::format::Value& value, std::string& message);
     EditStatus note_edit(EditStatus status, std::string message);
@@ -521,6 +584,12 @@ private:
     void adopt(IntakeReport report);
     // 序列化目前狀態並往返自驗；通過才把文字寫進 `text`。
     SaveStatus serialize_verified(std::string& text, std::string& message) const;
+    // 「為什麼不讓你覆寫」的人類可讀說明（說得出是哪一種、少了什麼、怎麼跨過去）。
+    static std::string describe_unsafe_target(const std::string& name,
+                                              const IntakeReport& target);
+    // 找一個沒被占用的備份名稱（`<name>.rejected`、`.rejected.2`…）。
+    // 全部占用 → 回 false（呼叫端轉為 `RefusedBackupSlotExhausted`）。
+    bool free_backup_name(const std::string& name, std::string& out) const;
     // 往返前後第一個對不上的地方（人類可讀；`VerifyFailed` 的訊息用）。
     static std::string describe_mismatch(const ds::layout::LayoutState& before,
                                          const ds::layout::LayoutState& after);
