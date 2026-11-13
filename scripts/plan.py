@@ -140,6 +140,10 @@ def main():
         print(f"id={u['id']}")
         print(f"risk={u['risk']}")
         print(f"phase={u['phase']}")
+        # platform 供 G3c 判斷「ubuntu 看不到這個單元」是合法還是意外（CHG-20261113-02）。
+        # 用 u["platform"] 而非 .get()：欄位缺失要當場 KeyError 讓 CI 紅，
+        # 不能回空字串——那會讓 G3c 走進「未知值」分支，變成多一條靜默路徑。
+        print(f"platform={u['platform']}")
         return
 
     st = state()

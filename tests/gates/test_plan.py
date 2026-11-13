@@ -160,6 +160,53 @@ class TestUnitForBranch(unittest.TestCase):
         self.assertEqual(cm.exception.code, 1)
 
 
+class TestUnitForBranchCliOutput(unittest.TestCase):
+    """CI 的 `unit` 步驟把這幾行直接灌進 $GITHUB_OUTPUT，所以**印出來的格式就是介面**。
+
+    `TestUnitForBranch` 測的是函式回傳值，測不到 main() 少印一行。
+    `platform=` 少了會讓 G3c 讀到空字串 —— 那一條是 fail-closed（紅燈），
+    但失敗訊息會指向 platform 無法辨識，而非真正的原因，所以在這裡直接釘住。
+    """
+
+    def run_cli(self, ref):
+        proc = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS, "plan.py"),
+             "unit-for-branch", ref],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL)
+        return proc.returncode, proc.stdout
+
+    def test_emits_the_four_keys_g1_and_g3c_consume(self):
+        code, out = self.run_cli("feat/h1_08")
+        self.assertEqual(code, 0, out)
+        keys = dict(ln.split("=", 1) for ln in out.splitlines() if "=" in ln)
+        self.assertEqual(keys.get("id"), "H1-08")
+        self.assertIn("risk", keys)
+        self.assertIn("phase", keys)
+        self.assertEqual(
+            keys.get("platform"), "neutral",
+            "unit-for-branch 沒印出 platform=；G3c 靠它分辨平台專屬單元")
+
+    def test_platform_is_emitted_for_a_platform_specific_unit_too(self):
+        code, out = self.run_cli("feat/w1_07")
+        self.assertEqual(code, 0, out)
+        self.assertIn("platform=semantic-divergence", out)
+
+
+class TestEveryUnitHasAPlatformG3cCanRead(unittest.TestCase):
+    """G3c 只認得這三個值，其餘一律 fail-closed。units.json 混進第四種值會讓
+    該單元的 PR 無法通過 —— 在這裡先擋，而不是等到派工當下才炸。"""
+
+    def test_platform_values_are_within_the_known_set(self):
+        known = {"neutral", "api-divergence", "semantic-divergence"}
+        bad = sorted({u["platform"] for u in plan.M["units"]} - known)
+        self.assertEqual(bad, [], f"units.json 出現 G3c 認不得的 platform 值：{bad}")
+
+    def test_every_unit_has_a_platform_field(self):
+        missing = [u["id"] for u in plan.M["units"] if not u.get("platform")]
+        self.assertEqual(missing, [], f"這些單元沒有 platform 欄位：{missing}")
+
+
 class TestBrief(unittest.TestCase):
     """派工簡報是 subagent 的唯一輸入，AGENTS.md 要求原文轉交、不得摘要。"""
 

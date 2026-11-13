@@ -179,10 +179,37 @@ class TestSanitizersActuallyAbort(unittest.TestCase):
         self.assertIn("detect_leaks=1", run_script(),
                       "洩漏偵測未明示開啟；它在某些環境預設不中止")
 
+    def san_flags(self):
+        """取 `SAN=` 那一行本身，不是整份腳本。
+
+        初版這裡寫的是「整份腳本裡找得到 address / undefined」，那是 **K-012 形狀的空轉
+        斷言**：這兩個字在上面的註解裡也出現，所以把 `-fsanitize=` 整段刪掉它仍然會通過。
+        本 session 已在 `test_g3_builds_with_ds_werror_on` 犯過一次同樣的錯（突變 M5 存活）。
+        改成只看賦值那一行，並以突變驗證過它會紅。
+        """
+        line = [ln.strip() for ln in run_script().splitlines()
+                if ln.strip().startswith("SAN=")]
+        self.assertEqual(len(line), 1,
+                         f"預期剛好一行 SAN= 賦值，實得 {len(line)} 行：{line}")
+        return line[0]
+
     def test_address_and_undefined_are_both_enabled(self):
-        script = run_script()
+        flags = self.san_flags()
         for s in ("address", "undefined"):
-            self.assertIn(s, script, f"-fsanitize 少了 {s}")
+            self.assertIn(s, flags, f"-fsanitize 少了 {s}。實得：{flags}")
+
+    def test_float_cast_overflow_is_requested_explicitly(self):
+        """`float-cast-overflow` 不在 `-fsanitize=undefined` 群組內，必須自己列。
+
+        實測（g++ 13.3）：`volatile double d = 1e30; (int)d` 在 address,undefined 之下
+        **靜默**產出 -2147483648 並回 0；加了這一個才會 runtime error 並中止。
+        所以少了它不是「少守一點」，是那一整類轉換完全沒人看。
+        """
+        flags = self.san_flags()
+        self.assertIn(
+            "float-cast-overflow", flags,
+            "SAN 旗標少了 float-cast-overflow。它不被 -fsanitize=undefined 涵蓋，"
+            f"拿掉等於浮點→整數的溢位轉換完全無人偵測。實得：{flags}")
 
 
 class TestEveryPipelineAssignmentIsGuarded(unittest.TestCase):
