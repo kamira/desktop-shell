@@ -5,31 +5,31 @@
  "source": "desktop-shell-build-list-v4.md",
  "generated": "2026-07-23",
  "totals": {
-  "units": 200,
+  "units": 201,
   "by_priority": {
-   "P0": 74,
+   "P0": 75,
    "P1": 76,
    "P2": 50
   },
   "by_risk": {
    "low": 172,
-   "medium": 28
+   "medium": 29
   },
   "waves": 23,
   "by_platform": {
    "api-divergence": 41,
-   "neutral": 125,
+   "neutral": 126,
    "semantic-divergence": 34
   },
   "backend_followup": 63,
   "by_layer": {
    "artifact": 37,
-   "engine": 67,
+   "engine": 68,
    "module": 58,
    "platform": 38
   },
   "by_stage": {
-   "A": 121,
+   "A": 122,
    "B": 44,
    "C": 12,
    "D": 23
@@ -5847,6 +5847,37 @@
    ],
    "branch": "feat/e7_16",
    "acceptance": "單元測試綠燈 + 獨立驗收者 V1 產出 ACC；消費 E7-14 的 EditableField，不得重造欄位模型；**反向斷言**：安裝一個 manifest 宣告與核心設定同名欄位的套件，核心分頁的值不得被改動（append-only 是使用者裁定，必須以測試釘住）；卸載後該分頁消失且核心分頁不受影響",
+   "platform": "neutral",
+   "phase": 1,
+   "backend_followup": false
+  },
+  {
+   "id": "E7-17",
+   "title": "parse() 的例外外洩修補（契約已明文要求回傳 ParseError）",
+   "priority": "P0",
+   "group": "核心",
+   "layer": "engine",
+   "stage": "A",
+   "module": "E7",
+   "primitives": [
+    "K6"
+   ],
+   "depends_on": [
+    "E7-01"
+   ],
+   "wave": 1,
+   "load_bearing": 0,
+   "risk": "medium",
+   "autonomy": null,
+   "write_scope": [
+    "engine/format/document.cpp",
+    "engine/format/document.hpp",
+    "engine/format/CMakeLists.txt",
+    "tests/e7/test_e7_17*",
+    "docs/changes/CHG-*-e7_17.md"
+   ],
+   "branch": "feat/e7_17",
+   "acceptance": "`ds::format::parse()` 在任何輸入下**不得丟出例外**，一律回傳 ParseResult（成功，或帶**正確行號**的 ParseError）——那是 `document.hpp:11` 既有的明文契約，目前的實作違反它。已實測會丟 `std::out_of_range` 的四種輸入全部須有回歸測試：值為 `1e400`（`numeric_token` 的 `std::stod` 上溢）、`-1e400`、`1e-400`（下溢）、`format_version: 99999999999999999999.0`（`parse_version` 的 `std::stoi` 溢位）。回傳的 ParseError 必須帶該值所在的行號，**不得只回一個籠統的失敗**。嚴重性依據：八個生產呼叫端（`permission_store` / `install_store` / `layout_store` / `ui_state` / 三個 widget）皆無 try/catch，`host/app/host_main.cpp` 零最外層攔截，且 `std::out_of_range` 屬 `logic_error` 分支——照 `layout_store.hpp:131` 文件接 `runtime_error` 的呼叫端**接不到它**，結果是行程結束。**反向斷言**：須有一支測試窮舉數值邊界（含上溢／下溢／長數字串／前後綴垃圾）確認零例外穿出 `parse()`，並以突變證明該斷言承重。**不得改變既有合法輸入的解析結果**：須附既有 E7 測試全綠的證據。獨立驗收者 V1 產出 ACC。",
    "platform": "neutral",
    "phase": 1,
    "backend_followup": false
