@@ -1,4 +1,4 @@
-# host/paint/ — H1-01（render_model → GDI 繪製橋接）+ H1-06（依 kind 分派）
+# host/paint/ — H1-01（render_model → GDI 繪製橋接）+ H1-06（依 kind 分派）+ H1-08（環形量表）
 #
 # ---------------------------------------------------------------------------
 # 本檔刻意分成兩半，守衛範圍不同（照 W1-08 的先例，CHG-20261111-w1_08）
@@ -52,6 +52,19 @@ target_include_directories(h1_06_radial PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(h1_06_radial PUBLIC h1_06_dispatch e4_18)
 target_compile_features(h1_06_radial PUBLIC cxx_std_17)
 
+# --- H1-08 環形量表：H1-06 kind 分派機制的第一個具體案例 ---
+#
+# 只相依 `h1_06_dispatch`（ElementDraw / PaintSink / 分派表 / 版面幾何），**不相依任何
+# E4 元件 target**：本層只認 H1-06 的平台中立描述，故不會把 `ds::elements::RenderModel`
+# 的任何一份定義帶進來（K-014：同名不同型別的 ODR 陷阱）。
+# 弧的繪製原語（`ArcSink`）亦在本層定義 —— `PaintSink` 只有填矩形 / 文字 / 指針三個原語，
+# 沒有弧，而往 `PaintSink` 加純虛擬函式會讓既有的 `final` 實作（tests/h1/test_h1_06*.cpp，
+# **不在本單元的鎖定範圍內**）當場編不過。
+add_library(h1_08_ring_gauge STATIC ring_gauge.cpp)
+target_include_directories(h1_08_ring_gauge PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(h1_08_ring_gauge PUBLIC h1_06_dispatch)
+target_compile_features(h1_08_ring_gauge PUBLIC cxx_std_17)
+
 # --- 測試（**註冊在 if(WIN32) 之外**：ubuntu 的 G3 與 gate_sanitizers 都會跑）---
 add_executable(test_h1_06 ${CMAKE_SOURCE_DIR}/tests/h1/test_h1_06.cpp)
 target_link_libraries(test_h1_06 PRIVATE h1_06_paint_model GTest::gtest_main)
@@ -60,6 +73,16 @@ add_test(NAME h1_06_render_dispatch COMMAND test_h1_06)
 add_executable(test_h1_06_radial ${CMAKE_SOURCE_DIR}/tests/h1/test_h1_06_radial.cpp)
 target_link_libraries(test_h1_06_radial PRIVATE h1_06_radial GTest::gtest_main)
 add_test(NAME h1_06_radial_kind COMMAND test_h1_06_radial)
+
+# H1-08：**必須註冊在 if(WIN32) 之外**（本單元 units.json 標 platform: neutral）。
+# 連 h1_06_paint_model 是為了取得 E4-03 側的投影（project_entry）與 GaugeElement 本身，
+# 讓「真的消費 E4-03 GaugeElement 的弧輸出」是端到端可驗的，而不是測試自己捏的數字。
+# 該 target 只帶入 E4-03 的 `ds::elements::RenderModel`，不與 E4-18 側（h1_06_radial）
+# 連在同一個程式裡 —— 兩份同名不同型別的定義不得出現在同一個執行檔（K-014）。
+add_executable(test_h1_08_ring_gauge ${CMAKE_SOURCE_DIR}/tests/h1/test_h1_08_ring_gauge.cpp)
+target_link_libraries(test_h1_08_ring_gauge PRIVATE h1_08_ring_gauge h1_06_paint_model
+                      GTest::gtest_main)
+add_test(NAME h1_08_ring_gauge COMMAND test_h1_08_ring_gauge)
 
 # =============================================================================
 # 其二：真實 GDI（僅 Windows）
