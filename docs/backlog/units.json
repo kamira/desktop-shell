@@ -5853,7 +5853,7 @@
   },
   {
    "id": "E7-17",
-   "title": "parse() 的例外外洩修補（契約已明文要求回傳 ParseError）",
+   "title": "parse() 不得讓行程結束（例外外洩 + 深層巢狀爆堆疊）",
    "priority": "P0",
    "group": "核心",
    "layer": "engine",
@@ -5877,7 +5877,7 @@
     "docs/changes/CHG-*-e7_17.md"
    ],
    "branch": "feat/e7_17",
-   "acceptance": "`ds::format::parse()` 在任何輸入下**不得丟出例外**，一律回傳 ParseResult（成功，或帶**正確行號**的 ParseError）——那是 `document.hpp:11` 既有的明文契約，目前的實作違反它。已實測會丟 `std::out_of_range` 的四種輸入全部須有回歸測試：值為 `1e400`（`numeric_token` 的 `std::stod` 上溢）、`-1e400`、`1e-400`（下溢）、`format_version: 99999999999999999999.0`（`parse_version` 的 `std::stoi` 溢位）。回傳的 ParseError 必須帶該值所在的行號，**不得只回一個籠統的失敗**。嚴重性依據：八個生產呼叫端（`permission_store` / `install_store` / `layout_store` / `ui_state` / 三個 widget）皆無 try/catch，`host/app/host_main.cpp` 零最外層攔截，且 `std::out_of_range` 屬 `logic_error` 分支——照 `layout_store.hpp:131` 文件接 `runtime_error` 的呼叫端**接不到它**，結果是行程結束。**反向斷言**：須有一支測試窮舉數值邊界（含上溢／下溢／長數字串／前後綴垃圾）確認零例外穿出 `parse()`，並以突變證明該斷言承重。**不得改變既有合法輸入的解析結果**：須附既有 E7 測試全綠的證據。獨立驗收者 V1 產出 ACC。",
+   "acceptance": "`ds::format::parse()` 在任何輸入下**不得丟出例外**，一律回傳 ParseResult（成功，或帶**正確行號**的 ParseError）——那是 `document.hpp:11` 既有的明文契約，目前的實作違反它。已實測會丟 `std::out_of_range` 的四種輸入全部須有回歸測試：值為 `1e400`（`numeric_token` 的 `std::stod` 上溢）、`-1e400`、`1e-400`（下溢）、`format_version: 99999999999999999999.0`（`parse_version` 的 `std::stoi` 溢位）。回傳的 ParseError 必須帶該值所在的行號，**不得只回一個籠統的失敗**。嚴重性依據：八個生產呼叫端（`permission_store` / `install_store` / `layout_store` / `ui_state` / 三個 widget）皆無 try/catch，`host/app/host_main.cpp` 零最外層攔截，且 `std::out_of_range` 屬 `logic_error` 分支——照 `layout_store.hpp:131` 文件接 `runtime_error` 的呼叫端**接不到它**，結果是行程結束。**反向斷言**：須有一支測試窮舉數值邊界（含上溢／下溢／長數字串／前後綴垃圾）確認零例外穿出 `parse()`，並以突變證明該斷言承重。**不得改變既有合法輸入的解析結果**：須附既有 E7 測試全綠的證據。**第二類：深層巢狀不得打爆堆疊。** 已實測（預設 8 MiB 堆疊，I1 自寫 probe）：深度 1000 / 4000 / 8000 皆正常回傳 ParseResult，**深度 14000（196 MB 輸入）→ SIGSEGV，退出碼 139**；成因是遞迴下降解析（`parse_child_or_null` 等）無深度上限，而 `Value` 樹的解構也是遞迴的。須加一個明示的巢狀深度上限，超限回傳帶行號的 ParseError（**不是**例外、**不是** SIGSEGV）；上限值須寫在標頭上成為契約的一部分，並附一支測試證明「上限內正常、剛好超限回 ParseError、遠超限亦不當機」。此類輸入需要很大的檔案（非手打得出），故屬惡意／損毀檔情境，但與第一類同屬「`parse()` 可以讓行程結束」，一併修。**兩類都不得以 try/catch 或 signal handler 代替修正**。獨立驗收者 V1 產出 ACC。",
    "platform": "neutral",
    "phase": 1,
    "backend_followup": false
