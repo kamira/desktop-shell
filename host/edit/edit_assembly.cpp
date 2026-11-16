@@ -428,6 +428,17 @@ std::string restamp_format_version(const std::string& text, const FormatVersion&
 // 載入
 // =============================================================================
 
+const char* to_string(SourceOrigin origin) noexcept {
+    switch (origin) {
+        case SourceOrigin::Empty: return "Empty";
+        case SourceOrigin::Authored: return "Authored";
+        case SourceOrigin::Loaded: return "Loaded";
+        case SourceOrigin::Injected: return "Injected";
+        case SourceOrigin::Reloaded: return "Reloaded";
+    }
+    return "Empty";
+}
+
 const char* to_string(IntakeStatus status) noexcept {
     switch (status) {
         case IntakeStatus::Ok: return "Ok";
@@ -449,7 +460,7 @@ namespace {
 
 // 幾何欄位消毒：壞值就地換成消毒後的值（經 **E7-12 set_value**），並累加修補數。
 // 非 Number 的幾何欄位（字串 / 布林 / 容器）一律換成 0 並計為一次修補。
-Value sanitize_geometry(const Value& props, int& repaired) {
+Value sanitize_geometry(const Value& props, IntakeReport& rep) {
     // 前兩個是座標、後兩個是尺寸（夾限規則不同）。以索引區分，不靠字串比較。
     static const char* const kGeom[] = {kPropX, kPropY, kPropWidth, kPropHeight};
     Value out = props;
@@ -461,18 +472,20 @@ Value sanitize_geometry(const Value& props, int& repaired) {
         }
         const bool is_extent = (gi >= 2);
         if (!cur->is_number()) {
+            // 值根本不是數字（字串 / 布林 / 整棵子樹 / list）→ 整個被扔掉，
+            // 那是**內容遺失**，不是把一個數字夾回範圍內（驗收 R12）。
             out = ds::format::set_value(out, Path{PathSegment::of_key(key)},
                                         Value::number(0.0));
-            ++repaired;
+            ++rep.discarded_values;
             continue;
         }
         const double raw = cur->as_number();
         const double safe = is_extent ? sanitize_extent(raw) : sanitize_coord(raw);
         // NaN != 任何值 → NaN 一定會走進這裡被換掉（這正是要的；K-016）。
         if (raw != safe) {
+            ++rep.repaired_fields;  // 數字 → 夾回範圍內的數字：自我修復
             out = ds::format::set_value(out, Path{PathSegment::of_key(key)},
                                         Value::number(safe));
-            ++repaired;
         }
     }
     return out;
@@ -609,7 +622,7 @@ IntakeReport ingest_layout_text(const std::string& text,
                 ++rep.discarded_properties;
             }
             Value props = (pv == nullptr) ? Value::map({}) : as_props(*pv);
-            e.properties = sanitize_geometry(props, rep.repaired_fields);
+            e.properties = sanitize_geometry(props, rep);
             rep.state.elements.push_back(std::move(e));
         }
     }
@@ -652,6 +665,7 @@ const char* to_string(SaveStatus status) noexcept {
         case SaveStatus::VerifyFailed: return "VerifyFailed";
         case SaveStatus::RefusedUnreadableTarget: return "RefusedUnreadableTarget";
         case SaveStatus::RefusedIncompleteTarget: return "RefusedIncompleteTarget";
+        case SaveStatus::RefusedSourceNotDerived: return "RefusedSourceNotDerived";
         case SaveStatus::RefusedBackupSlotExhausted: return "RefusedBackupSlotExhausted";
     }
     return "Ok";
@@ -723,6 +737,7 @@ EditStatus EditAssembly::note_edit(EditStatus status, std::string message) {
     last_edit_ = status;
     last_message_ = std::move(message);
     if (status == EditStatus::Ok) {
+        note_authored();
         ++stats_.edits;
     } else {
         ++stats_.edits_rejected;
@@ -1051,24 +1066,40 @@ std::string EditAssembly::describe_mismatch(const ds::layout::LayoutState& befor
     return std::string();
 }
 
-bool EditAssembly::target_is_safe_to_overwrite(const std::string& name,
-                                               IntakeReport* report) const {
+SaveStatus EditAssembly::overwrite_check(const std::string& name,
+                                         IntakeReport* target_out) const {
+    // 覆寫決定的**單一述詞**。`save()` / `dry_run_save()` /
+    // `target_is_safe_to_overwrite()` 三者都呼叫這裡，不得各自為政
+    // ——修訂 2 的預檢與 save() 用了不同述詞，於是預檢在資料將毀的那一刻給綠燈。
     std::string existing;
     if (!storage_.get(name, existing)) {
-        if (report != nullptr) {
+        if (target_out != nullptr) {
             IntakeReport miss;
             miss.status = IntakeStatus::NotFound;
             miss.message = "storage 裡沒有名為 '" + name + "' 的佈局";
-            *report = std::move(miss);
+            *target_out = std::move(miss);
         }
-        return true;  // 沒有東西會被毀掉
+        return SaveStatus::Ok;  // 沒有東西會被毀掉
     }
     IntakeReport target = ingest_layout_text(existing, migrations_);
-    const bool safe = target.carries_everything();
-    if (report != nullptr) {
-        *report = std::move(target);
+    SaveStatus verdict = SaveStatus::Ok;
+    if (!target.carries_everything()) {
+        // 目標側：那份檔案本身讀不出來 / 本層帶不走它的全部內容。
+        verdict = target.usable() ? SaveStatus::RefusedIncompleteTarget
+                                  : SaveStatus::RefusedUnreadableTarget;
+    } else if (!source_covers(name)) {
+        // 來源側：目標是完好的，但我手上這份模型**不是它的內容**。
+        verdict = SaveStatus::RefusedSourceNotDerived;
     }
-    return safe;
+    if (target_out != nullptr) {
+        *target_out = std::move(target);
+    }
+    return verdict;
+}
+
+bool EditAssembly::target_is_safe_to_overwrite(const std::string& name,
+                                               IntakeReport* report) const {
+    return overwrite_check(name, report) == SaveStatus::Ok;
 }
 
 SaveStatus EditAssembly::dry_run_save(const std::string& name) const {
@@ -1078,20 +1109,10 @@ SaveStatus EditAssembly::dry_run_save(const std::string& name) const {
     if (st != SaveStatus::Ok) {
         return st;
     }
-    if (name.empty()) {
-        return SaveStatus::Ok;
-    }
-    // **與 save() 用同一個述詞**：預檢不得給出比 save() 寬鬆的答案。
-    // 修訂 2 的預檢在「元件被丟棄」時回 Ok，呼叫端照契約問了、得到綠燈、然後資料沒了（F4）。
-    IntakeReport target;
-    if (target_is_safe_to_overwrite(name, &target)) {
-        return SaveStatus::Ok;
-    }
-    return target.usable() ? SaveStatus::RefusedIncompleteTarget
-                           : SaveStatus::RefusedUnreadableTarget;
+    return name.empty() ? SaveStatus::Ok : overwrite_check(name, nullptr);
 }
 
-bool EditAssembly::free_backup_name(const std::string& name, std::string& out) const {
+bool EditAssembly::next_backup_name(const std::string& name, std::string& out) const {
     // 備份**永遠不覆寫任何既有的名字**（驗收 R8）。第一個用 `<name>.rejected`，
     // 之後依序加序號；全部占用就讓呼叫端拒絕，寧可存不了也不蓋掉東西。
     for (int i = 1; i <= kMaxRejectedBackups; ++i) {
@@ -1105,6 +1126,20 @@ bool EditAssembly::free_backup_name(const std::string& name, std::string& out) c
         }
     }
     return false;
+}
+
+void EditAssembly::note_origin(SourceOrigin origin, const std::string& name, bool complete) {
+    origin_ = origin;
+    origin_name_ = (origin == SourceOrigin::Loaded) ? name : std::string();
+    origin_complete_ = complete;
+}
+
+void EditAssembly::note_authored() {
+    // 編輯**不會**破壞推導關係：從某份存檔完整載入之後改了幾個值，模型仍然源自那份存檔
+    // （使用者的編輯就是他的意圖）。只有「本來什麼都沒有」才因為編輯而變成 Authored。
+    if (origin_ == SourceOrigin::Empty) {
+        note_origin(SourceOrigin::Authored, std::string(), false);
+    }
 }
 
 SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
@@ -1124,38 +1159,37 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
         return st;  // **沒有碰過 storage**：既有存檔原封不動
     }
 
-    // --- 覆寫守衛：本層知不知道自己沒能完整帶走目標的內容？---
+    // --- 覆寫守衛：**對稱**的兩側 ---
     //
-    // 判據是 `IntakeReport::carries_everything()`，不是 `usable()`。
-    // `usable()`（修訂 2 用的）把 `Repaired` 一律當成「可以覆寫」，但 `Repaired` 同時涵蓋
-    // 「幾何欄位被消毒」（自我修復，存回去是對的）與「整個元件被丟棄」
-    // （存回去就是把使用者的資料扔掉）。後者讓同一條驗收標準被第二個入口攻破（驗收 F4）。
+    //   目標側：我從目標那裡帶得全嗎？   `IntakeReport::carries_everything()`
+    //   來源側：我手上這份模型確實是那份目標的內容嗎？  `source_covers(name)`
     //
-    // 刻意**在提交的當下重讀目標**，而不是查「這個 session 的上一次 restore 結果」：
-    // 後者擋不住「從來沒 restore 過就 save」，而那一條毀的資料一模一樣。
-    // 反過來，重讀**只保護同名目標**，擋不住「還原 A 失敗、接著存到 B」（驗收 R7）——
-    // 兩者覆蓋的是不同集合，不是誰涵蓋誰。後者本層分不出誤存與刻意新建，不在本層處理。
-    std::string existing;
-    if (storage_.get(name, existing)) {
-        const IntakeReport target = ingest_layout_text(existing, migrations_);
-        if (!target.carries_everything()) {
-            const bool readable = target.usable();
-            if (policy == Overwrite::Refuse) {
-                last_save_ = readable ? SaveStatus::RefusedIncompleteTarget
-                                      : SaveStatus::RefusedUnreadableTarget;
-                last_message_ = describe_unsafe_target(name, target);
-                ++stats_.saves_rejected;
-                if (readable) {
+    // 修訂 1 沒有守衛、修訂 2 問「目標可不可讀」、修訂 3 問「目標帶不帶得全」——
+    // 每一輪都擴大了判據，但都只擴大到剛被展示的那個方向，於是同一個形狀被攻破三次。
+    // 第三次（F5）最諷刺：觸發它的是本層自己的拒絕訊息——叫使用者去修檔案，
+    // 他照做了，修好之後目標側全部通過，然後他的資料被一份空模型蓋掉。
+    IntakeReport target;
+    const SaveStatus verdict = overwrite_check(name, &target);
+    if (verdict != SaveStatus::Ok) {
+        if (policy == Overwrite::Refuse) {
+            last_save_ = verdict;
+            last_message_ = describe_unsafe_target(name, target, verdict);
+            ++stats_.saves_rejected;
+            switch (verdict) {
+                case SaveStatus::RefusedUnreadableTarget: ++stats_.saves_refused_target; break;
+                case SaveStatus::RefusedIncompleteTarget:
                     ++stats_.saves_refused_incomplete;
-                } else {
-                    ++stats_.saves_refused_target;
-                }
-                return last_save_;  // **沒有碰過 storage**
+                    break;
+                default: ++stats_.saves_refused_source; break;
             }
-            // 明示丟棄：先把目標原文另存一份，再覆寫。連「明示丟棄」都不真的丟掉位元組，
-            // 而且備份**不覆寫任何既有的名字**（R8）。
-            std::string backup;
-            if (!free_backup_name(name, backup)) {
+            return last_save_;  // **沒有碰過 storage**
+        }
+        // 明示丟棄：先把目標原文另存一份，再覆寫。連「明示丟棄」都不真的丟掉位元組，
+        // 而且備份**不覆寫任何既有的名字**（R8）。
+        std::string existing;
+        std::string backup;
+        if (storage_.get(name, existing)) {
+            if (!next_backup_name(name, backup)) {
                 last_save_ = SaveStatus::RefusedBackupSlotExhausted;
                 last_message_ = "'" + name + "' 的備份名稱已全部占用（上限 " +
                                 std::to_string(kMaxRejectedBackups) +
@@ -1169,6 +1203,8 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
     }
 
     storage_.put(name, text);  // 唯一的提交點
+    // 寫出去之後，手上的模型就是這份存檔的完整內容了——下一次存同一個名字不必再問。
+    note_origin(SourceOrigin::Loaded, name, true);
     last_save_ = SaveStatus::Ok;
     last_message_.clear();
     ++stats_.saves;
@@ -1177,8 +1213,23 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
 
 // 「為什麼不讓你覆寫」的人類可讀說明：說得出是哪一種、少了什麼、以及怎麼跨過去。
 std::string EditAssembly::describe_unsafe_target(const std::string& name,
-                                                 const IntakeReport& target) {
+                                                 const IntakeReport& target,
+                                                 SaveStatus verdict) const {
     std::string why;
+    if (verdict == SaveStatus::RefusedSourceNotDerived) {
+        // 來源側：目標是完好的，壞的是「我手上這份模型不是它」。
+        return "目標存檔 '" + name +
+               "' 是完好的，但手上這份佈局並非它的內容（來源：" +
+               std::string(to_string(origin_)) +
+               (origin_ == SourceOrigin::Loaded
+                    ? "，來自 '" + origin_name_ + "'" +
+                          (origin_complete_ ? "" : "（載入時有內容沒帶走）")
+                    : "") +
+               "）；直接覆寫會把 '" + name +
+               "' 的內容換成一份它從來沒有過的佈局。請先成功載入 '" + name +
+               "'，或以 Overwrite::DiscardTargetContent 明示丟棄（原文會先另存為 '" +
+               name + kRejectedSuffix + "'）";
+    }
     if (!target.usable()) {
         why = "目前讀不出來（" + std::string(to_string(target.status)) + "）：" +
               target.message;
@@ -1210,6 +1261,7 @@ std::string EditAssembly::describe_unsafe_target(const std::string& name,
 void EditAssembly::adopt(IntakeReport report) {
     stats_.elements_dropped += report.dropped_elements;
     stats_.fields_repaired += report.repaired_fields;
+    stats_.content_lost += report.lost_content();
     last_message_ = report.message;
     if (report.usable()) {
         state_ = report.state;
@@ -1231,26 +1283,43 @@ IntakeStatus EditAssembly::restore(const std::string& name) {
     }
     IntakeReport rep = ingest_layout_text(text, migrations_);
     const bool usable = rep.usable();
+    const bool complete = rep.carries_everything();
     const IntakeStatus status = rep.status;
     adopt(std::move(rep));
-    if (!usable) {
+    if (usable) {
+        // 載入成功 → 模型源自這份存檔；`complete` 記下當時有沒有東西沒帶走。
+        note_origin(SourceOrigin::Loaded, name, complete);
+    } else {
+        // 載入失敗 → 狀態沒變，來源也沒變（**不會**因此變成「源自 name」）。
         ++stats_.loads_failed;
     }
     return status;
 }
 
-void EditAssembly::reset(const LayoutState& state) { state_ = state; }
+void EditAssembly::reset(const LayoutState& state, const std::string& derived_from) {
+    state_ = state;
+    if (derived_from.empty()) {
+        // 呼叫端沒說這是誰的內容 → 推導關係失效，覆寫既有存檔需要明示丟棄。
+        note_origin(SourceOrigin::Injected, std::string(), false);
+    } else {
+        // 呼叫端的斷言（本層不驗證）：這份狀態就是那個存檔的完整內容。
+        note_origin(SourceOrigin::Loaded, derived_from, true);
+    }
+}
 
 // --- 熱重載 ---
 
-void EditAssembly::attach_source(ds::format::ReloadSource& source) {
+void EditAssembly::attach_source(ds::format::ReloadSource& source,
+                                 const std::string& backing_name) {
     source_ = &source;
+    source_backing_name_ = backing_name;
     reloader_ = std::make_unique<ds::format::HotReloader>(source);
     last_reload_report_.clear();
 }
 
 void EditAssembly::detach_source() noexcept {
     source_ = nullptr;
+    source_backing_name_.clear();
     reloader_.reset();
 }
 
@@ -1275,8 +1344,17 @@ ReloadOutcome EditAssembly::poll_reload() {
     const std::string content = source_->content();  // 按值取用（K-013：不綁臨時物件）
     IntakeReport rep = ingest_layout_text(content, migrations_);
     const bool usable = rep.usable();
+    const bool complete = rep.carries_everything();
     adopt(std::move(rep));
     if (usable) {
+        if (!source_backing_name_.empty()) {
+            // 呼叫端宣告了「這個來源就是那份存檔」：完整重載才保住推導關係。
+            // 有遺失的重載 → 推導關係失效，於是「熱重載丟了一個元件 → 存回去」被擋下。
+            note_origin(SourceOrigin::Loaded, source_backing_name_, complete);
+        } else {
+            // 沒有宣告對應存檔 → 本層不猜它是誰的內容。
+            note_origin(SourceOrigin::Reloaded, std::string(), complete);
+        }
         ++stats_.reloads;
         return ReloadOutcome::Reloaded;
     }

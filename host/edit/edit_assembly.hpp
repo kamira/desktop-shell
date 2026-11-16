@@ -272,6 +272,32 @@ enum class IntakeStatus {
 
 const char* to_string(IntakeStatus status) noexcept;
 
+// ---------------------------------------------------------------------------
+// SourceOrigin —— 記憶體模型是從哪裡來的（覆寫決定的**來源側**輸入）
+// ---------------------------------------------------------------------------
+//
+// 修訂 3 的判據只問了「目標那份檔案帶得全不全」，沒問「即將蓋過去的這份模型，
+// 到底是不是那份目標的完整內容」。於是這條路仍然毀資料（驗收 F5）：
+//
+//   開機 → restore 被拒收（檔案有個 tab）→ 記憶體是空的 → save 被擋（F1 的防線有效）
+//        → **使用者照本層的訊息把 tab 刪掉** → 檔案現在完好
+//        → 下一次 save：目標側檢查全過 → 覆寫 → 使用者的佈局變成 30 bytes
+//
+// **觸發它的是本層自己的拒絕訊息**：叫使用者去修檔案，他照做了，然後資料沒了。
+//
+// 根因是判據單邊。覆寫一份存檔要同時成立兩件事：
+//   - **目標側**：我從目標那裡**帶得全**（`IntakeReport::carries_everything()`）
+//   - **來源側**：我手上這份模型**確實是那份目標的完整內容**（`source_covers(name)`）
+enum class SourceOrigin {
+    Empty,     // 全新：既沒載入也沒編輯過
+    Authored,  // 只由編輯建起，不來自任何具名存檔
+    Loaded,    // 來自某個具名存檔（見 `source_name()` / `source_is_complete()`）
+    Injected,  // `reset()` 注入，來源不明
+    Reloaded,  // 來自一個**未宣告對應存檔**的 `ReloadSource`
+};
+
+const char* to_string(SourceOrigin origin) noexcept;
+
 struct IntakeReport {
     IntakeStatus status = IntakeStatus::Malformed;
     ds::layout::LayoutState state{};          // 僅 usable() 為 true 時有意義
@@ -285,9 +311,15 @@ struct IntakeReport {
     int dropped_elements = 0;      // 整個元件帶不進來（缺 id / 缺 type / 型別錯 / 重複 id）
     int discarded_properties = 0;  // 整個 properties 區塊型別不對而被丟掉
     int unconsumed_keys = 0;       // 檔案裡有、但本層的資料模型根本帶不走的鍵
+    // 幾何鍵的值**不是數字**（`x: center`、`y: {deep: 42}`、`width: [1,2]`）而被換成 0 ——
+    // 那是整個值（可能是整棵子樹）被扔掉，不是把一個數字夾回範圍內（驗收 R12）。
+    // 修訂 3 把它算進 `repaired_fields`，於是它被歸成「自我修復」而放行覆寫；
+    // 「`properties` 整塊型別錯算遺失」的同一個理由本來就適用於此，只是當時沒搬過來。
+    int discarded_values = 0;
 
     // --- 「修好了的東西」：不算遺失 ---
-    // 幾何值被消毒（NaN → 0、負尺寸 → 0、超限 → 夾限）。存回去是**自我修復**，是對的。
+    // 幾何值是**數字**但超出範圍 / 非有限（NaN → 0、負尺寸 → 0、超限 → 夾限）。
+    // 內容的種類沒變，只是被夾回可用範圍，存回去是**自我修復**，是對的。
     int repaired_fields = 0;
 
     // 這份報告帶得出一個可用的佈局。
@@ -298,7 +330,7 @@ struct IntakeReport {
 
     // 本層**沒能帶走**的內容量。覆寫前要問的就是這個數字。
     int lost_content() const noexcept {
-        return dropped_elements + discarded_properties + unconsumed_keys;
+        return dropped_elements + discarded_properties + unconsumed_keys + discarded_values;
     }
 
     // 讀得出來，**而且**檔案裡的每一塊內容都真的進到了記憶體模型裡。
@@ -352,6 +384,7 @@ enum class SaveStatus {
     VerifyFailed,             // 往返自驗不過 —— **不提交**，storage 原封不動
     RefusedUnreadableTarget,  // 目標存檔存在、但本層**讀不出來** → 拒絕覆寫（見下）
     RefusedIncompleteTarget,  // 目標讀得出來，但本層**沒能帶走它的全部內容** → 拒絕覆寫
+    RefusedSourceNotDerived,  // **來源側**：手上的模型不是這個目標的完整內容 → 拒絕覆寫
     RefusedBackupSlotExhausted,  // 明示丟棄，但備份名稱全被占用 → 拒絕（不蓋掉任何東西）
 };
 
@@ -415,6 +448,8 @@ struct EditStats {
     int saves_refused_target = 0;
     // `save()` 因為「目標讀得出來、但本層帶不走它的全部內容」而拒絕覆寫的次數（F4）。
     int saves_refused_incomplete = 0;
+    // `save()` 因為「手上的模型不是這個目標的完整內容」而拒絕覆寫的次數（F5）。
+    int saves_refused_source = 0;
     // 明示丟棄時，把讀不出來的原文另存為 `<name>.rejected` 的次數。
     int rejected_backups = 0;
     int loads = 0;
@@ -423,6 +458,8 @@ struct EditStats {
     int reloads_rejected = 0;
     int elements_dropped = 0;
     int fields_repaired = 0;
+    // 歷次載入中「本層沒能帶走」的內容總量（`IntakeReport::lost_content()` 的累計）。
+    int content_lost = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -516,9 +553,10 @@ public:
     //      而跨過時原文一定先被備份。
     // 兩者皆通過才 `storage_.put()`。提交點仍然只有一個。
     //
-    // **只保護同名目標**（驗收 R7）：本層看的是 `name` 這一份存檔。
-    // 「還原 A 失敗、接著存到 B」不在保護範圍內——本層分不出那是誤存，
-    // 還是使用者刻意從空白建一份新的 B。那需要呼叫端契約，不是本層單方面能決定的。
+    // **修訂 3 的「只保護同名目標」那句話是假的**（驗收 R7 / F5）：F5 的場景就是同名目標，
+    // 而它沒被保護到——因為當時的判據只看目標，沒看來源。修訂 4 的對稱判據同時關上了
+    // 同名與跨 profile 兩種路徑：「還原 A 失敗 → 存到 B」現在也會被來源側擋下
+    // （`B` 存在且完好，但手上的模型不是 `B` 的內容）。
     SaveStatus save(const std::string& name, Overwrite policy = Overwrite::Refuse);
     IntakeStatus restore(const std::string& name);
 
@@ -527,7 +565,29 @@ public:
     // **與 `save()` 用同一個述詞**，不得給出比 `save()` 寬鬆的答案。
     SaveStatus dry_run_save(const std::string& name = std::string()) const;
 
-    // 覆寫 `name` 會不會丟掉使用者的內容。
+    // --- 覆寫決定的單一述詞（`save` / `dry_run_save` / `target_is_safe_to_overwrite`
+    //     三者共用，不得各自為政）---
+    //
+    // 回傳 `save(name, Overwrite::Refuse)` 現在會不會被擋下來，以及為什麼：
+    //   `Ok`                        → 不會
+    //   `RefusedUnreadableTarget`   → 目標讀不出來
+    //   `RefusedIncompleteTarget`   → 目標讀得出來但本層帶不走它的全部內容
+    //   `RefusedSourceNotDerived`   → 手上的模型不是這個目標的完整內容（來源側）
+    // `target` 非 null 時寫入目標的 `IntakeReport`（目標不存在則為 `NotFound`）。
+    SaveStatus overwrite_check(const std::string& name, IntakeReport* target = nullptr) const;
+
+    // --- 來源側：我手上這份模型是從哪裡來的 ---
+    SourceOrigin source_origin() const noexcept { return origin_; }
+    // `source_origin() == Loaded` 時為來源存檔的名稱，否則為空字串。
+    const std::string& source_name() const noexcept { return origin_name_; }
+    // 該次載入有沒有把來源的內容完整帶進來。
+    bool source_is_complete() const noexcept { return origin_complete_; }
+    // 本層手上的模型是不是 `name` 的完整內容（＝來源側的述詞）。
+    bool source_covers(const std::string& name) const noexcept {
+        return origin_ == SourceOrigin::Loaded && origin_complete_ && origin_name_ == name;
+    }
+
+    // 覆寫 `name` 會不會丟掉使用者的內容（＝`overwrite_check(name) == SaveStatus::Ok`）。
     //   - storage 裡沒有這個名字 → true（沒有東西會被毀掉）。
     //   - 讀得出來**且**本層帶得走它的全部內容 → true。
     //   - 讀不出來，或讀得出來但有元件 / properties / 鍵帶不走 → **false**。
@@ -540,6 +600,11 @@ public:
     bool target_is_safe_to_overwrite(const std::string& name,
                                      IntakeReport* report = nullptr) const;
 
+    // 下一個會被用到的備份名稱（`<name>.rejected`、`.rejected.2`……）。
+    // 全部占用 → 回 false（`save()` 此時會回 `RefusedBackupSlotExhausted`）。
+    // 公開是為了讓呼叫端能在詢問使用者「要丟棄嗎」時**說出備份會叫什麼**（驗收 R14）。
+    bool next_backup_name(const std::string& name, std::string& out) const;
+
     // --- 遷移鏈（E7-08）---
     // 註冊給載入路徑用的遷移登錄。以**指標**持有，呼叫端負責存活期；null = 解除。
     void set_migrations(const ds::format::MigrationRegistry* migrations) noexcept {
@@ -548,7 +613,17 @@ public:
 
     // --- 熱重載（E7-07）---
     // 接上來源；來源必須活得比本物件久（K-013）。重複呼叫會換掉前一個。
-    void attach_source(ds::format::ReloadSource& source);
+    //
+    // `backing_name` 宣告「這個來源就是該具名存檔的內容」（相位 2 的真實檔案監看即如此）。
+    // 宣告之後，一次**完整**的重載會把來源側的推導關係更新為那個名字，於是
+    // 「重載 → 存回同一個名字」照常可行；一次**有遺失**的重載則不會，於是
+    // 「熱重載丟掉了一個元件 → 存回去把它刪掉」被擋下（驗收表第 18 / 19 列）。
+    //
+    // **不宣告**（預設）時本層不猜：`ReloadSource` 與 storage 在相位 1 是兩個互不相識的
+    // 物件，本層無從得知它們是不是同一份內容。此時重載後的模型來源為 `Reloaded`，
+    // 覆寫任何既有存檔都需要明示丟棄。
+    void attach_source(ds::format::ReloadSource& source,
+                       const std::string& backing_name = std::string());
     void detach_source() noexcept;
     bool has_source() const noexcept { return source_ != nullptr; }
     // 來源變更才重新讀入。失敗一律**保留舊佈局**（E7-07 同一條原則）並回 `Rejected`。
@@ -562,7 +637,12 @@ public:
     // --- 可觀測性 ---
     const ds::layout::LayoutState& state() const noexcept { return state_; }
     // 直接換掉整份佈局（供呼叫端從別處取得狀態；**不**消毒，故另有 save() 的往返自驗把關）。
-    void reset(const ds::layout::LayoutState& state);
+    //
+    // `derived_from` 讓呼叫端**宣告**「這份狀態就是該具名存檔的完整內容」
+    // （例如 undo/redo 的快照）。不宣告時來源為 `Injected`，覆寫任何既有存檔都需要明示丟棄
+    // ——本層無從得知一份從外面塞進來的狀態是誰的內容。宣告是呼叫端的斷言，本層不驗證。
+    void reset(const ds::layout::LayoutState& state,
+               const std::string& derived_from = std::string());
     const EditStats& stats() const noexcept { return stats_; }
     void reset_stats() noexcept { stats_ = EditStats{}; }
     EditStatus last_edit_status() const noexcept { return last_edit_; }
@@ -585,11 +665,13 @@ private:
     // 序列化目前狀態並往返自驗；通過才把文字寫進 `text`。
     SaveStatus serialize_verified(std::string& text, std::string& message) const;
     // 「為什麼不讓你覆寫」的人類可讀說明（說得出是哪一種、少了什麼、怎麼跨過去）。
-    static std::string describe_unsafe_target(const std::string& name,
-                                              const IntakeReport& target);
+    std::string describe_unsafe_target(const std::string& name, const IntakeReport& target,
+                                      SaveStatus verdict) const;
     // 找一個沒被占用的備份名稱（`<name>.rejected`、`.rejected.2`…）。
     // 全部占用 → 回 false（呼叫端轉為 `RefusedBackupSlotExhausted`）。
-    bool free_backup_name(const std::string& name, std::string& out) const;
+    // 記下模型的來源（載入成功 / 存檔成功 / 編輯 / 注入）。
+    void note_origin(SourceOrigin origin, const std::string& name, bool complete);
+    void note_authored();
     // 往返前後第一個對不上的地方（人類可讀；`VerifyFailed` 的訊息用）。
     static std::string describe_mismatch(const ds::layout::LayoutState& before,
                                          const ds::layout::LayoutState& after);
@@ -600,6 +682,10 @@ private:
     ds::layout::LayoutState state_{};
     const ds::format::MigrationRegistry* migrations_ = nullptr;
     ds::format::ReloadSource* source_ = nullptr;
+    std::string source_backing_name_;  // attach_source 宣告的對應存檔名（可為空）
+    SourceOrigin origin_ = SourceOrigin::Empty;
+    std::string origin_name_;
+    bool origin_complete_ = false;
     std::unique_ptr<ds::format::HotReloader> reloader_;
     std::string last_reload_report_;
     EditStats stats_{};
