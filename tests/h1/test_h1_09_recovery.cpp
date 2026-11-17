@@ -1309,6 +1309,100 @@ TEST(OverwriteMatrix, ExternalEditIsNotSilentlyDeleted) {
     EXPECT_NE(after.find("net"), std::string::npos);
 }
 
+// R18：覆寫檢查對**任何**輸入都不得丟出例外。
+//
+// `reset()` 是標頭明文「不消毒」的公開後門，所以 `baseline_` 裡真的可能出現
+// `properties` 不是 Map 也不是 Null 的元件。修訂 5 的第 4 道閘用 `LayoutState::operator==`
+// 比對，而它經 E9-05 的 `normalized_properties()` 對那種狀態**會 throw**
+// ——於是「為了讓呼叫端在存檔前先問」而新增的 `target_is_safe_to_overwrite()`
+// 反而把例外丟回呼叫端，破掉標頭「公開 API 一律不 throw」那條契約。
+TEST(OverwriteMatrix, OverwriteCheckNeverThrowsOnUnsanitisedState) {
+    ds::layout::MemoryLayoutStorage storage;
+    const std::string good = good_layout_text();
+    storage.put("d", good);
+    EditAssembly app(storage);
+
+    // 經公開後門注入 properties 既非 Map 也非 Null 的狀態（E9-05 的比較會對它 throw）。
+    //
+    // **元件數與 id / type 必須與目標一致**，否則 `std::vector::operator==` 先比長度、
+    // `LayoutElement::operator==` 先比 id / type，兩者都會在碰到 properties 之前短路，
+    // 那個 throw 就走不到——第一版的這支測試正是這樣，M62（把 throw 放回去）存活。
+    ds::layout::LayoutState bogus = ingest_layout_text(good).state;
+    ASSERT_EQ(bogus.elements.size(), 2u);
+    bogus.elements[0].properties = Value::number(42);  // ← 不是 Map、也不是 Null
+    app.reset(bogus, "d");  // 宣告來源，才會真的走到第 4 道閘的比較
+
+    // 四個入口**都不得 throw**，而且都要給出具名狀態。
+    SaveStatus check = SaveStatus::Ok;
+    EXPECT_NO_THROW(check = app.overwrite_check("d"));
+    EXPECT_NE(check, SaveStatus::Ok);
+    bool safe = true;
+    EXPECT_NO_THROW(safe = app.target_is_safe_to_overwrite("d"));
+    EXPECT_FALSE(safe);
+    SaveStatus dry = SaveStatus::Ok;
+    EXPECT_NO_THROW(dry = app.dry_run_save("d"));
+    EXPECT_NE(dry, SaveStatus::Ok);
+    SaveStatus saved = SaveStatus::Ok;
+    EXPECT_NO_THROW(saved = app.save("d"));
+    EXPECT_NE(saved, SaveStatus::Ok);
+
+    // 而且資料沒有被毀。
+    std::string after;
+    ASSERT_TRUE(storage.get("d", after));
+    EXPECT_EQ(after, good);
+
+    // Null 與空 Map 必須仍視為相同（E9-05 對**合法**輸入的語意不得被這次修法改掉）：
+    // 目標的元件沒有 properties → 讀進來是空 Map；宣告的 baseline 用 Null。
+    {
+        ds::layout::MemoryLayoutStorage st2;
+        st2.put("e",
+                "format_version: 1.0\n"
+                "elements:\n"
+                "  -\n"
+                "    id: cpu\n"
+                "    type: bar\n");
+        EditAssembly app2(st2);
+        ds::layout::LayoutState null_props;
+        ds::layout::LayoutElement ne;
+        ne.id = "cpu";
+        ne.type = "bar";
+        ne.properties = Value::null();  // 合法：E9-05 把 Null 當成空 Map
+        null_props.elements.push_back(ne);
+        app2.reset(null_props, "e");
+        EXPECT_EQ(app2.overwrite_check("e"), SaveStatus::Ok);
+    }
+
+    // 其他會比較 LayoutState 的入口同樣不 throw（含目標不存在、目標讀不出來）。
+    EXPECT_NO_THROW((void)app.overwrite_check("never_saved"));
+    storage.put("broken", unreadable_layout_text());
+    EXPECT_NO_THROW((void)app.overwrite_check("broken"));
+    EXPECT_NO_THROW((void)app.save("broken", ds::host::edit::Overwrite::DiscardTargetContent));
+}
+
+// R19：第 4 道閘比的是解析後的 `LayoutState`，**不是位元組**。
+// 只改註解 / 空行 / 縮排寬度不會觸發它 —— 那些東西本來就不在資料模型裡。
+TEST(OverwriteMatrix, CommentAndFormattingChangesDoNotCountAsAChangedTarget) {
+    ds::layout::MemoryLayoutStorage storage;
+    const std::string good = good_layout_text();
+    storage.put("d", good);
+    EditAssembly app(storage);
+    ASSERT_EQ(app.restore("d"), IntakeStatus::Ok);
+
+    // 使用者在檔案裡加了註解與空行，但一個設定值都沒改。
+    const std::string commented = "# 我的桌面佈局\n\n" + good + "\n";
+    storage.put("d", commented);
+    ASSERT_EQ(ingest_layout_text(commented).state, ingest_layout_text(good).state);
+
+    EXPECT_EQ(app.save("d"), SaveStatus::Ok) << app.last_message();
+    EXPECT_EQ(app.stats().saves_refused_changed, 0);
+
+    // 對照：真的改到內容就會被擋（這一條已由 ExternalEditIsNotSilentlyDeleted 釘住，
+    // 此處只確認兩者的分界就在「解析後的 state 有沒有變」）。
+    ASSERT_EQ(app.restore("d"), IntakeStatus::Ok);
+    storage.put("d", good_plus_text());
+    EXPECT_EQ(app.save("d"), SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
 // 反方向（**不得回歸**）：使用者自己刪掉一個元件，存回去必須成功。
 // 只比內容不比 baseline 會把這條擋死 —— 目標有、模型沒有，但那是使用者**自己刪的**。
 TEST(OverwriteMatrix, UserDeletionsAreStillAllowed) {

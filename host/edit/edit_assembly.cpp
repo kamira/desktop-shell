@@ -135,6 +135,44 @@ Value as_props(const Value& v) {
     return v.is_map() ? v : Value::map({});
 }
 
+// --- LayoutState 的**全域**比較（任何輸入都給得出答案，不 throw）---
+//
+// 為什麼不能直接用 E9-05 的 `LayoutState::operator==`：它經由
+// `normalized_properties()` 比較 properties，而那個函式對「既非 Map 也非 Null」
+// **會 throw**（`layout_store.cpp`）。本層的 `reset()` 是標頭明文「不消毒」的公開後門，
+// 所以 `baseline_` 裡真的可能出現 `properties` 是 Number 的元件——於是
+// `overwrite_check()` / `target_is_safe_to_overwrite()` 會把例外丟回呼叫端，
+// 破掉標頭 §「公開 API 一律不 throw」那條契約（驗收 R18，修訂 5 引進的回歸：
+// 在那之前 `overwrite_check()` 從不比較 `LayoutState`）。
+//
+// **不用 try/catch 包起來**：那會把「我不知道這兩個狀態是不是一樣」偽裝成一個答案。
+// 改成問一個本來就有答案的問題——`ds::format::Value::operator==` 是全域的（只比型別與
+// 內容，不 throw），而 Null 與空 Map 視為相同只是沿用 E9-05 對**合法**輸入的語意。
+// 非法的 properties（Number / String / List）就誠實地「與任何 Map 都不相等」。
+bool same_properties(const Value& a, const Value& b) {
+    // `Value::size()` 對非容器型別會 throw，所以 `is_map()` 必須短路在前。
+    const bool a_empty = a.is_null() || (a.is_map() && a.size() == 0);
+    const bool b_empty = b.is_null() || (b.is_map() && b.size() == 0);
+    if (a_empty || b_empty) {
+        return a_empty && b_empty;
+    }
+    return a == b;
+}
+
+bool same_layout(const LayoutState& a, const LayoutState& b) {
+    if (a.elements.size() != b.elements.size()) {
+        return false;
+    }
+    for (std::size_t i = 0; i < a.elements.size(); ++i) {
+        const LayoutElement& x = a.elements[i];
+        const LayoutElement& y = b.elements[i];
+        if (x.id != y.id || x.type != y.type || !same_properties(x.properties, y.properties)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // 取 Map 內的 double（缺鍵 / 非 Number → fallback）。
 double number_or(const Value& props, const char* key, double fallback) {
     const Value* v = props.find(key);
@@ -1092,7 +1130,7 @@ SaveStatus EditAssembly::overwrite_check(const std::string& name,
     } else if (!source_covers(name)) {
         // 來歷側：目標是完好的，但我手上這份模型**不是源自它**。
         verdict = SaveStatus::RefusedSourceNotDerived;
-    } else if (!(target.state == baseline_)) {
+    } else if (!same_layout(target.state, baseline_)) {
         // **統一判據**（F6）：目標在我上次看過它之後被改過，所以它現在有一些
         // **本 session 從未見過**的內容。覆寫會把那些內容刪掉。
         //
@@ -1214,7 +1252,12 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
         // `target.state == state_` 仍可能成立，但覆寫**還是**會毀掉那些沒被帶走的內容。
         // 第一版寫成 `usable()`，`ExplicitDiscardWorksForPartiallyCarriedTargetsToo`
         // 當場紅燈（備份沒產生）。
-        const bool would_lose = !target.carries_everything() || !(target.state == state_);
+        // 同樣用全域比較：`state_` 一樣可能來自未消毒的 `reset()`（R18）。
+        // 今日這一行走到時 `serialize_verified()` 已經成功，所以 `state_` 必為可序列化，
+        // 但讓「本檔案裡的 LayoutState 比較一律不 throw」成為一條不變式，比依賴
+        // 「呼叫順序剛好保護了它」可靠。
+        const bool would_lose =
+            !target.carries_everything() || !same_layout(target.state, state_);
         if (would_lose && storage_.get(name, existing)) {
             if (!next_backup_name(name, backup)) {
                 last_save_ = SaveStatus::RefusedBackupSlotExhausted;

@@ -413,7 +413,13 @@ enum class SaveStatus {
     RefusedUnreadableTarget,  // 目標存檔存在、但本層**讀不出來** → 拒絕覆寫（見下）
     RefusedIncompleteTarget,  // 目標讀得出來，但本層**沒能帶走它的全部內容** → 拒絕覆寫
     RefusedSourceNotDerived,  // **來源側**：手上的模型不是這個目標的完整內容 → 拒絕覆寫
-    RefusedTargetChangedSinceLoad,  // 目標在我上次看過它之後**被改過** → 拒絕覆寫
+    // 目標在我上次看過它之後**被改過** → 拒絕覆寫。
+    //
+    // **比的是解析後的 `LayoutState`，不是位元組**（驗收 R19）：只改註解、空行、縮排寬度、
+    // 或 `1.00` vs `1.0` 這類字面寫法**不會**觸發它——那些東西本來就不在本層的資料模型裡，
+    // 覆寫它們不會刪掉任何內容（見「覆寫判據」一節最後一列的取捨）。
+    // 呼叫端不要把它當成「偵測任何位元組變動」的機制。
+    RefusedTargetChangedSinceLoad,
     RefusedBackupSlotExhausted,  // 明示丟棄，但備份名稱全被占用 → 拒絕（不蓋掉任何東西）
 };
 
