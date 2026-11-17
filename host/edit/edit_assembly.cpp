@@ -150,57 +150,54 @@ Value as_props(const Value& v) {
 // 對任何型別組合都有答案、不 throw；而 Null 與空 Map 視為相同只是沿用 E9-05 對**合法**
 // 輸入的語意。非法的 properties（Number / String / List）就誠實地「與任何 Map 都不相等」。
 //
-// --- 這一層刻意比 `ds::format::Value::operator==` **寬**的兩個軸（驗收 R19 / R21）---
+// --- 語意與 `ds::format::Value::operator==` **相同**；差別只在結構（驗收 R18 / F8）---
 //
 // 上游 `Value::operator==` 對 Number 比的是 `integral_ == o.integral_ && num_ == o.num_`
 // （原始碼註解：「1 與 1.0 視為不同節點，來源型別有別」），對 Map 是**保序比較**
-// （`document.cpp`）。那是上游刻意的語意，**本層不去改它**——放寬只做在這裡。
+// （`document.cpp`）。**本層要的就是那個語意**，下面的述詞逐條照抄它。
 //
-// 為什麼放寬是對的（修訂 7 的承重論證，人類裁定）：
-// 這一層的 `save()` 本來就會**重新序列化**，把註解與縮排全部毀掉——而第 4 道閘的設計
-// 本身也承認那一點（「覆寫它們不會刪掉任何內容」）。既然如此，**數值的字面寫法
-// （`1` vs `1.0`）與 properties 的鍵序，照這一層自己的標準也不是內容**：
-// 兩份文件若只差在這兩個軸上，這一層帶走的每一個欄位都一模一樣，覆寫不會丟掉任何
-// 它帶得走的東西。放寬是讓述詞與這一層**實際的行為**一致，不是放水。
-// （修訂 6 把這件事寫成註解卻沒做出來，於是使用者把本層自己寫出來的 `x: 1.0` 改成
-// `x: 1` 就存不了檔——V1.13 的阻擋項 F7。）
+// 那為什麼不乾脆寫 `a == b`？因為本檔要的不只是語意，還要上面那條**結構上**的保證：
+// 「這一層對 `LayoutState` 的比較，對任何輸入都給得出答案而不丟例外」。直接呼叫上游的
+// 運算子等於把那條不變式寄託在「上游某個函式今天剛好不丟例外」——而同一個上游檔案裡的
+// `LayoutState::operator==` 就是反例（`normalized_properties()` 會 throw）。
+// 所以不變式由本檔自己持有：逐條照抄語意，但每個存取子都由 `type()` 短路在前。
+// **收回修訂 7 的放寬，不等於把 R18 一起退回去**：改的只有語意，遞迴與短路的結構原樣保留。
 //
-// **不放寬的兩個軸，以及為什麼**：
+// --- 修訂 8：修訂 7 的兩個放寬都收回，而且「會觸發」才是對的（驗收 F8）---
+//
+// 修訂 7 曾放寬兩個軸（Number 不比 `integral_`、Map 不比鍵序），承重論證是
+// 「兩份文件若只差在這兩個軸，本層帶得走的每一個欄位都一模一樣，覆寫不會丟掉任何它帶得走
+// 的東西」。**那句話是假的**，V1.15 的阻擋項 F8 把它量倒了：`integral_` 不是字面寫法，
+// 它在 `state_` 裡，而且**本層自己會據它分支**——`write_property()` 對既有的鍵走 E7-14 的
+// `apply_edit()`，而 E7-14 的 `infer_kind()` 寫的是
+// `v.is_integer() ? EditKind::Integer : EditKind::Number`
+// （`engine/format/editor_model.cpp:27`），`validate_edit` 於是拒收 Integer 欄位的非整數
+// Number（同檔第 297 行）。用**公開 API** 量出來的差別（不需要 `reset()` 後門）：
+//
+//     存檔寫 x: 1    → restore 後 is_integer=1 → drag_element("cpu", 0.5, 0)
+//                      = RejectedByModel（掛件拖不動），最後的 x 還是 1
+//     存檔寫 x: 1.0  → restore 後 is_integer=0 → drag_element("cpu", 0.5, 0) = Ok
+//                      → set_placement(x = 2.5) = Ok（拖得動）
+//
+// 於是使用者把自己檔案裡的 `x: 1` 改成 `x: 1.0`（他要的就是「能拖」），放寬後的述詞判成
+// 「沒改」，`save()` 把它**無聲改回 `1`**（無訊息、無備份），掛件又拖不動了。
+// **嚴格不是缺陷，是在保護內容**：拒絕用 `1` 覆寫使用者的 `1.0` 正是第 4 道閘的職責。
+// 註解與縮排可以被 `save()` 的重新序列化毀掉，因為它們**根本不在資料模型裡**；
+// `integral_` 在，所以它不在那個取捨的範圍內。
+//
+// 鍵序一併收回：上游是保序比對，而「鍵序沒有語意所以放寬是安全的」這個論證**沒有人做過**
+// （修訂 7 留下的 `same_map_unordered()` 連註解裡的理由都寫反了——多重集在重複鍵下比
+// 「用鍵查一次」**更寬**，不是更嚴，見 V1.15 的 R24）。本層不留沒論證過的放寬。
+//
+// **同樣不放寬的另外兩個軸**：
 //   - **元件順序**（`same_layout()` 逐索引比對）：`resolve_draws()` 依 `state_.elements`
 //     的順序產出 `PlacedDraw` 向量，順序原封帶給繪製層——元件順序**就是**繪製／疊放
 //     順序，是內容。把兩個元件上下對調確實改變了使用者看到的畫面。
 //   - **List 的順序**：`Value` 的 List 有序是 E7-01 的語意，順序有意義。
-bool same_value(const Value& a, const Value& b);
 
-// Map 的鍵是具名屬性，順序沒有語意 → 以**多重集**比對。
-// 用「配對過的就劃掉」而不是「用鍵查一次」：Map 的鍵本該唯一，但 `Value::map()` 工廠
-// 不強制，重複鍵不能互相抵銷。
-bool same_map_unordered(const Value& a, const Value& b) {
-    const std::vector<Value::Member>& am = a.as_map();
-    const std::vector<Value::Member>& bm = b.as_map();
-    if (am.size() != bm.size()) {
-        return false;
-    }
-    std::vector<bool> taken(bm.size(), false);
-    for (const Value::Member& x : am) {
-        bool matched = false;
-        for (std::size_t j = 0; j < bm.size(); ++j) {
-            if (!taken[j] && bm[j].first == x.first && same_value(x.second, bm[j].second)) {
-                taken[j] = true;
-                matched = true;
-                break;
-            }
-        }
-        if (!matched) {
-            return false;
-        }
-    }
-    return true;
-}
-
-// 兩個 `Value` 在「本層帶得走的內容」這個尺度上是不是同一份東西。**遞迴**（巢狀 Map 裡的
-// 數值寫法與鍵序一樣放寬），而且對任何輸入都給得出答案：每個存取子都由 `type()` 短路在
-// 前，所以**不 throw**（R18 的不變式）。
+// 兩個 `Value` 在「本層帶得走的內容」這個尺度上是不是同一份東西。**遞迴**，語意逐條與上游
+// `Value::operator==` 相同（Number 連整數旗標一起比、Map 保序、List 有序），而且對任何輸入
+// 都給得出答案：每個存取子都由 `type()` 短路在前，所以**不 throw**（R18 的不變式）。
 bool same_value(const Value& a, const Value& b) {
     if (a.type() != b.type()) {
         return false;
@@ -211,10 +208,13 @@ bool same_value(const Value& a, const Value& b) {
         case ds::format::ValueType::Bool:
             return a.as_bool() == b.as_bool();
         case ds::format::ValueType::Number:
-            // **只比 `num_`，不比 `integral_`**：`1` 與 `1.0` 是同一個數。
+            // **整數旗標一起比**：`1` 與 `1.0` 不是同一份內容——它決定 E7-14 的
+            // `infer_kind()` 把這個欄位推斷成 `EditKind::Integer` 還是 `EditKind::Number`
+            // （`engine/format/editor_model.cpp:27`），進而決定這一層接不接受某個編輯。
+            // 兩邊都是 Number，所以 `is_integer()` 就是上游的 `integral_`（它自己 noexcept）。
             // NaN 與任何東西都不相等（含自己）——與上游一致，而且方向安全：
             // 判成「被改過」＝拒絕覆寫，不會放行一次毀資料的寫入。
-            return a.as_number() == b.as_number();
+            return a.is_integer() == b.is_integer() && a.as_number() == b.as_number();
         case ds::format::ValueType::String:
             return a.as_string() == b.as_string();
         case ds::format::ValueType::List: {
@@ -230,8 +230,20 @@ bool same_value(const Value& a, const Value& b) {
             }
             return true;
         }
-        case ds::format::ValueType::Map:
-            return same_map_unordered(a, b);
+        case ds::format::ValueType::Map: {
+            // **保序比對**（與上游一致）：鍵序不放寬，鍵與值都逐位比。
+            const std::vector<Value::Member>& am = a.as_map();
+            const std::vector<Value::Member>& bm = b.as_map();
+            if (am.size() != bm.size()) {
+                return false;
+            }
+            for (std::size_t i = 0; i < am.size(); ++i) {
+                if (am[i].first != bm[i].first || !same_value(am[i].second, bm[i].second)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
     return false;  // 值域外的 type()（今日不可達；不寫 default 才讓新增型別變成警告）
 }
@@ -246,7 +258,7 @@ bool same_properties(const Value& a, const Value& b) {
     return same_value(a, b);
 }
 
-// **元件以索引逐一比對，順序不放寬**（R21 只放寬 properties 的鍵序，不含元件順序）：
+// **元件以索引逐一比對，順序不放寬**（修訂 8 收回放寬之後，這一層一個軸都沒有放寬）：
 // `resolve_draws()` 依 `state_.elements` 的順序產出 `PlacedDraw` 向量並原封帶給繪製層，
 // 所以元件順序就是繪製／疊放順序——它是內容，不是排版。把兩個元件上下對調**必須**
 // 被判成「目標被改過」。

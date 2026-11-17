@@ -1404,12 +1404,21 @@ TEST(OverwriteMatrix, CommentAndFormattingChangesDoNotCountAsAChangedTarget) {
 }
 
 // ---------------------------------------------------------------------------
-// 第 4 道閘的述詞：到底什麼算「目標被改過」（R19 / R20 / R21，修訂 7）
+// 第 4 道閘的述詞：到底什麼算「目標被改過」（R19 / R20 / R23，修訂 8）
 // ---------------------------------------------------------------------------
 // 標頭在 `RefusedTargetChangedSinceLoad` 上列了兩張清單（會 / 不會觸發它）。
 // **這一組的存在就是為了讓那兩張清單的每一項都有一支測試**——修訂 6 的那段註解宣稱四項
 // 只測了兩項，倒下的恰好是沒測的那一類（V1.13 的阻擋項 F7）。所以這裡一個情境一支斷言，
 // 不共用、不合併。
+//
+// **修訂 8 改了這一組裡三支的期望值，不是為了讓它變綠**：修訂 7 為了修 F7 把
+// 「數值字面寫法」與「鍵序」兩個軸放寬，V1.15 的阻擋項 F8 證明數值那一軸放寬會
+// **毀掉使用者的編輯**——`integral_` 不是字面寫法，它決定 E7-14 把欄位推斷成
+// `EditKind::Integer` 還是 `EditKind::Number`（`engine/format/editor_model.cpp:27`），
+// 進而決定這一層接不接受某個編輯。人類裁定收回兩個放寬、把註解寫成真的。
+// **所以「會觸發」才是對的：拒絕覆寫是在保護內容。** 每一支改了期望值的測試旁邊都寫了
+// 為什麼拒絕是對的，機制本身由
+// `IntegerLiteralIsContentBecauseItDecidesWhetherTheWidgetCanBeDragged` 實測釘住。
 //
 // 原文一律由 API 自己寫出來（`good_layout_text()`，裡面是 `x: 1.0` 這種寫法），
 // 走的路也是使用者真正會走的那條：載入 → 使用者拿編輯器改 storage 裡的原文 → 存檔。
@@ -1515,22 +1524,30 @@ TEST(ChangedTargetPredicate, ExtraDecimalZeroIsNotAChange) {
     EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
 }
 
-// (e) `1.0` → `1`：**F7 的那一條**。本層自己寫出來的是 `x: 1.0`，使用者把它改成更順眼的
-// `x: 1`——同一個數、同一份內容，修訂 6 當場 `RefusedTargetChangedSinceLoad`，存不了檔。
-TEST(ChangedTargetPredicate, DroppingTheDecimalPointIsNotAChange) {
+// (e) `1.0` → `1`：**修訂 8 把期望值改回拒絕**（V1.15 的阻擋項 F8）。
+// 為什麼拒絕才是對的：使用者把 `x: 1.0` 改成 `x: 1` 不只是換個寫法，他把那個欄位
+// **收緊成整數**了——E7-14 的 `infer_kind()` 會據整數旗標把它推成 `EditKind::Integer`
+// （`engine/format/editor_model.cpp:27`），`validate_edit` 從此拒收非整數值，那個掛件
+// 就拖不到小數座標了。本層手上的模型帶著「非整數」那一版，覆寫會把使用者加上去的約束
+// 無聲拿掉。**那是內容遺失，所以第 4 道閘必須擋。**
+// 機制的實測在 `IntegerLiteralIsContentBecauseItDecidesWhetherTheWidgetCanBeDragged`。
+TEST(ChangedTargetPredicate, DroppingTheDecimalPointIsAChange) {
     const std::string good = good_layout_text();
     const std::string edited = swap_once(good, "x: 1.0\n", "x: 1\n");
-    expect_target_is_intact(edited);
-    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+    expect_target_is_intact(edited);  // 那份檔案本身完好 → 判定必須落在第 4 道閘
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::RefusedTargetChangedSinceLoad);
 }
 
-// (f) `1` → `1.0`：**F7 的另一條**，反方向。baseline 這一側是整數字面值。
-TEST(ChangedTargetPredicate, AddingADecimalPointIsNotAChange) {
+// (f) `1` → `1.0`：反方向，**這一格就是 F8 的最小形狀**。使用者的存檔是整數寫法
+// （手寫的、或別的工具寫的），他把 `x: 1` 改成 `x: 1.0`——**他要的就是「能拖」**。
+// 修訂 7 判成「沒改」，`save()` 於是把它改回 `1`，掛件又拖不動了：那是真的內容遺失，
+// 而且無訊息、無備份。**拒絕覆寫才是對的。**
+TEST(ChangedTargetPredicate, AddingADecimalPointIsAChange) {
     const std::string good = good_layout_text();
     const std::string integral = swap_once(good, "x: 1.0\n", "x: 1\n");
     // 這一輪的「原文」是使用者手寫的整數版，改回帶小數點的版本。
     expect_target_is_intact(good);
-    EXPECT_EQ(verdict_after_hand_edit(integral, good), SaveStatus::Ok);
+    EXPECT_EQ(verdict_after_hand_edit(integral, good), SaveStatus::RefusedTargetChangedSinceLoad);
 }
 
 // (g) 指數寫法（同值）：整數尾數與小數尾數兩種形狀都測。
@@ -1561,21 +1578,134 @@ TEST(ChangedTargetPredicate, ControlAnUntouchedFileIsNotAChange) {
     EXPECT_EQ(verdict_after_hand_edit(good, good), SaveStatus::Ok);
 }
 
+// --- F8 的回歸測試：`1` 與 `1.0` 的差別是本層自己的功能 ---
+
+// 這一支不是「改個期望值讓它綠」，它把 F8 的因果鏈**整條用公開 API 量出來**：
+//   (1) 存檔寫 `x: 1` → 那個掛件**拖不動**（`RejectedByModel`）；寫 `x: 1.0` → 拖得動。
+//       機制：E7-01 給整數字面值設整數旗標 → E7-14 的 `infer_kind()` 推成
+//       `EditKind::Integer`（`engine/format/editor_model.cpp:27`）→ `validate_edit` 拒收
+//       非整數 Number（同檔第 297 行）。
+//   (2) 所以使用者手改 `1` → `1.0` 是在**改內容**，`save()` 不得把它改回去。
+// 第 (2) 段在修訂 7 的實作上是**紅**的：那時 `overwrite_check()` / `dry_run_save()` /
+// `save()` 一律回 `Ok`，檔案被無聲改回 `x: 1`、沒有備份、沒有訊息（V1.15 的 §5.3）。
+TEST(ChangedTargetPredicate, IntegerLiteralIsContentBecauseItDecidesWhetherTheWidgetCanBeDragged) {
+    // 一份只差在 x 的字面寫法的存檔（其餘三個幾何欄位一字不變）。
+    auto file_with_x = [](const char* literal) {
+        return std::string("format_version: 1.0\nelements:\n  -\n    id: cpu\n"
+                           "    type: bar\n    properties:\n      x: ") +
+               literal + "\n      y: 2.0\n      width: 3.0\n      height: 4.0\n";
+    };
+
+    // (1a) 整數字面值 → 拖不動。
+    {
+        ds::layout::MemoryLayoutStorage storage;
+        storage.put("desktop", file_with_x("1"));
+        EditAssembly app(storage);
+        ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok) << app.last_message();
+        ASSERT_EQ(app.size(), 1u);
+        const Value* xv = app.state().elements[0].properties.find("x");
+        ASSERT_NE(xv, nullptr);
+        EXPECT_TRUE(xv->is_integer());
+        EXPECT_EQ(app.drag_element("cpu", 0.5, 0.0), EditStatus::RejectedByModel);
+        // 降級是具名的：訊息說得出是哪個欄位被誰拒收。
+        const std::string why = app.last_message();
+        EXPECT_NE(why.find("'x'"), std::string::npos) << why;
+        LogicalPlacement p;
+        ASSERT_TRUE(app.placement_of("cpu", p));
+        EXPECT_DOUBLE_EQ(p.x, 1.0);  // 真的沒動
+    }
+    // (1b) 非整數字面值（同一個數）→ 拖得動。
+    {
+        ds::layout::MemoryLayoutStorage storage;
+        storage.put("desktop", file_with_x("1.0"));
+        EditAssembly app(storage);
+        ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok) << app.last_message();
+        const Value* xv = app.state().elements[0].properties.find("x");
+        ASSERT_NE(xv, nullptr);
+        EXPECT_FALSE(xv->is_integer());
+        EXPECT_EQ(app.drag_element("cpu", 0.5, 0.0), EditStatus::Ok) << app.last_message();
+        LogicalPlacement p;
+        ASSERT_TRUE(app.placement_of("cpu", p));
+        EXPECT_DOUBLE_EQ(p.x, 1.5);  // 拖動了
+    }
+
+    // (2) F8 本身：載入整數版 → 使用者手改成 `1.0`（他要的就是「能拖」）→ 必須擋。
+    {
+        ds::layout::MemoryLayoutStorage storage;
+        storage.put("desktop", file_with_x("1"));
+        EditAssembly app(storage);
+        ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok);
+        storage.put("desktop", file_with_x("1.0"));  // 使用者拿編輯器改的那一下
+
+        IntakeReport target;
+        EXPECT_EQ(app.overwrite_check("desktop", &target),
+                  SaveStatus::RefusedTargetChangedSinceLoad);
+        // 前提：那份手改過的檔案**完好無缺**，所以擋它的一定是第 4 道閘（不是第 2 道）。
+        EXPECT_EQ(target.status, IntakeStatus::Ok);
+        EXPECT_TRUE(target.carries_everything());
+        EXPECT_EQ(target.lost_content(), 0);
+        // 預檢與 save() 不得各自為政（三個入口都問同一個述詞）。
+        EXPECT_FALSE(app.target_is_safe_to_overwrite("desktop"));
+        EXPECT_EQ(app.dry_run_save("desktop"), SaveStatus::RefusedTargetChangedSinceLoad);
+        EXPECT_EQ(app.save("desktop"), SaveStatus::RefusedTargetChangedSinceLoad);
+        EXPECT_EQ(app.stats().saves_refused_changed, 1);
+
+        // 使用者的編輯**保住了**，一個位元組都沒動（修訂 7 在這裡會看到 `x: 1`）。
+        std::string after;
+        ASSERT_TRUE(storage.get("desktop", after));
+        EXPECT_EQ(after, file_with_x("1.0"));
+
+        // 而且那個掛件還是拖得動的 —— F8 真正毀掉的就是這個能力。
+        EditAssembly again(storage);
+        ASSERT_EQ(again.restore("desktop"), IntakeStatus::Ok);
+        EXPECT_EQ(again.drag_element("cpu", 0.5, 0.0), EditStatus::Ok) << again.last_message();
+    }
+
+    // (3) 反方向也一樣（使用者把 `cap: 10.0` 收緊成 `cap: 10`，為的是只收整數）：
+    //     覆寫會把他加上去的約束無聲拿掉，所以也必須擋。
+    {
+        const std::string loose =
+            "format_version: 1.0\nelements:\n  -\n    id: cpu\n    type: bar\n"
+            "    properties:\n      x: 1.0\n      cap: 10.0\n";
+        const std::string tight = swap_once(loose, "cap: 10.0", "cap: 10");
+        expect_target_is_intact(tight);
+        EXPECT_EQ(verdict_after_hand_edit(loose, tight),
+                  SaveStatus::RefusedTargetChangedSinceLoad);
+        // 機制側：`cap: 10` 之後 E7-14 就不收 10.5 了。
+        ds::layout::MemoryLayoutStorage storage;
+        storage.put("d", tight);
+        EditAssembly app(storage);
+        ASSERT_EQ(app.restore("d"), IntakeStatus::Ok);
+        EXPECT_EQ(app.edit_property("cpu", "cap", Value::number(10.5)),
+                  EditStatus::RejectedByModel);
+        storage.put("d2", loose);
+        EditAssembly app2(storage);
+        ASSERT_EQ(app2.restore("d2"), IntakeStatus::Ok);
+        EXPECT_EQ(app2.edit_property("cpu", "cap", Value::number(10.5)), EditStatus::Ok)
+            << app2.last_message();
+    }
+}
+
 // --- 鍵序、巢狀、以及**不放寬**的那幾個軸 ---
 
-// R21：properties 的鍵是具名屬性，順序沒有語意 → 對調不算改過。
-TEST(ChangedTargetPredicate, PropertyKeyOrderIsNotAChange) {
+// 鍵序：**修訂 8 也把這一格改回拒絕**。上游 `ds::format::Value` 的 Map 是**保序**比對
+// （`document.cpp` 的 `map_ == o.map_`，原始碼明寫「保序比較」），本層照抄那個語意。
+// 修訂 7 曾放寬它，但「鍵序沒有語意所以放寬是安全的」這個論證**從來沒有人做過**——
+// 人類給的選項裡「只放寬鍵序」那一條沒有被選，而這個單元已經兩次被「一句沒測過的話」
+// 擋下（F7 是宣稱、F8 是理由）。**沒論證過的放寬不留在這一層。**
+TEST(ChangedTargetPredicate, PropertyKeyOrderIsAChange) {
     const std::string good = good_layout_text();
     // 把第一個元件的 x / y 兩行上下對調（值一個字沒變）。
     const std::string edited = swap_once(good, "      x: 1.0\n      y: 2.0\n",
                                          "      y: 2.0\n      x: 1.0\n");
-    expect_target_is_intact(edited);
-    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+    expect_target_is_intact(edited);  // 檔案完好 → 判定落在第 4 道閘，不是第 2 道
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::RefusedTargetChangedSinceLoad);
 }
 
-// 放寬是**遞迴**的：巢狀 Map 裡的數值寫法與鍵序一樣不算改過。
+// 述詞是**遞迴**的，兩個方向都要釘：巢狀 Map 裡的字面寫法／鍵序變更**會**觸發它
+// （修訂 8 改回拒絕，理由同上面兩支），而巢狀裡純粹的尾隨零／指數寫法**不會**。
 // （巢狀的 properties 子樹由本層原樣帶走，不是幾何欄位，不會被消毒。）
-TEST(ChangedTargetPredicate, NumbersAndKeyOrderInsideNestedMapsAreNotAChange) {
+TEST(ChangedTargetPredicate, NumbersAndKeyOrderInsideNestedMapsAreAChangeToo) {
     const std::string original =
         "format_version: 1.0\n"
         "elements:\n"
@@ -1587,25 +1717,42 @@ TEST(ChangedTargetPredicate, NumbersAndKeyOrderInsideNestedMapsAreNotAChange) {
         "      theme:\n"
         "        alpha: 1.0\n"
         "        beta: 2\n";
-    const std::string edited =
-        "format_version: 1.0\n"
-        "elements:\n"
-        "  -\n"
-        "    id: cpu\n"
-        "    type: bar\n"
-        "    properties:\n"
-        "      x: 1.0\n"
-        "      theme:\n"
-        "        beta: 2.0\n"   // 巢狀：字面寫法變了
-        "        alpha: 1\n";   // 巢狀：鍵序也對調了
     expect_target_is_intact(original);
-    expect_target_is_intact(edited);
-    EXPECT_EQ(verdict_after_hand_edit(original, edited), SaveStatus::Ok);
 
-    // 對照：巢狀裡**真的**改了值 → 照樣擋。
-    const std::string really = swap_once(edited, "beta: 2.0", "beta: 3.0");
-    EXPECT_EQ(verdict_after_hand_edit(original, really),
+    // (1) 巢狀裡**只**改字面寫法（`beta: 2` → `2.0`，鍵序一字不動）→ 必須擋：
+    //     那個欄位從 Integer 變成 Number，E7-14 從此接受非整數值（editor_model.cpp:27）。
+    const std::string nested_literal = swap_once(original, "        beta: 2\n",
+                                                 "        beta: 2.0\n");
+    expect_target_is_intact(nested_literal);
+    EXPECT_EQ(verdict_after_hand_edit(original, nested_literal),
               SaveStatus::RefusedTargetChangedSinceLoad);
+
+    // (2) 巢狀裡**只**對調鍵序（值一個字沒變）→ 必須擋：上游 Map 是保序比對。
+    const std::string nested_order = swap_once(original,
+                                               "        alpha: 1.0\n        beta: 2\n",
+                                               "        beta: 2\n        alpha: 1.0\n");
+    expect_target_is_intact(nested_order);
+    EXPECT_EQ(verdict_after_hand_edit(original, nested_order),
+              SaveStatus::RefusedTargetChangedSinceLoad);
+
+    // (3) 巢狀裡**真的**改了值 → 照樣擋。
+    const std::string nested_value = swap_once(original, "        beta: 2\n",
+                                               "        beta: 3\n");
+    EXPECT_EQ(verdict_after_hand_edit(original, nested_value),
+              SaveStatus::RefusedTargetChangedSinceLoad);
+
+    // (4) 反方向（**遞迴不得過度嚴格**）：巢狀裡只多寫幾個零 / 改成同值的指數寫法，
+    //     兩者都還在「非整數字面值」那一側，所以不算改過。少了這一格，一個「巢狀一律
+    //     判成被改過」的實作也會全綠。
+    const std::string nested_zeros = swap_once(original, "        alpha: 1.0\n",
+                                               "        alpha: 1.000\n");
+    expect_target_is_intact(nested_zeros);
+    EXPECT_EQ(verdict_after_hand_edit(original, nested_zeros), SaveStatus::Ok);
+
+    const std::string nested_exp = swap_once(original, "        alpha: 1.0\n",
+                                             "        alpha: 0.1e1\n");
+    expect_target_is_intact(nested_exp);
+    EXPECT_EQ(verdict_after_hand_edit(original, nested_exp), SaveStatus::Ok);
 }
 
 // **反向斷言：元件順序絕對不放寬。** `resolve_draws()` 依 `state_.elements` 的順序把
@@ -1674,6 +1821,16 @@ TEST(ChangedTargetPredicate, AddingOrRemovingAPropertyKeyIsAChange) {
 
     // 反方向：從有 label 的那一份把它刪掉。
     EXPECT_EQ(verdict_after_hand_edit(added, good), SaveStatus::RefusedTargetChangedSinceLoad);
+
+    // **鍵在最後一個位置**的增 / 刪也要釘（修訂 8 的突變 M81 找出來的洞）：
+    // 上面三格裡被動到的鍵都在中間，所以「少的那一份是多的那一份的前綴」這個形狀
+    // 一條測試都沒踩到——把鍵數檢查從 `!=` 弱化成 `>` 時，刪掉**最後**一個鍵會被
+    // 判成「沒改」而放行覆寫。保序比對只有在鍵數也被比到時才真的關上這條路。
+    const std::string tail = swap_once(good, "      height: 4.0\n",
+                                       "      height: 4.0\n      label: CPU\n");
+    expect_target_is_intact(tail);
+    EXPECT_EQ(verdict_after_hand_edit(good, tail), SaveStatus::RefusedTargetChangedSinceLoad);
+    EXPECT_EQ(verdict_after_hand_edit(tail, good), SaveStatus::RefusedTargetChangedSinceLoad);
 }
 
 // 同一個鍵、值換了型別（非幾何欄位，不會被消毒掉）→ 算改過。
@@ -2085,6 +2242,86 @@ TEST(DeepNonFiniteGuard, VerifyFailureNamesTheElementWhosePropertiesDidNotRoundT
     // 清掉那個空容器就存得回去了。
     ASSERT_EQ(session.remove_property("a", "cfg"), EditStatus::Ok);
     EXPECT_EQ(session.save("x"), SaveStatus::Ok);
+}
+
+// --- R25：往返自驗（`serialize_verified()`）刻意維持上游**嚴格**的比較 ---
+//
+// `check.state != state_` 問的是另一個問題：**「我自己的序列化有沒有漏掉 `state_` 裡的
+// 東西」**，不是「使用者手改的那份檔案算不算被改過」。它必須保持嚴格，因為 `baseline_`
+// 在 `save()` 成功後是直接拿 `state_` 設的（`note_origin(..., state_)`）——序列化若把
+// 整數旗標寫丟了而自驗放過它，「baseline == 目標現在的內容」這條第 4 道閘的地基就被
+// 悄悄掀掉了，而第 4 道閘正是修訂 8 用來保護那個旗標的那道閘。
+//
+// 這一支釘的是**那個嚴格性會不會被觀測到的條件**：今日的序列化對整數旗標是忠實的
+//（`engine/format/writeback.cpp` 的 `format_double()` 明文補 `.0`，註解寫著「否則再解析
+// 會被當成整數（integral 旗標漂移）」；整數那一側走 `std::to_string(as_int())`）。
+// 正因為忠實，嚴格與放寬的述詞對今日可達的輸入同義——**所以這支測試看守的是那個前提**：
+// 哪天序列化把旗標寫丟了，它會紅，而那正是嚴格比較必須在場的時刻。
+// （V1.15 的 R25 建議「加一支斷言『整數旗標往返後仍然相同』」，就是這一支。）
+TEST(AtomicSave, RoundTripSelfCheckIsStrictAboutTheIntegerFlag) {
+    ds::layout::MemoryLayoutStorage storage;
+    // 整數 / 非整數兩種寫法，在頂層、巢狀 Map、List 裡各出現一次。
+    storage.put("d",
+                "format_version: 1.0\n"
+                "elements:\n"
+                "  -\n"
+                "    id: cpu\n"
+                "    type: bar\n"
+                "    properties:\n"
+                "      x: 1.0\n"
+                "      i: 5\n"
+                "      f: 5.0\n"
+                "      theme:\n"
+                "        a: 7\n"
+                "        b: 7.0\n"
+                "      series:\n"
+                "        - 1\n"
+                "        - 1.0\n");
+    EditAssembly app(storage);
+    ASSERT_EQ(app.restore("d"), IntakeStatus::Ok) << app.last_message();
+
+    // 前提：載入後旗標真的一邊是整數、一邊不是。否則下面比什麼都是空的。
+    const Value& props = app.state().elements[0].properties;
+    ASSERT_NE(props.find("i"), nullptr);
+    ASSERT_NE(props.find("f"), nullptr);
+    ASSERT_TRUE(props.find("i")->is_integer());
+    ASSERT_FALSE(props.find("f")->is_integer());
+
+    // `save()` 成功就代表往返自驗（含那個嚴格比較）通過了。
+    ASSERT_EQ(app.save("d2"), SaveStatus::Ok) << app.last_message();
+
+    // 把寫出去的文字自己讀回來，用**上游嚴格的** `==`（連整數旗標一起比）比對整個
+    // `LayoutState`。這一行就是 `serialize_verified()` 問的那個問題。
+    std::string text;
+    ASSERT_TRUE(storage.get("d2", text));
+    const IntakeReport back = ingest_layout_text(text);
+    ASSERT_EQ(back.status, IntakeStatus::Ok) << back.message;
+    EXPECT_TRUE(back.state == app.state());
+
+    // 逐欄把旗標也直接斷言一次（上面那個 `==` 哪天被改寬，這一道還在）。
+    const Value& rt = back.state.elements[0].properties;
+    ASSERT_NE(rt.find("i"), nullptr);
+    ASSERT_NE(rt.find("f"), nullptr);
+    EXPECT_TRUE(rt.find("i")->is_integer());
+    EXPECT_FALSE(rt.find("f")->is_integer());
+    ASSERT_NE(rt.find("theme"), nullptr);
+    ASSERT_TRUE(rt.find("theme")->is_map());
+    ASSERT_NE(rt.find("theme")->find("a"), nullptr);
+    ASSERT_NE(rt.find("theme")->find("b"), nullptr);
+    EXPECT_TRUE(rt.find("theme")->find("a")->is_integer());
+    EXPECT_FALSE(rt.find("theme")->find("b")->is_integer());
+    ASSERT_NE(rt.find("series"), nullptr);
+    ASSERT_TRUE(rt.find("series")->is_list());
+    ASSERT_EQ(rt.find("series")->as_list().size(), 2u);
+    EXPECT_TRUE(rt.find("series")->as_list()[0].is_integer());
+    EXPECT_FALSE(rt.find("series")->as_list()[1].is_integer());
+
+    // 連起來的後果：旗標忠實 ⇒ 存完再載入，掛件的「拖不拖得動」不會被 save() 改掉。
+    // （`x: 1.0` 那一側；整數那一側的對照在
+    //   `IntegerLiteralIsContentBecauseItDecidesWhetherTheWidgetCanBeDragged`。）
+    EditAssembly reopened(storage);
+    ASSERT_EQ(reopened.restore("d2"), IntakeStatus::Ok);
+    EXPECT_EQ(reopened.drag_element("cpu", 0.5, 0.0), EditStatus::Ok) << reopened.last_message();
 }
 
 TEST(DeepNonFiniteGuard, RemovePropertyContract) {
