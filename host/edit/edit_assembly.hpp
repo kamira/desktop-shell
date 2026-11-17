@@ -416,9 +416,15 @@ enum class SaveStatus {
     // 目標在我上次看過它之後**被改過** → 拒絕覆寫。
     //
     // **比的是解析後的 `LayoutState`，不是位元組**（驗收 R19）。述詞是 `edit_assembly.cpp`
-    // 的 `same_layout()` / `same_properties()` / `same_value()`；下面兩張清單的每一項都有
+    // 的 `same_layout()` / `same_properties()` / `same_value()`；下面每一張清單的每一項都有
     // 一支對應的測試（`tests/h1/test_h1_09_recovery.cpp`：多數在 `ChangedTargetPredicate`
-    // 組，`migrations_` 那一項在 `OverwriteMatrix`），**沒測過的宣稱不寫在這裡**。
+    // 組；`migrations_` 那一項在 `OverwriteMatrix.ChangingTheMigrationRegistryIsTreatedAs`
+    // `AChangedTarget`，幾何鍵換型別那一項在 `OverwriteMatrix`
+    // `.NonNumericGeometryValuesAreLossNotRepair`），**沒測過的宣稱不寫在這裡**。
+    //
+    // **修訂 8 的來歷**：修訂 7 曾把「數值的字面寫法」與「鍵序」列為不會觸發它，
+    // 那個放寬的承重論證被驗收 F8 證偽（`integral_` 在資料模型裡，而且決定 E7-14 的
+    // `EditKind`），兩軸皆已收回。**拒絕覆寫是在保護內容**，不是誤報。
     //
     // **不會**觸發它（每一項都是實測，不是推論）：
     //   - 整行註解（`#` 開頭；檔首與 properties 區塊裡各測過一次）、空行、行尾空白、
