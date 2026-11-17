@@ -1043,7 +1043,8 @@ enum class Src {
     LoadedOther,             // 從**別的**名字完整載入
     LoadedPartialSame,       // 從同一個名字載入，但當時有內容沒帶走
     Injected,                // reset()，未宣告來源
-    InjectedDeclared,        // reset(state, "target")，呼叫端宣告了來源
+    InjectedDeclaredTrue,    // reset(state, "target")，宣告**屬實**（state 就是目標的內容）
+    InjectedDeclaredFalse,   // reset(state, "target")，宣告**不實**（state 不是目標的內容）
     ReloadedUnbacked,        // 熱重載，未宣告對應存檔
     ReloadedBackedComplete,  // 熱重載且宣告對應存檔，內容完整
     ReloadedBackedPartial,   // 熱重載且宣告對應存檔，但內容有遺失
@@ -1057,7 +1058,8 @@ const char* name_of(Src s) {
         case Src::LoadedOther: return "LoadedOther";
         case Src::LoadedPartialSame: return "LoadedPartialSame";
         case Src::Injected: return "Injected";
-        case Src::InjectedDeclared: return "InjectedDeclared";
+        case Src::InjectedDeclaredTrue: return "InjectedDeclaredTrue";
+        case Src::InjectedDeclaredFalse: return "InjectedDeclaredFalse";
         case Src::ReloadedUnbacked: return "ReloadedUnbacked";
         case Src::ReloadedBackedComplete: return "ReloadedBackedComplete";
         case Src::ReloadedBackedPartial: return "ReloadedBackedPartial";
@@ -1080,6 +1082,19 @@ std::string good_layout_text() {
     EditAssembly a(tmp);
     EXPECT_EQ(a.add_element("cpu", "bar", place(1, 2, 3, 4)), EditStatus::Ok);
     EXPECT_EQ(a.add_element("ram", "ring_gauge", place(5, 6, 7, 8)), EditStatus::Ok);
+    EXPECT_EQ(a.save("t"), SaveStatus::Ok);
+    std::string text;
+    EXPECT_TRUE(tmp.get("t", text));
+    return text;
+}
+
+// 比 `good_layout_text()` 多一個元件 —— 模擬「使用者在程式開著的時候加了一個掛件」。
+std::string good_plus_text() {
+    ds::layout::MemoryLayoutStorage tmp;
+    EditAssembly a(tmp);
+    EXPECT_EQ(a.add_element("cpu", "bar", place(1, 2, 3, 4)), EditStatus::Ok);
+    EXPECT_EQ(a.add_element("ram", "ring_gauge", place(5, 6, 7, 8)), EditStatus::Ok);
+    EXPECT_EQ(a.add_element("net", "bar", place(9, 10, 11, 12)), EditStatus::Ok);
     EXPECT_EQ(a.save("t"), SaveStatus::Ok);
     std::string text;
     EXPECT_TRUE(tmp.get("t", text));
@@ -1110,15 +1125,26 @@ TEST(OverwriteMatrix, EverySourceTargetCombinationHasADecidedVerdict) {
                            Src::LoadedOther,
                            Src::LoadedPartialSame,
                            Src::Injected,
-                           Src::InjectedDeclared,
+                           Src::InjectedDeclaredTrue,
+                           Src::InjectedDeclaredFalse,
                            Src::ReloadedUnbacked,
                            Src::ReloadedBackedComplete,
                            Src::ReloadedBackedPartial};
     const Tgt targets[] = {Tgt::Missing, Tgt::Complete, Tgt::Incomplete, Tgt::Unreadable};
 
+    // 第三個維度（ACC 的 F6 / R17）：**目標在載入之後有沒有被外部改過**。
+    // 修訂 4 那張 10×4 的表照不出 F6，正是因為它把這個變數固定成「沒變」——
+    // 每一格都用 `storage.put("target", good)` 把目標塞回成載入時那一份。
+    const bool changed_axis[] = {false, true};
+
     for (const Src src : sources) {
-        for (const Tgt tgt : targets) {
-            SCOPED_TRACE(std::string(name_of(src)) + " × " + name_of(tgt));
+      for (const Tgt tgt : targets) {
+        for (const bool changed : changed_axis) {
+            if (changed && tgt != Tgt::Complete) {
+                continue;  // 其餘三種目標狀態本身就不是「完好且被改過」，不適用
+            }
+            SCOPED_TRACE(std::string(name_of(src)) + " × " + name_of(tgt) +
+                         (changed ? " × 載入後被改過" : " × 未被改過"));
 
             ds::layout::MemoryLayoutStorage storage;
             storage.put("target", good);
@@ -1149,7 +1175,13 @@ TEST(OverwriteMatrix, EverySourceTargetCombinationHasADecidedVerdict) {
                 case Src::Injected:
                     app.reset(ds::layout::LayoutState{});
                     break;
-                case Src::InjectedDeclared:
+                case Src::InjectedDeclaredTrue:
+                    // 宣告屬實：拿目標真正的內容當狀態。
+                    app.reset(ingest_layout_text(good).state, "target");
+                    break;
+                case Src::InjectedDeclaredFalse:
+                    // 宣告不實：修訂 4 盲目信任它（→ 無聲毀資料、連備份都沒有，驗收 R15）；
+                    // 修訂 5 起宣告只是**提供一份 baseline**，而 baseline 會被驗證。
                     app.reset(ds::layout::LayoutState{}, "target");
                     break;
                 case Src::ReloadedUnbacked:
@@ -1174,17 +1206,29 @@ TEST(OverwriteMatrix, EverySourceTargetCombinationHasADecidedVerdict) {
                 case Tgt::Incomplete: storage.put("target", partial_layout_text()); break;
                 case Tgt::Unreadable: storage.put("target", unreadable_layout_text()); break;
             }
+            if (changed) {
+                // 使用者在程式開著的時候用編輯器加了一個掛件（F6 的場景）。
+                storage.put("target", good_plus_text());
+            }
 
             // --- 期望值 ---
-            const bool covers = (src == Src::LoadedSame || src == Src::InjectedDeclared ||
-                                 src == Src::ReloadedBackedComplete);
+            // 來歷側：模型是不是源自 target 的一次完整載入。
+            const bool covers =
+                (src == Src::LoadedSame || src == Src::InjectedDeclaredTrue ||
+                 src == Src::InjectedDeclaredFalse || src == Src::ReloadedBackedComplete);
+            // 內容側：上次看到的目標內容是否等於目標**現在**的內容。
+            // `InjectedDeclaredFalse` 宣告了一份對不上的 baseline → 這一關擋下它（R15）。
+            const bool baseline_matches = !changed && (src != Src::InjectedDeclaredFalse);
+
             SaveStatus want = SaveStatus::Ok;
             if (tgt == Tgt::Unreadable) {
-                want = SaveStatus::RefusedUnreadableTarget;  // 目標側優先
+                want = SaveStatus::RefusedUnreadableTarget;  // 目標保真度優先
             } else if (tgt == Tgt::Incomplete) {
                 want = SaveStatus::RefusedIncompleteTarget;
             } else if (tgt == Tgt::Complete && !covers) {
-                want = SaveStatus::RefusedSourceNotDerived;  // 來源側
+                want = SaveStatus::RefusedSourceNotDerived;  // 來歷側
+            } else if (tgt == Tgt::Complete && !baseline_matches) {
+                want = SaveStatus::RefusedTargetChangedSinceLoad;  // 內容側（F6）
             }
 
             // 三個入口必須給出**同一個**答案（MV5 的教訓：預檢不得比 save 寬鬆）。
@@ -1193,20 +1237,199 @@ TEST(OverwriteMatrix, EverySourceTargetCombinationHasADecidedVerdict) {
             EXPECT_EQ(app.dry_run_save("target"), want);
             EXPECT_EQ(app.save("target"), want) << app.last_message();
 
+            if (want != SaveStatus::Ok && tgt != Tgt::Missing) {
+                // 任何一種拒絕都不得動到目標的位元組。
+                std::string after;
+                ASSERT_TRUE(storage.get("target", after));
+                EXPECT_EQ(after, changed ? good_plus_text()
+                                         : (tgt == Tgt::Complete        ? good
+                                            : tgt == Tgt::Incomplete    ? partial_layout_text()
+                                                                        : unreadable_layout_text()));
+                if (changed) {
+                    // F6 的核心斷言：目標現在有、而模型沒有的那個掛件，**不得**被刪掉。
+                    EXPECT_NE(after.find("net"), std::string::npos);
+                }
+            }
             if (want != SaveStatus::Ok) {
                 EXPECT_FALSE(app.last_message().empty());
-                // 明示丟棄永遠走得通，而且一定留下備份。
+                // 明示丟棄永遠走得通；**真的會失去東西時**一定留下備份。
                 std::string before;
                 ASSERT_TRUE(storage.get("target", before));
+                const IntakeReport tgt_rep = ingest_layout_text(before);
+                // 會不會失去東西：目標有內容沒被帶進來，或它的內容與即將寫出去的不同。
+                const bool would_lose =
+                    !tgt_rep.carries_everything() || !(tgt_rep.state == app.state());
+
                 EXPECT_EQ(app.save("target", ds::host::edit::Overwrite::DiscardTargetContent),
                           SaveStatus::Ok);
+                const std::string backup_name =
+                    std::string("target") + ds::host::edit::kRejectedSuffix;
                 std::string kept;
-                ASSERT_TRUE(storage.get(std::string("target") + ds::host::edit::kRejectedSuffix,
-                                        kept));
-                EXPECT_EQ(kept, before);
+                if (would_lose) {
+                    ASSERT_TRUE(storage.get(backup_name, kept));
+                    EXPECT_EQ(kept, before);  // 逐位元
+                } else {
+                    // 覆寫不會損失任何東西 → **不浪費備份槽**（ACC 的 R16）。
+                    EXPECT_FALSE(storage.has(backup_name));
+                }
             }
         }
+      }
     }
+}
+
+// F6 的逐行重現：**沒有任何錯誤情境**。使用者只是在程式開著的時候編輯了自己的檔案。
+TEST(OverwriteMatrix, ExternalEditIsNotSilentlyDeleted) {
+    ds::layout::MemoryLayoutStorage storage;
+    const std::string good = good_layout_text();
+    storage.put("desktop", good);
+
+    EditAssembly app(storage);
+    ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok);  // 開機：一切正常
+    EXPECT_EQ(app.size(), 2u);
+
+    // 使用者用編輯器加了一個 net 掛件。
+    storage.put("desktop", good_plus_text());
+
+    // ← 修訂 4 在這裡回 Ok，把 net 刪掉、沒有備份
+    EXPECT_EQ(app.save("desktop"), SaveStatus::RefusedTargetChangedSinceLoad)
+        << app.last_message();
+    std::string after;
+    ASSERT_TRUE(storage.get("desktop", after));
+    EXPECT_EQ(after, good_plus_text());                    // 位元組原封不動
+    EXPECT_NE(after.find("net"), std::string::npos);
+    EXPECT_EQ(app.stats().saves_refused_changed, 1);
+    EXPECT_FALSE(storage.has(std::string("desktop") + ds::host::edit::kRejectedSuffix));
+
+    // 正確的續行：重新載入（把外部的修改讀進來）之後，存回去就通了，而且 net 還在。
+    ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok);
+    EXPECT_EQ(app.size(), 3u);
+    EXPECT_EQ(app.save("desktop"), SaveStatus::Ok);
+    ASSERT_TRUE(storage.get("desktop", after));
+    EXPECT_NE(after.find("net"), std::string::npos);
+}
+
+// 反方向（**不得回歸**）：使用者自己刪掉一個元件，存回去必須成功。
+// 只比內容不比 baseline 會把這條擋死 —— 目標有、模型沒有，但那是使用者**自己刪的**。
+TEST(OverwriteMatrix, UserDeletionsAreStillAllowed) {
+    ds::layout::MemoryLayoutStorage storage;
+    storage.put("desktop", good_layout_text());
+    EditAssembly app(storage);
+    ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok);
+    ASSERT_EQ(app.size(), 2u);
+
+    ASSERT_EQ(app.remove_element("ram"), EditStatus::Ok);
+    EXPECT_EQ(app.save("desktop"), SaveStatus::Ok) << app.last_message();
+    std::string after;
+    ASSERT_TRUE(storage.get("desktop", after));
+    EXPECT_EQ(after.find("ram"), std::string::npos);  // 真的被刪掉了
+
+    // 連續的正當操作也不得被擋：再刪、再存、再存。
+    ASSERT_EQ(app.remove_element("cpu"), EditStatus::Ok);
+    EXPECT_EQ(app.save("desktop"), SaveStatus::Ok);
+    EXPECT_EQ(app.save("desktop"), SaveStatus::Ok);
+    EXPECT_EQ(app.stats().saves_refused_changed, 0);
+}
+
+// 反方向：載入 → 編輯 → 存回、存到新名字、只有欄位消毒的目標、完好的熱重載。
+TEST(OverwriteMatrix, LegitimateOperationsAreNotBlocked) {
+    ds::layout::MemoryLayoutStorage storage;
+    storage.put("desktop", good_layout_text());
+    EditAssembly app(storage);
+    ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok);
+
+    // 載入 → 編輯 → 存回
+    ASSERT_EQ(app.edit_property("cpu", "label", Value::string("CPU")), EditStatus::Ok);
+    EXPECT_EQ(app.save("desktop"), SaveStatus::Ok);
+    // 連存兩次
+    EXPECT_EQ(app.save("desktop"), SaveStatus::Ok);
+    // 存到新名字
+    EXPECT_EQ(app.save("copy"), SaveStatus::Ok);
+    // 存回原名（上一步把來源改成了 copy）——需要先重新載入，這是判據的代價，已列限制
+    ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok);
+    EXPECT_EQ(app.save("desktop"), SaveStatus::Ok);
+    EXPECT_EQ(app.stats().saves_refused_changed, 0);
+    EXPECT_EQ(app.stats().saves_refused_source, 0);
+}
+
+// R15：宣告不實不再是「盲目信任 → 無聲毀資料」，而是具名拒絕。
+TEST(OverwriteMatrix, FalseDeclarationIsVerifiedNotTrusted) {
+    ds::layout::MemoryLayoutStorage storage;
+    const std::string good = good_layout_text();
+    storage.put("d", good);
+    EditAssembly app(storage);
+
+    // 呼叫端宣告「這份（空的）狀態就是 d 的內容」—— 宣告不實。
+    app.reset(ds::layout::LayoutState{}, "d");
+    EXPECT_EQ(app.save("d"), SaveStatus::RefusedTargetChangedSinceLoad);
+    std::string after;
+    ASSERT_TRUE(storage.get("d", after));
+    EXPECT_EQ(after, good);  // 修訂 4 在這裡讓 d 變成 30 bytes 且無備份
+
+    // 宣告屬實 → 照常通過。
+    app.reset(ingest_layout_text(good).state, "d");
+    EXPECT_EQ(app.save("d"), SaveStatus::Ok);
+}
+
+// R16：備份槽從日常路徑退回罕見路徑 —— 不會失去東西時不產生備份。
+TEST(OverwriteMatrix, NoBackupWhenNothingWouldBeLost) {
+    ds::layout::MemoryLayoutStorage storage;
+    const std::string good = good_layout_text();
+    storage.put("d", good);
+    EditAssembly app(storage);
+    const std::string backup = std::string("d") + ds::host::edit::kRejectedSuffix;
+
+    // 未宣告的 reset + 明示丟棄，迴圈跑超過備份槽上限。
+    // 每一輪寫出去的內容都與目標現有內容相同 → 不會失去東西 → 不吃備份槽。
+    for (int i = 0; i < ds::host::edit::kMaxRejectedBackups + 8; ++i) {
+        app.reset(ingest_layout_text(good).state);  // 未宣告 → RefusedSourceNotDerived
+        ASSERT_EQ(app.save("d"), SaveStatus::RefusedSourceNotDerived);
+        ASSERT_EQ(app.save("d", ds::host::edit::Overwrite::DiscardTargetContent),
+                  SaveStatus::Ok);
+    }
+    EXPECT_FALSE(storage.has(backup));
+    EXPECT_EQ(app.stats().rejected_backups, 0);
+    std::string after;
+    ASSERT_TRUE(storage.get("d", after));
+    EXPECT_EQ(ingest_layout_text(after).state, ingest_layout_text(good).state);
+}
+
+// R17：`migrations_` 是覆寫決定的**第三個輸入** —— 同一份位元組在不同的遷移登錄下
+// 會解析成不同的內容。baseline 比對把這個維度一併關上了。
+TEST(OverwriteMatrix, ChangingTheMigrationRegistryIsTreatedAsAChangedTarget) {
+    const std::string old_text =
+        "format_version: 0.9\n"
+        "elements:\n"
+        "  -\n"
+        "    id: a\n"
+        "    type: bar\n";
+
+    ds::format::MigrationRegistry keep;
+    ASSERT_TRUE(keep.add(ds::format::FormatVersion{0, 9}, ds::layout::kLayoutFormat,
+                         [](const Value& root) { return root; }));
+    // 另一份登錄：同樣的位元組，但遷移後多出一個元件。
+    ds::format::MigrationRegistry grow;
+    ASSERT_TRUE(grow.add(ds::format::FormatVersion{0, 9}, ds::layout::kLayoutFormat,
+                         [](const Value& root) {
+                             return ds::format::set_value(
+                                 root, "elements[1]",
+                                 Value::map({{"id", Value::string("b")},
+                                             {"type", Value::string("bar")}}));
+                         }));
+
+    ds::layout::MemoryLayoutStorage storage;
+    storage.put("d", old_text);
+    EditAssembly app(storage);
+    app.set_migrations(&keep);
+    ASSERT_EQ(app.restore("d"), IntakeStatus::Migrated);
+    ASSERT_EQ(app.size(), 1u);
+
+    // 位元組一個都沒變，但遷移登錄換了 → 同一份檔案現在代表 2 個元件。
+    app.set_migrations(&grow);
+    EXPECT_EQ(app.save("d"), SaveStatus::RefusedTargetChangedSinceLoad);
+    std::string after;
+    ASSERT_TRUE(storage.get("d", after));
+    EXPECT_EQ(after, old_text);
 }
 
 // F5 的逐行重現：拒絕 → 使用者照訊息修好檔案 → 下一次 save 仍不得毀掉它。
@@ -1396,12 +1619,13 @@ TEST(DeepNonFiniteGuard, VerifyFailedNamesTheOffendingFields) {
         poisoned.elements[0].properties, "cfg", Value::map({{"inner", Value::number(nan)}}));
     poisoned.elements[0].properties = ds::format::set_value(
         poisoned.elements[0].properties, "arr", Value::list({Value::number(inf)}));
-    // 宣告「這份狀態就是 desktop 的內容」，才測得到往返自驗那一關
-    //（否則會先被來源側的 RefusedSourceNotDerived 擋下 —— 那是另一條防線，另有測試）。
-    fx.session.reset(poisoned, "desktop");
+    fx.session.reset(poisoned);
 
-    EXPECT_EQ(fx.session.save("desktop"), SaveStatus::VerifyFailed);
-    EXPECT_EQ(fx.stored(), good);  // storage 未被動
+    // 存到一個**不存在**的名字：覆寫守衛整條不適用，只剩往返自驗這一關，
+    // 這支測試要測的就是它的訊息。（覆寫守衛另有 OverwriteGuard / OverwriteMatrix。）
+    EXPECT_EQ(fx.session.save("fresh"), SaveStatus::VerifyFailed);
+    EXPECT_FALSE(fx.storage.has("fresh"));
+    EXPECT_EQ(fx.stored(), good);  // 既有的 desktop 也沒被動
 
     // 一次列出**全部**路徑 —— 第一版只說「往返自驗不通過（Ok）：」，修完一個才發現還有下一個。
     const std::string& msg = fx.session.last_message();
@@ -1411,7 +1635,7 @@ TEST(DeepNonFiniteGuard, VerifyFailedNamesTheOffendingFields) {
     // 而且清得掉：照訊息給的路徑把它們移除，就存得回去了。
     ASSERT_EQ(fx.session.remove_property("good", "cfg"), EditStatus::Ok);
     ASSERT_EQ(fx.session.remove_property("good", "arr"), EditStatus::Ok);
-    EXPECT_EQ(fx.session.save("desktop"), SaveStatus::Ok);
+    EXPECT_EQ(fx.session.save("fresh"), SaveStatus::Ok);
 }
 
 // `describe_mismatch` 的 properties 分支（ACC 的 R11：修 F3 的同一次提交又新增了一行

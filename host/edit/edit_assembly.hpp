@@ -288,6 +288,34 @@ const char* to_string(IntakeStatus status) noexcept;
 // 根因是判據單邊。覆寫一份存檔要同時成立兩件事：
 //   - **目標側**：我從目標那裡**帶得全**（`IntakeReport::carries_everything()`）
 //   - **來源側**：我手上這份模型**確實是那份目標的完整內容**（`source_covers(name)`）
+// ---------------------------------------------------------------------------
+// 統一判據（修訂 5 / 驗收 F6；人類已核准採用）
+// ---------------------------------------------------------------------------
+//
+//   **「這次寫入會不會刪掉目標現在有、而我手上沒有的內容？」**
+//
+// 前四輪的判據每次都只擴大到驗收者剛展示的那個方向，於是同一條驗收標準被攻破四次。
+// F6 沒有任何錯誤情境：使用者只是在程式開著的時候用編輯器加了一個掛件，
+// 離開時的 `save()` 就把它刪掉了——`restore` 回 `Ok`、`save` 回 `Ok`、沒有備份。
+//
+// 為什麼修訂 4 的「對稱」論證不成立：它宣稱覆寫決定的輸入只有目標與來源兩個，但
+// `overwrite_check()` 實際讀的是——目標**現在的位元組**（只拿去問解析保真度）、
+// `migrations_`（第三個輸入）、以及三個關於**過去**的 `origin_*` 欄位。
+// **模型自己的內容 `state_` 從頭到尾沒有被讀。** 所以「來源側」述詞並沒有讀來源：
+// 它問的是「我**曾經**從這個名字完整載入過嗎」，差的是**時間**。
+//
+// 修法：記下**上一次看見目標時它的內容**（`baseline`），提交前比一次。
+//   - 目標現在 == baseline → 它自我上次看過之後沒被動過 → 我手上沒有的東西，
+//     都是**我自己刪的**（`remove_element` 等）→ **允許**。
+//   - 目標現在 != baseline → 出現了**本 session 從未見過**的內容 → **拒絕**。
+// 這一條同時把「本 session 自己做的刪除」與「外部新增的內容」分開——
+// 只比內容不比來歷會把 `remove_element` 擋死，那是不得回歸的正當操作。
+//
+// 附帶把兩個宣告式出口從「盲目信任」改成「**宣告 + 驗證**」（驗收 R15）：
+// `reset(state, derived_from)` 與 `attach_source(src, backing_name)` 現在只是
+// **提供一份 baseline**，而那份 baseline 會在提交前與目標的實際內容比對。
+// 宣告錯了的結果是具名拒絕，不再是無聲毀資料。
+
 enum class SourceOrigin {
     Empty,     // 全新：既沒載入也沒編輯過
     Authored,  // 只由編輯建起，不來自任何具名存檔
@@ -385,6 +413,7 @@ enum class SaveStatus {
     RefusedUnreadableTarget,  // 目標存檔存在、但本層**讀不出來** → 拒絕覆寫（見下）
     RefusedIncompleteTarget,  // 目標讀得出來，但本層**沒能帶走它的全部內容** → 拒絕覆寫
     RefusedSourceNotDerived,  // **來源側**：手上的模型不是這個目標的完整內容 → 拒絕覆寫
+    RefusedTargetChangedSinceLoad,  // 目標在我上次看過它之後**被改過** → 拒絕覆寫
     RefusedBackupSlotExhausted,  // 明示丟棄，但備份名稱全被占用 → 拒絕（不蓋掉任何東西）
 };
 
@@ -450,6 +479,8 @@ struct EditStats {
     int saves_refused_incomplete = 0;
     // `save()` 因為「手上的模型不是這個目標的完整內容」而拒絕覆寫的次數（F5）。
     int saves_refused_source = 0;
+    // `save()` 因為「目標自我上次看過之後被改過」而拒絕覆寫的次數（F6）。
+    int saves_refused_changed = 0;
     // 明示丟棄時，把讀不出來的原文另存為 `<name>.rejected` 的次數。
     int rejected_backups = 0;
     int loads = 0;
@@ -582,10 +613,13 @@ public:
     const std::string& source_name() const noexcept { return origin_name_; }
     // 該次載入有沒有把來源的內容完整帶進來。
     bool source_is_complete() const noexcept { return origin_complete_; }
-    // 本層手上的模型是不是 `name` 的完整內容（＝來源側的述詞）。
+    // 本層手上的模型是不是源自 `name` 的一次完整載入（＝來歷側的述詞）。
     bool source_covers(const std::string& name) const noexcept {
         return origin_ == SourceOrigin::Loaded && origin_complete_ && origin_name_ == name;
     }
+    // 上一次看見來源存檔時它的內容（`source_origin() == Loaded` 時有意義）。
+    // 這是 F6 判據的另一半：提交前拿它跟目標**現在**的內容比。
+    const ds::layout::LayoutState& baseline() const noexcept { return baseline_; }
 
     // 覆寫 `name` 會不會丟掉使用者的內容（＝`overwrite_check(name) == SaveStatus::Ok`）。
     //   - storage 裡沒有這個名字 → true（沒有東西會被毀掉）。
@@ -669,8 +703,9 @@ private:
                                       SaveStatus verdict) const;
     // 找一個沒被占用的備份名稱（`<name>.rejected`、`.rejected.2`…）。
     // 全部占用 → 回 false（呼叫端轉為 `RefusedBackupSlotExhausted`）。
-    // 記下模型的來源（載入成功 / 存檔成功 / 編輯 / 注入）。
-    void note_origin(SourceOrigin origin, const std::string& name, bool complete);
+    // 記下模型的來源與**當時看到的目標內容**（載入成功 / 存檔成功 / 編輯 / 注入）。
+    void note_origin(SourceOrigin origin, const std::string& name, bool complete,
+                     const ds::layout::LayoutState& baseline = ds::layout::LayoutState{});
     void note_authored();
     // 往返前後第一個對不上的地方（人類可讀；`VerifyFailed` 的訊息用）。
     static std::string describe_mismatch(const ds::layout::LayoutState& before,
@@ -686,6 +721,8 @@ private:
     SourceOrigin origin_ = SourceOrigin::Empty;
     std::string origin_name_;
     bool origin_complete_ = false;
+    // 上一次看見來源存檔時它的內容。提交前與目標**現在**的內容比對（F6）。
+    ds::layout::LayoutState baseline_{};
     std::unique_ptr<ds::format::HotReloader> reloader_;
     std::string last_reload_report_;
     EditStats stats_{};

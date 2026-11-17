@@ -666,6 +666,8 @@ const char* to_string(SaveStatus status) noexcept {
         case SaveStatus::RefusedUnreadableTarget: return "RefusedUnreadableTarget";
         case SaveStatus::RefusedIncompleteTarget: return "RefusedIncompleteTarget";
         case SaveStatus::RefusedSourceNotDerived: return "RefusedSourceNotDerived";
+        case SaveStatus::RefusedTargetChangedSinceLoad:
+            return "RefusedTargetChangedSinceLoad";
         case SaveStatus::RefusedBackupSlotExhausted: return "RefusedBackupSlotExhausted";
     }
     return "Ok";
@@ -1088,8 +1090,16 @@ SaveStatus EditAssembly::overwrite_check(const std::string& name,
         verdict = target.usable() ? SaveStatus::RefusedIncompleteTarget
                                   : SaveStatus::RefusedUnreadableTarget;
     } else if (!source_covers(name)) {
-        // 來源側：目標是完好的，但我手上這份模型**不是它的內容**。
+        // 來歷側：目標是完好的，但我手上這份模型**不是源自它**。
         verdict = SaveStatus::RefusedSourceNotDerived;
+    } else if (!(target.state == baseline_)) {
+        // **統一判據**（F6）：目標在我上次看過它之後被改過，所以它現在有一些
+        // **本 session 從未見過**的內容。覆寫會把那些內容刪掉。
+        //
+        // 反過來，目標 == baseline 時，「目標有而模型沒有」的東西只可能是
+        // **我自己刪的**（`remove_element` / `remove_property` / 編輯），那是使用者的意圖，
+        // 必須放行——只比內容不比 baseline 會把那條正當操作一起擋死。
+        verdict = SaveStatus::RefusedTargetChangedSinceLoad;
     }
     if (target_out != nullptr) {
         *target_out = std::move(target);
@@ -1128,10 +1138,12 @@ bool EditAssembly::next_backup_name(const std::string& name, std::string& out) c
     return false;
 }
 
-void EditAssembly::note_origin(SourceOrigin origin, const std::string& name, bool complete) {
+void EditAssembly::note_origin(SourceOrigin origin, const std::string& name, bool complete,
+                               const LayoutState& baseline) {
     origin_ = origin;
     origin_name_ = (origin == SourceOrigin::Loaded) ? name : std::string();
     origin_complete_ = complete;
+    baseline_ = baseline;
 }
 
 void EditAssembly::note_authored() {
@@ -1140,6 +1152,9 @@ void EditAssembly::note_authored() {
     if (origin_ == SourceOrigin::Empty) {
         note_origin(SourceOrigin::Authored, std::string(), false);
     }
+    // 編輯**不動 baseline**：baseline 記的是「上次看到的**目標**長什麼樣」，
+    // 不是「模型長什麼樣」。兩者的差就是使用者自己做的修改（含 remove_element），
+    // 那正是必須被允許的那一半。
 }
 
 SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
@@ -1180,6 +1195,9 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
                 case SaveStatus::RefusedIncompleteTarget:
                     ++stats_.saves_refused_incomplete;
                     break;
+                case SaveStatus::RefusedTargetChangedSinceLoad:
+                    ++stats_.saves_refused_changed;
+                    break;
                 default: ++stats_.saves_refused_source; break;
             }
             return last_save_;  // **沒有碰過 storage**
@@ -1188,7 +1206,16 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
         // 而且備份**不覆寫任何既有的名字**（R8）。
         std::string existing;
         std::string backup;
-        if (storage_.get(name, existing)) {
+        // **只在真的會失去東西時才備份**（驗收 R16）：目標現在的內容若與即將寫出去的
+        // 內容相同，覆寫不會損失任何東西，產生一份備份只會白白吃掉備份槽
+        //（未宣告的 reset() + 明示丟棄迴圈到第 33 次就會讓那個名字再也存不了）。
+        // 注意用的是 `carries_everything()` 而不是 `usable()`：目標若有內容沒被帶進來
+        // （`lost_content() > 0`），檔案裡就有 `target.state` 看不到的東西——那時
+        // `target.state == state_` 仍可能成立，但覆寫**還是**會毀掉那些沒被帶走的內容。
+        // 第一版寫成 `usable()`，`ExplicitDiscardWorksForPartiallyCarriedTargetsToo`
+        // 當場紅燈（備份沒產生）。
+        const bool would_lose = !target.carries_everything() || !(target.state == state_);
+        if (would_lose && storage_.get(name, existing)) {
             if (!next_backup_name(name, backup)) {
                 last_save_ = SaveStatus::RefusedBackupSlotExhausted;
                 last_message_ = "'" + name + "' 的備份名稱已全部占用（上限 " +
@@ -1204,7 +1231,8 @@ SaveStatus EditAssembly::save(const std::string& name, Overwrite policy) {
 
     storage_.put(name, text);  // 唯一的提交點
     // 寫出去之後，手上的模型就是這份存檔的完整內容了——下一次存同一個名字不必再問。
-    note_origin(SourceOrigin::Loaded, name, true);
+    // 寫出去之後，目標的內容就是我剛寫的這一份——baseline 隨之更新。
+    note_origin(SourceOrigin::Loaded, name, true, state_);
     last_save_ = SaveStatus::Ok;
     last_message_.clear();
     ++stats_.saves;
@@ -1287,8 +1315,9 @@ IntakeStatus EditAssembly::restore(const std::string& name) {
     const IntakeStatus status = rep.status;
     adopt(std::move(rep));
     if (usable) {
-        // 載入成功 → 模型源自這份存檔；`complete` 記下當時有沒有東西沒帶走。
-        note_origin(SourceOrigin::Loaded, name, complete);
+        // 載入成功 → 模型源自這份存檔；`complete` 記下當時有沒有東西沒帶走，
+        // baseline 記下**當時目標長什麼樣**（F6 的另一半）。
+        note_origin(SourceOrigin::Loaded, name, complete, state_);
     } else {
         // 載入失敗 → 狀態沒變，來源也沒變（**不會**因此變成「源自 name」）。
         ++stats_.loads_failed;
@@ -1302,8 +1331,11 @@ void EditAssembly::reset(const LayoutState& state, const std::string& derived_fr
         // 呼叫端沒說這是誰的內容 → 推導關係失效，覆寫既有存檔需要明示丟棄。
         note_origin(SourceOrigin::Injected, std::string(), false);
     } else {
-        // 呼叫端的斷言（本層不驗證）：這份狀態就是那個存檔的完整內容。
-        note_origin(SourceOrigin::Loaded, derived_from, true);
+        // 呼叫端的斷言：這份狀態就是那個存檔的內容。
+        // **修訂 5 起這個斷言會被驗證**（驗收 R15）：它只是提供一份 baseline，
+        // 而 baseline 在提交前會與目標的實際內容比對。宣告錯了 → 具名拒絕，
+        // 不再是「盲目信任 → 無聲毀資料、連備份都沒有」。
+        note_origin(SourceOrigin::Loaded, derived_from, true, state);
     }
 }
 
@@ -1348,9 +1380,11 @@ ReloadOutcome EditAssembly::poll_reload() {
     adopt(std::move(rep));
     if (usable) {
         if (!source_backing_name_.empty()) {
-            // 呼叫端宣告了「這個來源就是那份存檔」：完整重載才保住推導關係。
-            // 有遺失的重載 → 推導關係失效，於是「熱重載丟了一個元件 → 存回去」被擋下。
-            note_origin(SourceOrigin::Loaded, source_backing_name_, complete);
+            // 呼叫端宣告了「這個來源就是那份存檔」：完整重載才保住推導關係，
+            // 並以重載到的內容當 baseline。**那份 baseline 一樣會在提交前被驗證**
+            // （R15）——相位 1 的 ReloadSource 與 storage 是兩個互不相識的物件，
+            // 宣告錯了就會在 save 時變成具名拒絕，而不是毀資料。
+            note_origin(SourceOrigin::Loaded, source_backing_name_, complete, state_);
         } else {
             // 沒有宣告對應存檔 → 本層不猜它是誰的內容。
             note_origin(SourceOrigin::Reloaded, std::string(), complete);
