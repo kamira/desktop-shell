@@ -259,3 +259,16 @@ target_link_libraries(e7_16 PUBLIC e7_14)
 add_executable(test_e7_16 ${CMAKE_SOURCE_DIR}/tests/e7/test_e7_16.cpp)
 target_link_libraries(test_e7_16 PRIVATE e7_16 GTest::gtest_main)
 add_test(NAME e7_16 COMMAND test_e7_16)
+
+# ==== 單元 e7_17 ====
+# E7-17 `parse()` 不得讓行程結束（例外外洩 + 深層巢狀爆堆疊）
+#
+# 本單元**不新增原始碼檔**：它修的是 E7-01 既有的 `document.cpp` / `document.hpp`
+# （二者都在本單元的 write_scope 內），故沒有 add_library，只登記回歸測試目標。
+# 測試連 `e7_01`——也就是被修的那個函式庫本身。
+#
+# 平台中立（`platform: neutral`）：刻意**不**包在 if(WIN32) 內，
+# 讓 ubuntu 上一定留下一個名稱含 e7_17 的註冊測試。
+add_executable(test_e7_17 ${CMAKE_SOURCE_DIR}/tests/e7/test_e7_17.cpp)
+target_link_libraries(test_e7_17 PRIVATE e7_01 GTest::gtest_main)
+add_test(NAME e7_17 COMMAND test_e7_17)
