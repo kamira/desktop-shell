@@ -1,6 +1,9 @@
 // E7-01 宣告式格式核心 — 實作（平台中立、純邏輯，無任何平台分支）。
 #include "document.hpp"
 
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
 #include <stdexcept>
 
 namespace ds::format {
@@ -202,11 +205,38 @@ std::string trim(const std::string& s) {
     return s.substr(b, e - b + 1);
 }
 
-// 解析 "major.minor" 為 FormatVersion。回傳 false = 格式無法解析（不得靜默）。
-bool parse_version(const std::string& value, FormatVersion& out) {
+// 全數字字串 → int。溢位回 false。
+//
+// **不得改用 `std::stoi`**：它在溢位時丟 `std::out_of_range`，而那個例外會一路穿出
+// `parse()`（`parse()` 的 try 只接自家的 ParseFail），結果是行程結束（E7-17）。
+// 這裡以「乘加前先驗上界」的方式累加，全程不觸發 UB 也不丟例外。
+bool digits_to_int(const std::string& s, int& out) {
+    constexpr int kMax = std::numeric_limits<int>::max();
+    int v = 0;
+    for (const char c : s) {
+        const int d = c - '0';
+        if (v > (kMax - d) / 10) {
+            return false;  // v * 10 + d 會超過 INT_MAX。
+        }
+        v = v * 10 + d;
+    }
+    out = v;
+    return true;
+}
+
+// parse_version 的三態結果：必須把「寫錯了」與「寫對但數值超出範圍」分開，
+// 否則後者只能回報成籠統的「無法解析」。
+enum class VersionResult {
+    Ok,
+    Malformed,   // 不是 major.minor 形式（含非數字、多個 '.'）。
+    OutOfRange,  // 形式正確，但版號超出 int 可表示範圍。
+};
+
+// 解析 "major.minor" 為 FormatVersion（不得靜默失敗）。
+VersionResult parse_version(const std::string& value, FormatVersion& out) {
     const std::size_t dot = value.find('.');
     if (dot == std::string::npos || dot == 0 || dot + 1 >= value.size()) {
-        return false;
+        return VersionResult::Malformed;
     }
     const std::string maj = value.substr(0, dot);
     const std::string min = value.substr(dot + 1);
@@ -224,17 +254,33 @@ bool parse_version(const std::string& value, FormatVersion& out) {
     };
     // 次版號不得再含 '.'（拒絕 "1.2.3" 這類非 major.minor 形式）。
     if (!all_digits(maj) || !all_digits(min)) {
-        return false;
+        return VersionResult::Malformed;
     }
-    out.major = std::stoi(maj);
-    out.minor = std::stoi(min);
-    return true;
+    int major = 0;
+    int minor = 0;
+    if (!digits_to_int(maj, major) || !digits_to_int(min, minor)) {
+        return VersionResult::OutOfRange;
+    }
+    out.major = major;
+    out.minor = minor;
+    return VersionResult::Ok;
 }
 
+// numeric_token 的三態結果。
+//
+// 「不是數字」與「是數字但超出 double 可表示範圍」**必須分開**：前者照格式規則退化成裸
+// 字串是正確的，後者若也退化成字串，就是讓一個壞掉的數值偽裝成一個正常的字串值
+// （知識庫 K-002 那一族）。後者一律成為可定位到行的 ParseError。
+enum class NumericResult {
+    NotNumeric,
+    Ok,
+    OutOfRange,
+};
+
 // token 是否為合法數字字面值；同時回報是否為整數（無 '.' 與指數）。
-bool numeric_token(const std::string& t, double& out, bool& integral) {
+NumericResult numeric_token(const std::string& t, double& out, bool& integral) {
     if (t.empty()) {
-        return false;
+        return NumericResult::NotNumeric;
     }
     std::size_t i = 0;
     if (t[i] == '+' || t[i] == '-') {
@@ -258,7 +304,7 @@ bool numeric_token(const std::string& t, double& out, bool& integral) {
         }
     }
     if (!has_digit) {
-        return false;
+        return NumericResult::NotNumeric;
     }
     // 指數部。
     if (i < t.size() && (t[i] == 'e' || t[i] == 'E')) {
@@ -273,15 +319,30 @@ bool numeric_token(const std::string& t, double& out, bool& integral) {
             ++i;
         }
         if (!exp_digit) {
-            return false;
+            return NumericResult::NotNumeric;
         }
     }
     if (i != t.size()) {
-        return false;  // 有殘餘字元 → 非純數字（視為字串）。
+        return NumericResult::NotNumeric;  // 有殘餘字元 → 非純數字（視為字串）。
     }
-    out = std::stod(t);
+
+    // **不得改用 `std::stod`**：它在上溢 / 下溢（errno == ERANGE）時丟 `std::out_of_range`，
+    // 而該例外會穿出 `parse()` 並終結行程（E7-17）。`strtod` 以 errno 回報同一條件、
+    // 不丟例外，故「本實作拒絕的輸入集合」與改動前「會丟例外的輸入集合」**完全相同**——
+    // 既有合法輸入的解析結果一個都沒有變。
+    errno = 0;
+    char* end = nullptr;
+    const double v = std::strtod(t.c_str(), &end);
+    if (end != t.c_str() + t.size()) {
+        // 語法掃描已確認全為數字字元，理論上到不了這裡；保守視為非數字而非信任一個半套結果。
+        return NumericResult::NotNumeric;
+    }
+    if (errno == ERANGE) {
+        return NumericResult::OutOfRange;  // 上溢（±inf）或下溢（次正規 / 0）。
+    }
+    out = v;
     integral = is_int;
-    return true;
+    return NumericResult::Ok;
 }
 
 // 解析雙引號字串（支援 \\ \" \n \t \r \0 轉義）。
@@ -352,8 +413,9 @@ bool is_list_item(const std::string& content) {
 }
 
 // 前置宣告（map / list 區塊互相遞迴）。
+// `depth` 為本區塊的巢狀層數：根 map 為 1，其下每層 +1（契約見 kMaxNestingDepth）。
 Value parse_block(const std::vector<Line>& L, std::size_t& i, std::size_t block_indent,
-                  bool is_root, FormatVersion& ver, bool& saw_ver);
+                  bool is_root, std::size_t depth, FormatVersion& ver, bool& saw_ver);
 
 // 解析一個純量 token（token 已去頭尾空白且非空）。
 Value scalar_value(const std::string& token, std::size_t line_no) {
@@ -375,8 +437,12 @@ Value scalar_value(const std::string& token, std::size_t line_no) {
     }
     double num = 0.0;
     bool integral = false;
-    if (numeric_token(token, num, integral)) {
+    const NumericResult nr = numeric_token(token, num, integral);
+    if (nr == NumericResult::Ok) {
         return Value::number(num, integral);
+    }
+    if (nr == NumericResult::OutOfRange) {
+        fail(line_no, "數值超出可表示範圍（上溢或下溢）: " + token);
     }
     // 其餘一律裸字串（保留原樣，可含空白）。
     return Value::string(token);
@@ -384,16 +450,17 @@ Value scalar_value(const std::string& token, std::size_t line_no) {
 
 // 從 `key:` 條目的下一行起，若存在更深縮排則解析為子區塊，否則回 null。
 Value parse_child_or_null(const std::vector<Line>& L, std::size_t& i, std::size_t block_indent,
-                          FormatVersion& ver, bool& saw_ver) {
+                          std::size_t depth, FormatVersion& ver, bool& saw_ver) {
     if (i < L.size() && L[i].indent > block_indent) {
-        return parse_block(L, i, L[i].indent, /*is_root=*/false, ver, saw_ver);
+        // 這是唯一會加深巢狀的地方，故 depth 在此 +1。
+        return parse_block(L, i, L[i].indent, /*is_root=*/false, depth + 1, ver, saw_ver);
     }
     return Value::null();
 }
 
 // 解析一個 map 區塊：所有兄弟條目共用 block_indent。
 Value parse_map_block(const std::vector<Line>& L, std::size_t& i, std::size_t block_indent,
-                      bool is_root, FormatVersion& ver, bool& saw_ver) {
+                      bool is_root, std::size_t depth, FormatVersion& ver, bool& saw_ver) {
     std::vector<Value::Member> members;
 
     while (i < L.size() && L[i].indent >= block_indent) {
@@ -429,8 +496,12 @@ Value parse_map_block(const std::vector<Line>& L, std::size_t& i, std::size_t bl
                 fail(ln.line_no, "format_version 不得為空（需 major.minor，如 1.0）");
             }
             FormatVersion fv;
-            if (!parse_version(rest, fv)) {
+            const VersionResult vr = parse_version(rest, fv);
+            if (vr == VersionResult::Malformed) {
                 fail(ln.line_no, "format_version 無法解析（需 major.minor，如 1.0）");
+            }
+            if (vr == VersionResult::OutOfRange) {
+                fail(ln.line_no, "format_version 的版號超出可表示範圍: " + rest);
             }
             ver = fv;
             saw_ver = true;
@@ -442,7 +513,7 @@ Value parse_map_block(const std::vector<Line>& L, std::size_t& i, std::size_t bl
         Value value;
         if (rest.empty()) {
             // 巢狀子區塊，或無子區塊則為 null。
-            value = parse_child_or_null(L, i, block_indent, ver, saw_ver);
+            value = parse_child_or_null(L, i, block_indent, depth, ver, saw_ver);
         } else {
             value = scalar_value(rest, ln.line_no);
         }
@@ -454,7 +525,7 @@ Value parse_map_block(const std::vector<Line>& L, std::size_t& i, std::size_t bl
 
 // 解析一個 list 區塊：所有兄弟項目共用 block_indent。
 Value parse_list_block(const std::vector<Line>& L, std::size_t& i, std::size_t block_indent,
-                       FormatVersion& ver, bool& saw_ver) {
+                       std::size_t depth, FormatVersion& ver, bool& saw_ver) {
     std::vector<Value> items;
 
     while (i < L.size() && L[i].indent >= block_indent) {
@@ -468,7 +539,7 @@ Value parse_list_block(const std::vector<Line>& L, std::size_t& i, std::size_t b
         if (ln.content == "-") {
             // 獨佔的 '-'：其下縮排為巢狀 map / list，否則為 null 元素。
             ++i;
-            items.push_back(parse_child_or_null(L, i, block_indent, ver, saw_ver));
+            items.push_back(parse_child_or_null(L, i, block_indent, depth, ver, saw_ver));
         } else {
             // "- 純量"。
             const std::string token = trim(ln.content.substr(2));
@@ -481,11 +552,16 @@ Value parse_list_block(const std::vector<Line>& L, std::size_t& i, std::size_t b
 }
 
 Value parse_block(const std::vector<Line>& L, std::size_t& i, std::size_t block_indent,
-                  bool is_root, FormatVersion& ver, bool& saw_ver) {
-    if (is_list_item(L[i].content)) {
-        return parse_list_block(L, i, block_indent, ver, saw_ver);
+                  bool is_root, std::size_t depth, FormatVersion& ver, bool& saw_ver) {
+    // 巢狀上限：在**建任何東西之前**擋下，故已建起來的 Value 樹永遠不深於
+    // kMaxNestingDepth——解構同樣是遞迴的，這一點與解析本身一樣會吃堆疊。
+    if (depth > kMaxNestingDepth) {
+        fail(L[i].line_no, "巢狀層數超過上限（最多 " + std::to_string(kMaxNestingDepth) + " 層）");
     }
-    return parse_map_block(L, i, block_indent, is_root, ver, saw_ver);
+    if (is_list_item(L[i].content)) {
+        return parse_list_block(L, i, block_indent, depth, ver, saw_ver);
+    }
+    return parse_map_block(L, i, block_indent, is_root, depth, ver, saw_ver);
 }
 
 }  // namespace
@@ -518,9 +594,13 @@ bool parse_scalar(const std::string& token, Value& out) {
     }
     double num = 0.0;
     bool integral = false;
-    if (numeric_token(t, num, integral)) {
+    const NumericResult nr = numeric_token(t, num, integral);
+    if (nr == NumericResult::Ok) {
         out = Value::number(num, integral);
         return true;
+    }
+    if (nr == NumericResult::OutOfRange) {
+        return false;  // 數值超出範圍：不得悄悄退化成裸字串（見標頭說明）。
     }
     out = Value::string(t);
     return true;
@@ -584,7 +664,8 @@ ParseResult parse(const std::string& text) {
     Document doc;
     try {
         std::size_t i = 0;
-        doc.root = parse_map_block(lines, i, /*block_indent=*/0, /*is_root=*/true, ver, saw_ver);
+        doc.root = parse_map_block(lines, i, /*block_indent=*/0, /*is_root=*/true,
+                                   /*depth=*/1, ver, saw_ver);
         // 若仍有未消耗的行 → 結構性縮排錯誤（不得靜默）。
         if (i < lines.size()) {
             return ParseResult::failure({lines[i].line_no, "非預期的縮排或孤立行"});

@@ -45,6 +45,14 @@
 //     （帶轉義）；其餘一律視為裸字串（保留原樣，可含空白）。
 //   - 根層必須是 map 且必含 `format_version`；重複 key、非預期縮排、tab 縮排、格式版本無法解析
 //     或不相容 —— 全部視為錯誤並回報行號（不得靜默）。
+//
+// E7-17 補強（`parse()` 不得讓行程結束）—— 以下兩類輸入在本單元之前會**終結行程**：
+//   - **數值超出可表示範圍**（如 `1e400` / `-1e400` / `1e-400` / 超長數字串，以及
+//     `format_version` 的版號超出 `int`）：原實作以 `std::stod` / `std::stoi` 轉換，
+//     二者在此條件下丟 `std::out_of_range`，而該例外**穿出 `parse()`**。
+//     現一律回傳帶**該值所在行號**的 `ParseError`。
+//   - **巢狀過深**：遞迴下降解析與 `Value` 樹的遞迴解構都會吃堆疊，原實作無上限。
+//     現以 `kMaxNestingDepth` 明示上限，超限回傳帶行號的 `ParseError`。
 #ifndef DS_ENGINE_E7_01_DOCUMENT_HPP
 #define DS_ENGINE_E7_01_DOCUMENT_HPP
 
@@ -81,6 +89,23 @@ inline constexpr FormatVersion kSupportedFormat{1, 0};
 // 相容 iff：major 相同 且 fmt.minor <= supported.minor。
 bool is_format_compatible(const FormatVersion& fmt,
                           const FormatVersion& supported = kSupportedFormat) noexcept;
+
+// -----------------------------------------------------------------------------
+// 巢狀深度上限（契約的一部分，E7-17）
+// -----------------------------------------------------------------------------
+
+// `parse()` 接受的最大巢狀區塊層數。**根 map 為深度 1**，其下每一層巢狀 map / list 各 +1。
+//
+// 為什麼需要一個明示的上限：解析是遞迴下降（巢狀一層 = 若干個堆疊框），而 `Value` 樹的
+// **解構也是遞迴的**，故「解析成功」之後把樹丟掉時同樣吃堆疊。沒有上限時，足夠深的輸入
+// 會以 SIGSEGV 終結行程——那不是可回報的失敗，呼叫端連 `catch` 的機會都沒有。
+//
+// 為什麼是 64：這個數字**刻意不去逼近實測的崩潰門檻**（那個門檻隨堆疊大小、最佳化層級與
+// 編譯器漂移，寫進契約就會不穩）。64 的挑法是「對真實文件綽綽有餘、對堆疊明顯安全」：
+// 本庫全部宣告式文件（skin / profile / manifest / layout / 設定）最深者為 **6 層**，
+// 64 是其十倍有餘；而 64 層的解析與解構在預設 8 MiB 堆疊上只用到數十 KB。
+// 超限一律是帶行號的 `ParseError`，**不是**例外，**不是** SIGSEGV。
+inline constexpr std::size_t kMaxNestingDepth = 64;
 
 // -----------------------------------------------------------------------------
 // 資料模型：Value 多型節點
@@ -205,12 +230,21 @@ private:
 
 // 從文字宣告解析一份文件。見檔首格式說明。
 // 解析過程即驗證：縮排一致（禁 tab）、無重複 key、根層含可解析且相容的 format_version、
-// 純量型別可推斷。任一不符 → failure(帶行號)。
+// 純量型別可推斷、巢狀不超過 kMaxNestingDepth。任一不符 → failure(帶行號)。
+//
+// **不丟出任何例外**（E7-17）：任何輸入——含惡意或損毀的檔案——都回傳 ParseResult。
+// 呼叫端不需要（也不應該）用 try/catch 包住本函式。唯一的例外來源是配置失敗
+// （`std::bad_alloc`），那不是輸入可控的解析錯誤。
 ParseResult parse(const std::string& text);
 
 // 解析純量 token 為 Value（供進階呼叫端 / 測試直接使用同一套型別推斷）。
 // 規則見檔首。不會失敗於「非數字」——非 null/bool/數字/引號字串者一律回裸字串。
-// 例外：格式錯誤的引號字串會回傳 false（out 不動）。
+// 回傳 false（out 不動）的兩種情形：
+//   - 格式錯誤的引號字串（未終止 / 未知轉義）；
+//   - **數值語法正確但超出 double 可表示範圍**（如 `1e400` / `1e-400`）。E7-17 之前此情形
+//     會丟 `std::out_of_range`；改為回 false 而非悄悄退化成裸字串，是為了不讓一個壞掉的
+//     數值偽裝成正常的字串值（見知識庫 K-002）。
+// 與 parse() 相同，本函式**不丟出任何例外**。
 bool parse_scalar(const std::string& token, Value& out);
 
 }  // namespace ds::format
