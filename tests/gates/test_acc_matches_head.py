@@ -89,15 +89,31 @@ def git(cwd, *args):
 
 
 class Repo:
-    """一個真的臨時 git 倉庫，模擬「實作 → 驗收寫 ACC → （可能再推程式碼）」。"""
+    """一個真的臨時 git 倉庫，模擬「base → 實作 → 驗收寫 ACC →（可能再動東西）」。
+
+    用真 git 而不是假的：這道閘門的判定有一半是 git 語意（祖先關係、路徑在某個
+    commit 上存不存在、blob 相等），只測字串處理等於沒測到會出事的那一半。
+
+    拓撲是真的分支拓撲：`main` 是 base，單元的工作在 `feat/<slug>` 上，`origin/main`
+    以 `update-ref` 造出來（閘門讀的是 `origin/$BASE_REF`，不需要真的遠端）。
+    """
 
     def __init__(self, acc_head_line=True, extra_code_after_acc=False,
-                 extra_docs_after_acc=False, extra_chg_after_acc=False, slug="h1_09"):
+                 extra_docs_after_acc=False, extra_chg_after_acc=False, slug="h1_09",
+                 base_moves=False, merge_base_after_acc=False,
+                 delete_added_after_acc=False, base_touches_unit_file=False,
+                 new_file_after_acc=False, checkout_merge_ref=False):
         self.acc_head_line = acc_head_line
         self.extra_code = extra_code_after_acc
         self.extra_docs = extra_docs_after_acc
         self.extra_chg = extra_chg_after_acc
         self.slug = slug
+        self.base_moves = base_moves
+        self.merge_base = merge_base_after_acc
+        self.delete_added = delete_added_after_acc
+        self.base_touches_unit_file = base_touches_unit_file
+        self.new_file = new_file_after_acc
+        self.merge_ref = checkout_merge_ref
 
     def __enter__(self):
         self.dir = tempfile.mkdtemp(prefix="g5b-")
@@ -105,11 +121,16 @@ class Repo:
         git(d, "init", "-q", "-b", "main")
         git(d, "config", "user.email", "t@example.invalid")
         git(d, "config", "user.name", "t")
-        os.makedirs(os.path.join(d, "host/edit"), exist_ok=True)
-        os.makedirs(os.path.join(d, "docs/acceptance"), exist_ok=True)
-        os.makedirs(os.path.join(d, "docs/worklog"), exist_ok=True)
 
+        # --- base 分支 ---
+        self._write("host/edit/x.cpp", "int f(){return 0;}\n")
+        git(d, "add", "-A"); git(d, "commit", "-qm", "base")
+        self._publish_base()
+
+        # --- 單元的工作 ---
+        git(d, "checkout", "-q", "-b", f"feat/{self.slug}")
         self._write("host/edit/x.cpp", "int f(){return 1;}\n")
+        self._write("host/edit/added.cpp", "// 本單元新增的檔案\n")
         git(d, "add", "-A"); git(d, "commit", "-qm", "impl")
         self.verified = git(d, "rev-parse", "HEAD")
 
@@ -120,18 +141,49 @@ class Repo:
                     head_line + "\nResult: pass\n")
         git(d, "add", "-A"); git(d, "commit", "-qm", "acc")
 
+        # --- 驗收之後發生的事 ---
+        if self.base_moves or self.base_touches_unit_file:
+            git(d, "checkout", "-q", "main")
+            if self.base_moves:
+                self._write("engine/other.cpp", "// base 自己前進了\n")
+            if self.base_touches_unit_file:
+                self._write("host/edit/x.cpp", "int f(){return 99;}\n")
+            git(d, "add", "-A"); git(d, "commit", "-qm", "base moves")
+            self._publish_base()
+            git(d, "checkout", "-q", f"feat/{self.slug}")
+
         if self.extra_docs:
             self._write("docs/worklog/V9-x.md", "note\n")
             git(d, "add", "-A"); git(d, "commit", "-qm", "worklog")
         if self.extra_chg:
             self._write(f"docs/changes/CHG-20261117-{self.slug}.md", "改過的 CHG\n")
             git(d, "add", "-A"); git(d, "commit", "-qm", "chg after acc")
+        if self.merge_base:
+            # 衝突時取 base 的版本，模擬「原封照收 base」。
+            git(d, "merge", "-q", "--no-edit", "-X", "theirs", "main")
+        if self.delete_added:
+            git(d, "rm", "-q", "host/edit/added.cpp")
+            git(d, "commit", "-qm", "drop a file this unit had added")
+        if self.new_file:
+            self._write("host/edit/brand_new.cpp", "// 驗收之後才出現的檔案\n")
+            git(d, "add", "-A"); git(d, "commit", "-qm", "new file after acc")
         if self.extra_code:
             self._write("host/edit/x.cpp", "int f(){return 2;}\n")
             git(d, "add", "-A"); git(d, "commit", "-qm", "code after acc")
 
         self.head = git(d, "rev-parse", "HEAD")
+
+        if self.merge_ref:
+            # `pull_request` 事件下 `actions/checkout` 取的是 **merge ref**：工作樹是
+            # base 與 head 的合併，`HEAD` 不等於 `head.sha`。這裡如實重現那個情形
+            # ——分支本身不動（detached），`self.head`（傳給閘門的 HEAD_SHA）仍是分支 head。
+            git(d, "checkout", "-q", "--detach", f"feat/{self.slug}")
+            git(d, "merge", "-q", "--no-edit", "main")
         return self
+
+    def _publish_base(self):
+        git(self.dir, "update-ref", "refs/remotes/origin/main",
+            git(self.dir, "rev-parse", "main"))
 
     def _write(self, rel, text):
         p = os.path.join(self.dir, rel)
@@ -144,9 +196,10 @@ class Repo:
         return False
 
 
-def run_gate(repo, head_sha=None, head_ref=None):
+def run_gate(repo, head_sha=None, head_ref=None, base_ref="main"):
     env = {**os.environ,
            "GITHUB_HEAD_REF": head_ref if head_ref is not None else f"feat/{repo.slug}",
+           "BASE_REF": base_ref,
            "HEAD_SHA": repo.head if head_sha is None else head_sha}
     proc = subprocess.run(GH_BASH + ["-c", run_script()],
                           capture_output=True, text=True,
@@ -216,7 +269,8 @@ class TestMissingOrBadDeclarationFailsClosed(unittest.TestCase):
             io.open(os.path.join(r.dir, "z.txt"), "w").write("z\n")
             git(r.dir, "add", "-A"); git(r.dir, "commit", "-qm", "orphan")
             other = git(r.dir, "rev-parse", "HEAD")
-            git(r.dir, "checkout", "-q", "main")
+            # ACC 在 feat 分支上（新拓撲），checkout 回 main 會把它從工作樹拿掉。
+            git(r.dir, "checkout", "-q", f"feat/{r.slug}")
             with io.open(os.path.join(r.dir, f"docs/acceptance/ACC-20261117-{r.slug}.md"),
                          "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(f"- 受驗 head: `{other}`\n\nResult: pass\n")
@@ -224,11 +278,77 @@ class TestMissingOrBadDeclarationFailsClosed(unittest.TestCase):
         self.assertNotEqual(code, 0, "宣告了另一條歷史上的 commit 卻放行")
         self.assertIn("祖先", out)
 
+    def test_empty_base_ref_is_rejected(self):
+        """取不到 base ref 時不得退化成「沒有 base 可比」而放行。"""
+        with Repo() as r:
+            code, out = run_gate(r, base_ref="")
+        self.assertNotEqual(code, 0, "base ref 為空卻放行")
+        self.assertIn("base ref", out)
+
     def test_empty_head_sha_is_rejected(self):
         with Repo() as r:
             code, out = run_gate(r, head_sha="")
         self.assertNotEqual(code, 0, "取不到 PR 的 head sha 卻放行（fail-open）")
         self.assertIn("fail-closed", out)
+
+
+class TestMergingTheBaseIsNotAChange(unittest.TestCase):
+    """第一版只比 `git diff V HEAD` 的檔案清單，有兩個實測出來的洞（CHG-20261117-02）。
+
+    洞一（誤殺）：分支在驗收後併入 base，base 改過的每個檔案都被算成「本 PR 動過」。
+    洞二（漏報）：驗收後刪掉本單元自己新增的檔案，兩邊都查無此路徑 → 相等 → 放行。
+    """
+
+    def test_merging_the_base_after_the_acc_is_not_a_change(self):
+        with Repo(base_moves=True, merge_base_after_acc=True) as r:
+            code, out = run_gate(r)
+        self.assertEqual(code, 0, f"併入 base 被當成「驗收後動過程式碼」而誤殺：{out}")
+        self.assertNotIn("engine/other.cpp", out,
+                         "base 自己改的檔案出現在違規清單裡——那不是本 PR 交付的內容")
+
+    def test_code_pushed_after_a_base_merge_is_still_rejected(self):
+        with Repo(base_moves=True, merge_base_after_acc=True,
+                  extra_code_after_acc=True) as r:
+            code, out = run_gate(r)
+        self.assertNotEqual(code, 0, "併了 base 就成了偷推程式碼的掩護")
+        self.assertIn("host/edit/x.cpp", out)
+
+    def test_deleting_a_file_this_unit_added_is_rejected(self):
+        """洞二：驗收者驗過的檔案在驗收後消失，交付的東西就不是被驗的東西。"""
+        with Repo(base_moves=True, merge_base_after_acc=True,
+                  delete_added_after_acc=True) as r:
+            code, out = run_gate(r)
+        self.assertNotEqual(code, 0, "驗收後刪掉本單元新增的檔案卻放行")
+        self.assertIn("host/edit/added.cpp", out)
+
+    def test_the_merge_ref_does_not_make_base_changes_look_like_this_prs(self):
+        """`pull_request` 下工作樹是 merge ref，`HEAD` ≠ `head.sha`。
+
+        拿 `HEAD` 比會把 base 分支的變更算成「本 PR 在驗收後動過的檔案」——誤報。
+        原本只有一支靜態測試釘這一條，而它擋不住「把那一行的 `$HEAD_SHA` 換成 `HEAD`」
+        （腳本別處還有 `$HEAD_SHA`，字串仍在）。這一支從行為上擋。
+        """
+        with Repo(base_moves=True, checkout_merge_ref=True) as r:
+            code, out = run_gate(r)
+        self.assertEqual(code, 0,
+                         f"merge ref 裡 base 的變更被算成本 PR 驗收後動過的檔案：{out}")
+        self.assertNotIn("engine/other.cpp", out)
+
+    def test_a_file_created_after_the_acc_is_rejected(self):
+        """放行條件的「現在也沒有貢獻」那半邊：少了它，驗收後**新增**的檔案會被放行
+        （兩邊都查無此路徑 → 相等），而那是完全沒被驗過的程式碼。"""
+        with Repo(new_file_after_acc=True) as r:
+            code, out = run_gate(r)
+        self.assertNotEqual(code, 0, "驗收後新增的檔案卻放行——那是沒被驗過的程式碼")
+        self.assertIn("host/edit/brand_new.cpp", out)
+
+    def test_taking_the_bases_version_of_the_units_own_file_is_rejected(self):
+        """刻意的：衝突解在**本單元自己的檔案**上，驗收者沒看過那個解法，必須複驗。"""
+        with Repo(base_touches_unit_file=True, merge_base_after_acc=True) as r:
+            code, out = run_gate(r)
+        self.assertNotEqual(code, 0,
+                            "本單元自己的檔案在驗收後被 base 的版本蓋掉卻放行")
+        self.assertIn("host/edit/x.cpp", out)
 
 
 class TestStaticGuards(unittest.TestCase):
@@ -253,13 +373,20 @@ class TestStaticGuards(unittest.TestCase):
 
     def test_pipeline_assignments_are_guarded(self):
         """空轉方式 6：`ls` 查無檔案回 2、`grep` 無命中回 1，在 pipefail + -e 下會中止（K-011）。"""
+        def has_real_pipe(fragment):
+            # `||` 不是管線。原本寫 `"|" in fragment`，在這一行出現 `||` 之前都沒被發現
+            # ——它會把 `cmd || { ... }` 這種**更嚴**的 fail-closed 守衛誤報成沒守衛。
+            return "|" in fragment.replace("||", "")
+
         unguarded = [
             ln.strip() for ln in run_script().splitlines()
-            if "=$(" in ln and "|" in ln.split("=$(", 1)[1]
-            and "|| true" not in ln and "git diff" not in ln
+            if "=$(" in ln and has_real_pipe(ln.split("=$(", 1)[1])
+            # 兩種守衛都算：`|| true`（失敗無害）與 `|| { ...; exit 1; }`（失敗就 fail-closed）。
+            and "|| true" not in ln and "exit 1" not in ln
         ]
         self.assertEqual(unguarded, [],
-                         f"這些含管線的賦值沒有 `|| true`，::error:: 會印不出來（K-011）：{unguarded}")
+                         f"這些含管線的賦值既沒有 `|| true` 也沒有 fail-closed 守衛，"
+                         f"::error:: 會印不出來（K-011）：{unguarded}")
 
     def test_only_runs_for_medium_or_above_work_units(self):
         body = "\n".join(step_body())
