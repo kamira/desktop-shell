@@ -389,6 +389,50 @@ jobs:
           [ "$IMP" = "$VER" ] && { echo "::error::驗收者與實作者同一人：$IMP"; exit 1; } || true
 
       # G6 停點契約（僅工作單元；infra 變更無對應單元，不跑）
+      # ---------------------------------------------------------------------
+      # G5b ACC 驗的必須是當前的程式碼（CHG-20261117-01）
+      #
+      # G5 檢查「ACC 存在、寫著 Result: pass、驗收者 ≠ 實作者」。它**沒有**檢查那份 ACC
+      # 驗的是不是當前的 head —— 實測（H1-09 / PR #244）：獨立驗收判 pass 之後再推 256 行
+      # （含 47 行實作程式碼），G5 照樣綠燈、G6 照樣貼「所有 CI 閘門已綠，等待人工核准」。
+      # 於是人類看到的「HALT + 全綠」證明不了 ACC 與程式碼是同一版。
+      #
+      # 為什麼不是「宣告的 head == 當前 head」：ACC 自己的提交就會改變 head，
+      # 那個等式**永遠不成立**。要問的是「**驗收之後有沒有動到被驗的東西**」，
+      # 所以比的是兩者之間的檔案清單：只准動 `docs/acceptance/` 與 `docs/worklog/`。
+      #
+      # 為什麼跟 `head.sha` 比而不是跟 `HEAD` 比：`pull_request` 事件下 checkout 的是
+      # merge ref，拿 `HEAD` 比會把 base 分支的變更一起算進來 —— 那是誤報，不是漏報，
+      # 但一道會誤殺的閘門很快就會被繞過去。
+      #
+      # 既有 ACC 沒有「受驗 head」這一行（本步驟上線時 main 上 20 份皆無），但 G5 系列
+      # **只讀當前單元自己的 ACC**，所以這個要求只對往後的 medium 單元生效，不會回頭打到既有的。
+      # ---------------------------------------------------------------------
+      - name: G5b ACC 驗的必須是當前的程式碼
+        if: steps.unit.outputs.is_unit == 'true' && steps.unit.outputs.risk != 'low'
+        shell: bash
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          S="${GITHUB_HEAD_REF#feat/}"
+          # `|| true`：`ls` 查無檔案回 2，在 pipefail + -e 下會讓賦值中止（K-011）。
+          A=$(ls docs/acceptance/ACC-*-"$S".md 2>/dev/null | head -1 || true)
+          [ -n "$A" ] || { echo "::error::找不到 ACC（G5 應已先擋下），fail-closed"; exit 1; }
+          [ -n "$HEAD_SHA" ] || { echo "::error::取不到 PR 的 head sha，fail-closed"; exit 1; }
+          V=$(grep -m1 -oE '受驗 head: *`?[0-9a-f]{7,40}`?' "$A" | grep -oE '[0-9a-f]{7,40}' || true)
+          [ -n "$V" ] || { echo "::error::$A 未寫明「受驗 head: <sha>」。medium 單元的 ACC 必須記下它驗的是哪一個 commit，否則無從判斷 ACC 與程式碼是否同一版"; exit 1; }
+          git cat-file -e "$V^{commit}" 2>/dev/null || { echo "::error::ACC 宣告的受驗 head $V 不在本倉庫的歷史裡"; exit 1; }
+          git merge-base --is-ancestor "$V" "$HEAD_SHA" || { echo "::error::ACC 宣告的受驗 head $V 不是當前 head $HEAD_SHA 的祖先——那份 ACC 驗的不是這條分支"; exit 1; }
+          # 不加 `|| true`：git diff 失敗必須 fail-closed，不能變成空清單而放行。
+          D=$(git diff --name-only "$V" "$HEAD_SHA") || { echo "::error::git diff 失敗（$V..$HEAD_SHA），fail-closed"; exit 1; }
+          OUT=$(printf '%s\n' "$D" | grep -vE '^docs/(acceptance|worklog)/' | grep -v '^$' || true)
+          if [ -n "$OUT" ]; then
+            echo "::error::ACC 驗的是 $V，但那之後動了以下檔案——請讓獨立驗收者複驗當前的 head 並更新 ACC："
+            printf '%s\n' "$OUT"
+            exit 1
+          fi
+          echo "ACC 受驗 head $V → 當前 head $HEAD_SHA：期間只動了 docs/acceptance/ 與 docs/worklog/"
+
       - name: G6 halt gate
         id: halt
         if: steps.unit.outputs.is_unit == 'true'
