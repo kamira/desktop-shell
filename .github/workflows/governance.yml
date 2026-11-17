@@ -398,8 +398,12 @@ jobs:
       # 於是人類看到的「HALT + 全綠」證明不了 ACC 與程式碼是同一版。
       #
       # 為什麼不是「宣告的 head == 當前 head」：ACC 自己的提交就會改變 head，
-      # 那個等式**永遠不成立**。要問的是「**驗收之後有沒有動到被驗的東西**」，
-      # 所以比的是兩者之間的檔案清單：只准動 `docs/acceptance/` 與 `docs/worklog/`。
+      # 那個等式**永遠不成立**。要問的是「**驗收之後有沒有動到被驗的東西**」。
+      #
+      # 判據（CHG-20261117-02 收緊）：驗收之後動過的檔案，除了 `docs/acceptance/` 與
+      # `docs/worklog/`，只有在「**本 PR 對它沒有自己的貢獻**——驗收當時沒有，現在也
+      # 沒有」時才放行。第一版只比 `git diff V HEAD` 的檔案清單，有兩個實測出來的洞，
+      # 兩個都寫在步驟本體的註解裡：併入 base 會誤殺，刪掉本單元自己新增的檔案會漏報。
       #
       # 為什麼跟 `head.sha` 比而不是跟 `HEAD` 比：`pull_request` 事件下 checkout 的是
       # merge ref，拿 `HEAD` 比會把 base 分支的變更一起算進來 —— 那是誤報，不是漏報，
@@ -413,25 +417,56 @@ jobs:
         shell: bash
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.base_ref }}   # git 分支名可含 $ 與反引號，不得內插進 run:
         run: |
           S="${GITHUB_HEAD_REF#feat/}"
           # `|| true`：`ls` 查無檔案回 2，在 pipefail + -e 下會讓賦值中止（K-011）。
           A=$(ls docs/acceptance/ACC-*-"$S".md 2>/dev/null | head -1 || true)
           [ -n "$A" ] || { echo "::error::找不到 ACC（G5 應已先擋下），fail-closed"; exit 1; }
           [ -n "$HEAD_SHA" ] || { echo "::error::取不到 PR 的 head sha，fail-closed"; exit 1; }
+          [ -n "$BASE_REF" ] || { echo "::error::取不到 PR 的 base ref，fail-closed"; exit 1; }
           V=$(grep -m1 -oE '受驗 head: *`?[0-9a-f]{7,40}`?' "$A" | grep -oE '[0-9a-f]{7,40}' || true)
           [ -n "$V" ] || { echo "::error::$A 未寫明「受驗 head: <sha>」。medium 單元的 ACC 必須記下它驗的是哪一個 commit，否則無從判斷 ACC 與程式碼是否同一版"; exit 1; }
           git cat-file -e "$V^{commit}" 2>/dev/null || { echo "::error::ACC 宣告的受驗 head $V 不在本倉庫的歷史裡"; exit 1; }
           git merge-base --is-ancestor "$V" "$HEAD_SHA" || { echo "::error::ACC 宣告的受驗 head $V 不是當前 head $HEAD_SHA 的祖先——那份 ACC 驗的不是這條分支"; exit 1; }
+          BASE=$(git rev-parse "origin/$BASE_REF") || { echo "::error::取不到 origin/$BASE_REF，fail-closed"; exit 1; }
+          BV=$(git merge-base "$V" "$BASE") || { echo "::error::取不到受驗 head 與 base 的 merge-base，fail-closed"; exit 1; }
           # 不加 `|| true`：git diff 失敗必須 fail-closed，不能變成空清單而放行。
-          D=$(git diff --name-only "$V" "$HEAD_SHA") || { echo "::error::git diff 失敗（$V..$HEAD_SHA），fail-closed"; exit 1; }
-          OUT=$(printf '%s\n' "$D" | grep -vE '^docs/(acceptance|worklog)/' | grep -v '^$' || true)
+          SINCE=$(git diff --name-only "$V" "$HEAD_SHA") || { echo "::error::git diff 失敗（$V $HEAD_SHA），fail-closed"; exit 1; }
+          OUT=""
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            case "$f" in docs/acceptance/*|docs/worklog/*) continue;; esac
+            # 放行的唯一理由：**本 PR 對這個檔案沒有自己的貢獻**——驗收當時沒有，現在也沒有。
+            # 那種檔案在驗收後變動，變的是 base 帶進來的東西，不是本 PR 交付的東西。
+            #
+            # 為什麼不能只用 `git diff V HEAD` 的清單（CHG-20261117-02 實測）：分支若在
+            # 驗收後併入 base，那份清單會含 base 改過的每一個檔案，而本單元作者根本沒碰——
+            # 那是誤報。更難看的是**不併 base 反而會過**，可是兩種做法最後合併進 base
+            # 的結果是同一個：判定取決於你有沒有顯式併 base，不取決於交付的內容。
+            #
+            # 為什麼要「驗收當時也沒有貢獻」這半邊：少了它，驗收後**刪掉本單元自己新增的
+            # 檔案**會被放行（兩邊都查無此路徑 → 相等）。那正是「驗收者驗過的東西不見了」。
+            # 四個候選述詞的五情境實測對照見 CHG-20261117-02。
+            #
+            # `git rev-parse --verify` 查無路徑時回非 0 且不輸出，故以 MISSING 代表
+            # 「不存在」，讓「兩邊都不存在」與「兩邊同一個 blob」走同一條相等判斷。
+            av=$(git rev-parse --quiet --verify "$V:$f" 2>/dev/null || echo MISSING)
+            bv=$(git rev-parse --quiet --verify "$BV:$f" 2>/dev/null || echo MISSING)
+            ch=$(git rev-parse --quiet --verify "$HEAD_SHA:$f" 2>/dev/null || echo MISSING)
+            cb=$(git rev-parse --quiet --verify "$BASE:$f" 2>/dev/null || echo MISSING)
+            if [ "$av" = "$bv" ] && [ "$ch" = "$cb" ]; then
+              continue
+            fi
+            OUT="$OUT$f"$'\n'
+          done <<< "$SINCE"
+          OUT=$(printf '%s' "$OUT" | grep -v '^$' || true)
           if [ -n "$OUT" ]; then
-            echo "::error::ACC 驗的是 $V，但那之後動了以下檔案——請讓獨立驗收者複驗當前的 head 並更新 ACC："
+            echo "::error::ACC 驗的是 $V，但那之後本 PR 自己交付的內容又動了以下檔案——請讓獨立驗收者複驗當前的 head 並更新 ACC："
             printf '%s\n' "$OUT"
             exit 1
           fi
-          echo "ACC 受驗 head $V → 當前 head $HEAD_SHA：期間只動了 docs/acceptance/ 與 docs/worklog/"
+          echo "ACC 受驗 head $V → 當前 head $HEAD_SHA：本 PR 自己交付的內容在那之後沒有變動"
 
       - name: G6 halt gate
         id: halt
