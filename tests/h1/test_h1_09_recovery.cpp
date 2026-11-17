@@ -1403,6 +1403,341 @@ TEST(OverwriteMatrix, CommentAndFormattingChangesDoNotCountAsAChangedTarget) {
     EXPECT_EQ(app.save("d"), SaveStatus::RefusedTargetChangedSinceLoad);
 }
 
+// ---------------------------------------------------------------------------
+// 第 4 道閘的述詞：到底什麼算「目標被改過」（R19 / R20 / R21，修訂 7）
+// ---------------------------------------------------------------------------
+// 標頭在 `RefusedTargetChangedSinceLoad` 上列了兩張清單（會 / 不會觸發它）。
+// **這一組的存在就是為了讓那兩張清單的每一項都有一支測試**——修訂 6 的那段註解宣稱四項
+// 只測了兩項，倒下的恰好是沒測的那一類（V1.13 的阻擋項 F7）。所以這裡一個情境一支斷言，
+// 不共用、不合併。
+//
+// 原文一律由 API 自己寫出來（`good_layout_text()`，裡面是 `x: 1.0` 這種寫法），
+// 走的路也是使用者真正會走的那條：載入 → 使用者拿編輯器改 storage 裡的原文 → 存檔。
+
+// 把 `text` 裡**第一處** `from` 換成 `to`。找不到就當場失敗——測試資料與序列化格式一旦
+// 脫鉤（例如哪天 `x: 1.0` 變成 `x: 1`），這一組會「什麼都沒改到卻全綠」，那比紅燈更糟。
+std::string swap_once(const std::string& text, const std::string& from, const std::string& to) {
+    const std::size_t at = text.find(from);
+    if (at == std::string::npos) {
+        ADD_FAILURE() << "測試資料裡找不到 '" << from << "'";
+        return text;
+    }
+    return text.substr(0, at) + to + text.substr(at + from.size());
+}
+
+// 把每一行的前導空白加倍（縮排寬度 2 → 4，其餘一字不動）。
+std::string double_indent(const std::string& text) {
+    std::string out;
+    std::size_t i = 0;
+    while (i < text.size()) {
+        std::size_t eol = text.find('\n', i);
+        if (eol == std::string::npos) {
+            eol = text.size();
+        }
+        std::size_t spaces = 0;
+        while (i + spaces < eol && text[i + spaces] == ' ') {
+            ++spaces;
+        }
+        out.append(spaces * 2, ' ');
+        out.append(text, i + spaces, eol - i - spaces);
+        if (eol < text.size()) {
+            out.push_back('\n');
+        }
+        i = eol + 1;
+    }
+    return out;
+}
+
+// 使用者手改檔案的那條路：先載入 `original`（baseline ← 目標當時的樣子），再把 storage
+// 裡的原文換成 `edited`，然後問第 4 道閘怎麼判。
+// 順手釘住「預檢與 save() 不得各自為政」：兩者必須給同一個答案。
+SaveStatus verdict_after_hand_edit(const std::string& original, const std::string& edited) {
+    ds::layout::MemoryLayoutStorage storage;
+    storage.put("desktop", original);
+    EditAssembly app(storage);
+    EXPECT_EQ(app.restore("desktop"), IntakeStatus::Ok) << app.last_message();
+    storage.put("desktop", edited);
+    const SaveStatus check = app.overwrite_check("desktop");
+    EXPECT_EQ(app.save("desktop"), check) << app.last_message();
+    return check;
+}
+
+// 手改後的檔案本身必須是**完好**的（status Ok、內容全帶得走）——否則判定會落到
+// `RefusedIncompleteTarget`，這一組就測不到想測的那道分支了。
+void expect_target_is_intact(const std::string& edited) {
+    const IntakeReport r = ingest_layout_text(edited);
+    EXPECT_EQ(r.status, IntakeStatus::Ok) << r.message;
+    EXPECT_TRUE(r.carries_everything());
+    EXPECT_EQ(r.lost_content(), 0);
+}
+
+// --- 不會觸發它的八個情境（V1.13 §5 的那張表，一個不漏）---
+
+// (a) 整行註解：檔首一行 + properties 區塊裡一行。
+TEST(ChangedTargetPredicate, WholeLineCommentsAreNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string edited =
+        "# 我的桌面佈局\n" + swap_once(good, "    properties:\n", "    properties:\n      # 幾何\n");
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+}
+
+// (b) 空行。
+TEST(ChangedTargetPredicate, BlankLinesAreNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string edited = "\n" + swap_once(good, "elements:\n", "elements:\n\n") + "\n";
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+}
+
+// (c) 縮排寬度 2 → 4。
+TEST(ChangedTargetPredicate, IndentWidthIsNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string edited = double_indent(good);
+    ASSERT_NE(edited, good);
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+}
+
+// (h) 行尾空白。
+TEST(ChangedTargetPredicate, TrailingWhitespaceIsNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string edited = swap_once(good, "      x: 1.0\n", "      x: 1.0   \n");
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+}
+
+// (d) `1.0` → `1.00`：多一個零。
+TEST(ChangedTargetPredicate, ExtraDecimalZeroIsNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string edited = swap_once(good, "x: 1.0\n", "x: 1.00\n");
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+}
+
+// (e) `1.0` → `1`：**F7 的那一條**。本層自己寫出來的是 `x: 1.0`，使用者把它改成更順眼的
+// `x: 1`——同一個數、同一份內容，修訂 6 當場 `RefusedTargetChangedSinceLoad`，存不了檔。
+TEST(ChangedTargetPredicate, DroppingTheDecimalPointIsNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string edited = swap_once(good, "x: 1.0\n", "x: 1\n");
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+}
+
+// (f) `1` → `1.0`：**F7 的另一條**，反方向。baseline 這一側是整數字面值。
+TEST(ChangedTargetPredicate, AddingADecimalPointIsNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string integral = swap_once(good, "x: 1.0\n", "x: 1\n");
+    // 這一輪的「原文」是使用者手寫的整數版，改回帶小數點的版本。
+    expect_target_is_intact(good);
+    EXPECT_EQ(verdict_after_hand_edit(integral, good), SaveStatus::Ok);
+}
+
+// (g) 指數寫法（同值）：整數尾數與小數尾數兩種形狀都測。
+TEST(ChangedTargetPredicate, ExponentNotationIsNotAChange) {
+    const std::string good = good_layout_text();
+    const std::string plain = swap_once(good, "width: 3.0\n", "width: 3e0\n");
+    expect_target_is_intact(plain);
+    EXPECT_EQ(verdict_after_hand_edit(good, plain), SaveStatus::Ok);
+
+    const std::string mantissa = swap_once(good, "y: 2.0\n", "y: 0.2e1\n");
+    expect_target_is_intact(mantissa);
+    EXPECT_EQ(verdict_after_hand_edit(good, mantissa), SaveStatus::Ok);
+}
+
+// --- V1.13 的兩組對照 ---
+
+// 對照一：真的改了值 → 必須擋。放寬不得把這一條一起放行。
+TEST(ChangedTargetPredicate, ControlARealValueChangeIsStillAChange) {
+    const std::string good = good_layout_text();
+    const std::string edited = swap_once(good, "x: 1.0\n", "x: 12.0\n");
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
+// 對照二：一字未改 → 必須放行。
+TEST(ChangedTargetPredicate, ControlAnUntouchedFileIsNotAChange) {
+    const std::string good = good_layout_text();
+    EXPECT_EQ(verdict_after_hand_edit(good, good), SaveStatus::Ok);
+}
+
+// --- 鍵序、巢狀、以及**不放寬**的那幾個軸 ---
+
+// R21：properties 的鍵是具名屬性，順序沒有語意 → 對調不算改過。
+TEST(ChangedTargetPredicate, PropertyKeyOrderIsNotAChange) {
+    const std::string good = good_layout_text();
+    // 把第一個元件的 x / y 兩行上下對調（值一個字沒變）。
+    const std::string edited = swap_once(good, "      x: 1.0\n      y: 2.0\n",
+                                         "      y: 2.0\n      x: 1.0\n");
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::Ok);
+}
+
+// 放寬是**遞迴**的：巢狀 Map 裡的數值寫法與鍵序一樣不算改過。
+// （巢狀的 properties 子樹由本層原樣帶走，不是幾何欄位，不會被消毒。）
+TEST(ChangedTargetPredicate, NumbersAndKeyOrderInsideNestedMapsAreNotAChange) {
+    const std::string original =
+        "format_version: 1.0\n"
+        "elements:\n"
+        "  -\n"
+        "    id: cpu\n"
+        "    type: bar\n"
+        "    properties:\n"
+        "      x: 1.0\n"
+        "      theme:\n"
+        "        alpha: 1.0\n"
+        "        beta: 2\n";
+    const std::string edited =
+        "format_version: 1.0\n"
+        "elements:\n"
+        "  -\n"
+        "    id: cpu\n"
+        "    type: bar\n"
+        "    properties:\n"
+        "      x: 1.0\n"
+        "      theme:\n"
+        "        beta: 2.0\n"   // 巢狀：字面寫法變了
+        "        alpha: 1\n";   // 巢狀：鍵序也對調了
+    expect_target_is_intact(original);
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(original, edited), SaveStatus::Ok);
+
+    // 對照：巢狀裡**真的**改了值 → 照樣擋。
+    const std::string really = swap_once(edited, "beta: 2.0", "beta: 3.0");
+    EXPECT_EQ(verdict_after_hand_edit(original, really),
+              SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
+// **反向斷言：元件順序絕對不放寬。** `resolve_draws()` 依 `state_.elements` 的順序把
+// `PlacedDraw` 交給繪製層，所以元件順序＝繪製／疊放順序，是內容。兩個元件上下對調，
+// 內容一個字沒變，**仍然必須**判成被改過。
+// 這一條釘住的是「放寬鍵序的時候沒有順手把元件順序一起放寬」。
+TEST(ChangedTargetPredicate, ElementOrderIsAChange) {
+    const std::string good = good_layout_text();
+    const std::string cpu =
+        "  -\n    id: cpu\n    type: bar\n"
+        "    properties:\n      x: 1.0\n      y: 2.0\n      width: 3.0\n      height: 4.0\n";
+    const std::string ram =
+        "  -\n    id: ram\n    type: ring_gauge\n"
+        "    properties:\n      x: 5.0\n      y: 6.0\n      width: 7.0\n      height: 8.0\n";
+    ASSERT_EQ(good, "format_version: 1.0\nelements:\n" + cpu + ram);
+    const std::string edited = "format_version: 1.0\nelements:\n" + ram + cpu;
+
+    expect_target_is_intact(edited);
+    // 兩份的元件集合完全相同，只有順序不同。
+    const ds::layout::LayoutState a = ingest_layout_text(good).state;
+    const ds::layout::LayoutState b = ingest_layout_text(edited).state;
+    ASSERT_EQ(a.elements.size(), 2u);
+    ASSERT_EQ(b.elements.size(), 2u);
+    ASSERT_EQ(a.elements[0].id, b.elements[1].id);
+    ASSERT_EQ(a.elements[1].id, b.elements[0].id);
+
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
+// List 有序是 E7-01 的語意 → List 元素對調**不**放寬。
+TEST(ChangedTargetPredicate, ListElementOrderIsAChange) {
+    const std::string original =
+        "format_version: 1.0\n"
+        "elements:\n"
+        "  -\n"
+        "    id: cpu\n"
+        "    type: bar\n"
+        "    properties:\n"
+        "      series:\n"
+        "        - 1\n"
+        "        - 2\n";
+    const std::string edited = swap_once(original, "        - 1\n        - 2\n",
+                                         "        - 2\n        - 1\n");
+    expect_target_is_intact(original);
+    expect_target_is_intact(edited);
+    EXPECT_EQ(verdict_after_hand_edit(original, edited),
+              SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
+// 外部增 / 刪一個元件都算改過（兩個方向都釘）。
+TEST(ChangedTargetPredicate, AddingOrRemovingAnElementIsAChange) {
+    const std::string good = good_layout_text();
+    const std::string plus = good_plus_text();
+    EXPECT_EQ(verdict_after_hand_edit(good, plus), SaveStatus::RefusedTargetChangedSinceLoad);
+    EXPECT_EQ(verdict_after_hand_edit(plus, good), SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
+// 增 / 刪一個 properties 的鍵都算改過（值為 `null` 的鍵也算一個鍵）。
+TEST(ChangedTargetPredicate, AddingOrRemovingAPropertyKeyIsAChange) {
+    const std::string good = good_layout_text();
+    const std::string added = swap_once(good, "      x: 1.0\n", "      x: 1.0\n      label: CPU\n");
+    EXPECT_EQ(verdict_after_hand_edit(good, added), SaveStatus::RefusedTargetChangedSinceLoad);
+
+    const std::string null_key = swap_once(good, "      x: 1.0\n", "      x: 1.0\n      label: null\n");
+    EXPECT_EQ(verdict_after_hand_edit(good, null_key), SaveStatus::RefusedTargetChangedSinceLoad);
+
+    // 反方向：從有 label 的那一份把它刪掉。
+    EXPECT_EQ(verdict_after_hand_edit(added, good), SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
+// 同一個鍵、值換了型別（非幾何欄位，不會被消毒掉）→ 算改過。
+TEST(ChangedTargetPredicate, ChangingAValueTypeIsAChange) {
+    const std::string good = good_layout_text();
+    const std::string with_label = swap_once(good, "      x: 1.0\n", "      x: 1.0\n      label: CPU\n");
+    const std::string typed = swap_once(with_label, "label: CPU", "label: 7");
+    expect_target_is_intact(typed);
+    EXPECT_EQ(verdict_after_hand_edit(with_label, typed),
+              SaveStatus::RefusedTargetChangedSinceLoad);
+}
+
+// 標頭末段那條提醒也要有測試：**行內**註解不是「只改註解」。E7-01 不認得它，
+// `x: 1.0 # 註` 的值會變成裸字串、被幾何消毒換成 0 並計為內容遺失，於是判定是
+// `RefusedIncompleteTarget`——**不是** `RefusedTargetChangedSinceLoad`。
+TEST(ChangedTargetPredicate, InlineCommentsAreNotJustAComment) {
+    const std::string good = good_layout_text();
+    const std::string edited = swap_once(good, "      x: 1.0\n", "      x: 1.0 # 行內註解\n");
+
+    const IntakeReport r = ingest_layout_text(edited);
+    EXPECT_EQ(r.status, IntakeStatus::Repaired);
+    EXPECT_TRUE(r.usable());
+    EXPECT_FALSE(r.carries_everything());
+    EXPECT_GT(r.lost_content(), 0);
+
+    EXPECT_EQ(verdict_after_hand_edit(good, edited), SaveStatus::RefusedIncompleteTarget);
+}
+
+// R20：這個拒絕的措辭必須講的是「被改過」，不是「本層沒能帶走它的全部內容」。
+// 修訂 6 讓它落到 `RefusedIncompleteTarget` 的措辭，於是對著一份**完好**的檔案
+//（三個計數器全 0）說「沒能帶走它的全部內容：」（冒號後面是空的），再叫使用者
+// 「先修好那份檔案」——那份檔案沒壞。
+TEST(ChangedTargetPredicate, RefusalMessageSaysTheTargetWasChangedNotBroken) {
+    ds::layout::MemoryLayoutStorage storage;
+    const std::string good = good_layout_text();
+    storage.put("desktop", good);
+    EditAssembly app(storage);
+    ASSERT_EQ(app.restore("desktop"), IntakeStatus::Ok);
+    storage.put("desktop", good_plus_text());  // 使用者加了一個掛件
+
+    IntakeReport target;
+    ASSERT_EQ(app.overwrite_check("desktop", &target), SaveStatus::RefusedTargetChangedSinceLoad);
+    // 前提：目標是完好的。不然這支測的就不是這道分支。
+    ASSERT_EQ(target.status, IntakeStatus::Ok);
+    ASSERT_TRUE(target.carries_everything());
+    ASSERT_EQ(target.dropped_elements, 0);
+    ASSERT_EQ(target.discarded_properties, 0);
+    ASSERT_EQ(target.unconsumed_keys, 0);
+
+    ASSERT_EQ(app.save("desktop"), SaveStatus::RefusedTargetChangedSinceLoad);
+    const std::string msg = app.last_message();
+    EXPECT_NE(msg.find("被改過"), std::string::npos) << msg;
+    // 不得再出現另一種拒絕的措辭，也不得叫使用者去修一個沒壞的檔案。
+    EXPECT_EQ(msg.find("沒能帶走它的全部內容"), std::string::npos) << msg;
+    EXPECT_EQ(msg.find("先修好那份檔案"), std::string::npos) << msg;
+    // 說得出呼叫端有哪些出路。
+    EXPECT_NE(msg.find("restore"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("DiscardTargetContent"), std::string::npos) << msg;
+    // 而且 storage 一個位元組都沒動。
+    std::string after;
+    ASSERT_TRUE(storage.get("desktop", after));
+    EXPECT_EQ(after, good_plus_text());
+}
+
 // 反方向（**不得回歸**）：使用者自己刪掉一個元件，存回去必須成功。
 // 只比內容不比 baseline 會把這條擋死 —— 目標有、模型沒有，但那是使用者**自己刪的**。
 TEST(OverwriteMatrix, UserDeletionsAreStillAllowed) {

@@ -146,9 +146,96 @@ Value as_props(const Value& v) {
 // 在那之前 `overwrite_check()` 從不比較 `LayoutState`）。
 //
 // **不用 try/catch 包起來**：那會把「我不知道這兩個狀態是不是一樣」偽裝成一個答案。
-// 改成問一個本來就有答案的問題——`ds::format::Value::operator==` 是全域的（只比型別與
-// 內容，不 throw），而 Null 與空 Map 視為相同只是沿用 E9-05 對**合法**輸入的語意。
-// 非法的 properties（Number / String / List）就誠實地「與任何 Map 都不相等」。
+// 改成問一個本來就有答案的問題——下面的 `same_value()` 只經由 `type()` 分流後取值，
+// 對任何型別組合都有答案、不 throw；而 Null 與空 Map 視為相同只是沿用 E9-05 對**合法**
+// 輸入的語意。非法的 properties（Number / String / List）就誠實地「與任何 Map 都不相等」。
+//
+// --- 這一層刻意比 `ds::format::Value::operator==` **寬**的兩個軸（驗收 R19 / R21）---
+//
+// 上游 `Value::operator==` 對 Number 比的是 `integral_ == o.integral_ && num_ == o.num_`
+// （原始碼註解：「1 與 1.0 視為不同節點，來源型別有別」），對 Map 是**保序比較**
+// （`document.cpp`）。那是上游刻意的語意，**本層不去改它**——放寬只做在這裡。
+//
+// 為什麼放寬是對的（修訂 7 的承重論證，人類裁定）：
+// 這一層的 `save()` 本來就會**重新序列化**，把註解與縮排全部毀掉——而第 4 道閘的設計
+// 本身也承認那一點（「覆寫它們不會刪掉任何內容」）。既然如此，**數值的字面寫法
+// （`1` vs `1.0`）與 properties 的鍵序，照這一層自己的標準也不是內容**：
+// 兩份文件若只差在這兩個軸上，這一層帶走的每一個欄位都一模一樣，覆寫不會丟掉任何
+// 它帶得走的東西。放寬是讓述詞與這一層**實際的行為**一致，不是放水。
+// （修訂 6 把這件事寫成註解卻沒做出來，於是使用者把本層自己寫出來的 `x: 1.0` 改成
+// `x: 1` 就存不了檔——V1.13 的阻擋項 F7。）
+//
+// **不放寬的兩個軸，以及為什麼**：
+//   - **元件順序**（`same_layout()` 逐索引比對）：`resolve_draws()` 依 `state_.elements`
+//     的順序產出 `PlacedDraw` 向量，順序原封帶給繪製層——元件順序**就是**繪製／疊放
+//     順序，是內容。把兩個元件上下對調確實改變了使用者看到的畫面。
+//   - **List 的順序**：`Value` 的 List 有序是 E7-01 的語意，順序有意義。
+bool same_value(const Value& a, const Value& b);
+
+// Map 的鍵是具名屬性，順序沒有語意 → 以**多重集**比對。
+// 用「配對過的就劃掉」而不是「用鍵查一次」：Map 的鍵本該唯一，但 `Value::map()` 工廠
+// 不強制，重複鍵不能互相抵銷。
+bool same_map_unordered(const Value& a, const Value& b) {
+    const std::vector<Value::Member>& am = a.as_map();
+    const std::vector<Value::Member>& bm = b.as_map();
+    if (am.size() != bm.size()) {
+        return false;
+    }
+    std::vector<bool> taken(bm.size(), false);
+    for (const Value::Member& x : am) {
+        bool matched = false;
+        for (std::size_t j = 0; j < bm.size(); ++j) {
+            if (!taken[j] && bm[j].first == x.first && same_value(x.second, bm[j].second)) {
+                taken[j] = true;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// 兩個 `Value` 在「本層帶得走的內容」這個尺度上是不是同一份東西。**遞迴**（巢狀 Map 裡的
+// 數值寫法與鍵序一樣放寬），而且對任何輸入都給得出答案：每個存取子都由 `type()` 短路在
+// 前，所以**不 throw**（R18 的不變式）。
+bool same_value(const Value& a, const Value& b) {
+    if (a.type() != b.type()) {
+        return false;
+    }
+    switch (a.type()) {
+        case ds::format::ValueType::Null:
+            return true;
+        case ds::format::ValueType::Bool:
+            return a.as_bool() == b.as_bool();
+        case ds::format::ValueType::Number:
+            // **只比 `num_`，不比 `integral_`**：`1` 與 `1.0` 是同一個數。
+            // NaN 與任何東西都不相等（含自己）——與上游一致，而且方向安全：
+            // 判成「被改過」＝拒絕覆寫，不會放行一次毀資料的寫入。
+            return a.as_number() == b.as_number();
+        case ds::format::ValueType::String:
+            return a.as_string() == b.as_string();
+        case ds::format::ValueType::List: {
+            const std::vector<Value>& al = a.as_list();
+            const std::vector<Value>& bl = b.as_list();
+            if (al.size() != bl.size()) {
+                return false;
+            }
+            for (std::size_t i = 0; i < al.size(); ++i) {
+                if (!same_value(al[i], bl[i])) {  // 有序，**不放寬**
+                    return false;
+                }
+            }
+            return true;
+        }
+        case ds::format::ValueType::Map:
+            return same_map_unordered(a, b);
+    }
+    return false;  // 值域外的 type()（今日不可達；不寫 default 才讓新增型別變成警告）
+}
+
 bool same_properties(const Value& a, const Value& b) {
     // `Value::size()` 對非容器型別會 throw，所以 `is_map()` 必須短路在前。
     const bool a_empty = a.is_null() || (a.is_map() && a.size() == 0);
@@ -156,9 +243,13 @@ bool same_properties(const Value& a, const Value& b) {
     if (a_empty || b_empty) {
         return a_empty && b_empty;
     }
-    return a == b;
+    return same_value(a, b);
 }
 
+// **元件以索引逐一比對，順序不放寬**（R21 只放寬 properties 的鍵序，不含元件順序）：
+// `resolve_draws()` 依 `state_.elements` 的順序產出 `PlacedDraw` 向量並原封帶給繪製層，
+// 所以元件順序就是繪製／疊放順序——它是內容，不是排版。把兩個元件上下對調**必須**
+// 被判成「目標被改過」。
 bool same_layout(const LayoutState& a, const LayoutState& b) {
     if (a.elements.size() != b.elements.size()) {
         return false;
@@ -1299,6 +1390,22 @@ std::string EditAssembly::describe_unsafe_target(const std::string& name,
                "）；直接覆寫會把 '" + name +
                "' 的內容換成一份它從來沒有過的佈局。請先成功載入 '" + name +
                "'，或以 Overwrite::DiscardTargetContent 明示丟棄（原文會先另存為 '" +
+               name + kRejectedSuffix + "'）";
+    }
+    if (verdict == SaveStatus::RefusedTargetChangedSinceLoad) {
+        // 這一支的措辭必須**自己寫一份**（驗收 R20）：目標是完好的
+        //（`carries_everything() == true`、三個計數器全 0），壞的也不是手上這份模型的
+        // 來歷——是那份檔案在本層上次讀過它之後被改過了。修訂 6 讓它落到下面
+        // `RefusedIncompleteTarget` 的措辭，於是對著一份沒有任何問題的檔案說
+        // 「本層沒能帶走它的全部內容：」（冒號後面還是空的，因為計數器都是 0），
+        // 然後叫使用者「先修好那份檔案」——那份檔案沒壞，而且那三條出路裡有兩條是
+        // 這個情境用不上的。
+        return "目標存檔 '" + name +
+               "' 在本層上次讀取它之後被改過了（它現在有一些本 session 沒看過的內容，"
+               "例如別的程式或編輯器動過它）；覆寫它會把那些改動永久刪掉。那份檔案本身"
+               "沒有問題，不需要修。三條出路：(1) 重新載入它（`restore(\"" + name +
+               "\")`）把那些改動讀進來，再把編輯做一次；(2) 存到另一個名字；(3) 以 "
+               "Overwrite::DiscardTargetContent 明示丟棄那些改動（原文會先另存為 '" +
                name + kRejectedSuffix + "'）";
     }
     if (!target.usable()) {
